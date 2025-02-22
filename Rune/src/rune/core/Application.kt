@@ -4,15 +4,23 @@ import rune.events.Event
 import rune.events.EventDispatcher
 import rune.events.WindowCloseEvent
 
-import org.lwjgl.opengl.GL30.*
+import org.lwjgl.opengl.GL33.*
 import rune.Application
 import rune.imgui.ImguiLayer
+import rune.renderer.IndexBuffer
+import rune.renderer.Shader
+import rune.renderer.VertexBuffer
 
 abstract class Application {
     private val window = Window.create()
     private var running: Boolean = true
     private val layerStack = LayerStack()
     private val imGuiLayer = ImguiLayer()
+
+    lateinit var shader: Shader
+    var vaoId: Int = 0
+    lateinit var vbo: VertexBuffer
+    lateinit var ibo: IndexBuffer
 
     init {
         // setting global instance for Appliation
@@ -22,6 +30,54 @@ abstract class Application {
         pushOverlay(imGuiLayer)
 
         window.setEventCallback(::onEvent)
+
+
+
+        // TEST STUFF FOR OPENGL ----------------------------------------
+        vaoId = glGenVertexArrays()
+        glBindVertexArray(vaoId)
+
+        val vertices = floatArrayOf(
+            -0.5f, -0.5f, 0.0f,
+             0.5f, -0.5f, 0.0f,
+             0.0f,  0.5f, 0.0f
+        )
+
+        vbo = VertexBuffer.create(vertices, vertices.size)
+
+        glEnableVertexAttribArray(0)
+        glVertexAttribPointer(0, 3, GL_FLOAT, false, 3 * 4, 0)
+
+        val indices = intArrayOf(0, 1, 2)
+
+        ibo = IndexBuffer.create(indices, 3)
+
+        val vertexSrc = """
+            #version 330 core
+        
+            layout(location = 0) in vec3 a_Position;
+            out vec3 v_Position;
+        
+            void main()
+            {
+                v_Position = a_Position;
+                gl_Position = vec4(a_Position, 1.0);    
+            }
+        """.trimIndent()
+
+        val fragmentSrc = """
+            #version 330 core
+        
+            layout(location = 0) out vec4 color;
+            in vec3 v_Position;
+        
+            void main()
+            {
+                color = vec4(v_Position * 0.5 + 0.5, 1.0);
+            }
+        """.trimIndent()
+
+        shader = Shader(vertexSrc, fragmentSrc)
     }
 
     fun pushLayer(layer: Layer) {
@@ -54,15 +110,19 @@ abstract class Application {
     fun run() {
         // (!glfwWindowShouldClose(window.getNativeWindow()))
         while (running) {
-            glClearColor(1.0f, 0.0f, 1.0f, 1.0f)
+            glClearColor(0.1f, 0.1f, 0.1f, 1.0f)
             glClear(GL_COLOR_BUFFER_BIT)
+
+            // OPENGL TEST STUFF ----------------------------------------
+            shader.bind()
+            glBindVertexArray(vaoId)
+            glDrawArrays(GL_TRIANGLES, 0, ibo.getCount())
 
             for (layer in layerStack) {
                 layer.onUpdate()
             }
 
             imGuiLayer.begin()
-            // makes sure to render every layer that uses imgui
             for (layer in layerStack) {
                 layer.onImGuiRender()
             }

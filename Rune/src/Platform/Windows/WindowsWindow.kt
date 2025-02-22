@@ -1,11 +1,13 @@
 package rune.platforms.windows
 
 import org.lwjgl.glfw.GLFW.*
-import org.lwjgl.opengl.GL
 import rune.core.*
 import rune.events.*
+import rune.platforms.opengl.OpenGLContext
 
 class WindowsWindow(props: WindowProps) : Window {
+    lateinit var ctx: OpenGLContext
+
     private data class WindowData(
         var title: String,
         var width: Int,
@@ -60,18 +62,11 @@ class WindowsWindow(props: WindowProps) : Window {
         )
         require(windowHandle != 0L) { "Failed to create GLFW window" }
 
-        // make the OpenGL current context
-        glfwMakeContextCurrent(windowHandle)
+        ctx = OpenGLContext(windowHandle)
+        ctx.init()
 
         // enable v-sync
         setVSync(true)
-
-        // This line is critical for LWJGL's interoperation with GLFW's
-        // OpenGL context, or any context that is managed externally.
-        // LWJGL detects the context that is current in the current thread,
-        // created the GLCapabilities instance and makes the OpenGL
-        // bindings available for use.
-        GL.createCapabilities()
 
         // set GLFW callbacks
         glfwSetWindowSizeCallback(windowHandle) { _, newWidth, newHeight ->
@@ -148,7 +143,7 @@ class WindowsWindow(props: WindowProps) : Window {
     override fun onUpdate() {
         // poll events
         glfwPollEvents()
-        glfwSwapBuffers(windowHandle)
+        ctx.flip()
     }
 
     override fun setEventCallback(callback: EventCallbackFn) {
