@@ -1,6 +1,6 @@
 package rune.renderer
 
-import rune.platform.opengl.OpenGLVertexBuffer
+import rune.platforms.opengl.OpenGLVertexBuffer
 
 interface VertexBuffer {
     fun bind()
@@ -10,8 +10,8 @@ interface VertexBuffer {
     companion object {
         fun create(vertices: FloatArray, size: Int): VertexBuffer {
             when (Renderer.getAPI()) {
-                RendererAPI.OpenGL -> return OpenGLVertexBuffer(vertices, size)
-                RendererAPI.None -> TODO()
+                RendererPlatform.OpenGL -> return OpenGLVertexBuffer(vertices, size)
+                RendererPlatform.None -> TODO()
             }
         }
     }

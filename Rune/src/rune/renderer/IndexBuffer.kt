@@ -1,6 +1,6 @@
 package rune.renderer
 
-import rune.platform.opengl.OpenGLIndexBuffer
+import rune.platforms.opengl.OpenGLIndexBuffer
 
 interface IndexBuffer {
     fun bind()
@@ -10,8 +10,8 @@ interface IndexBuffer {
     companion object {
         fun create(indices: IntArray, count: Int): IndexBuffer {
             when (Renderer.getAPI()) {
-                RendererAPI.OpenGL -> return OpenGLIndexBuffer(indices, count)
-                RendererAPI.None -> TODO()
+                RendererPlatform.OpenGL -> return OpenGLIndexBuffer(indices, count)
+                RendererPlatform.None -> TODO()
             }
         }
     }

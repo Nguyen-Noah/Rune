@@ -35,7 +35,7 @@ class WindowsWindow(props: WindowProps) : Window {
         data.width = props.width
         data.height = props.height
 
-        println("Creating window $props.title ($props.width, $props.height)")
+        println("Creating window ${props.title} (${props.width}, ${props.height})")
 
         // if GLFW isn't initialized, do it now
         if (!glfwInit()) {

@@ -1,4 +1,4 @@
-package rune.platform.opengl
+package rune.platforms.opengl
 
 import org.lwjgl.opengl.GL33.*
 import org.lwjgl.system.MemoryUtil

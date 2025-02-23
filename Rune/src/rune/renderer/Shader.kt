@@ -1,5 +1,9 @@
 package rune.renderer
 
+import glm_.mat4x4.Mat4
+import glm_.vec2.Vec2
+import glm_.vec3.Vec3
+import glm_.vec4.Vec4
 import org.lwjgl.opengl.GL33.*
 
 class Shader(private val vertexSrc: String, private val fragmentSrc: String) {
@@ -55,6 +59,39 @@ class Shader(private val vertexSrc: String, private val fragmentSrc: String) {
         glDeleteShader(vertexShader)
         glDeleteShader(fragmentShader)
     }
+
+    fun render(vao: VertexArray, uniforms: Map<String, Any> = emptyMap(), renderMode: Int = GL_TRIANGLES) {
+        bind()
+
+        for ((name, value) in uniforms) {
+            val location = glGetUniformLocation(rendererID, name)
+            if (location != -1) {
+                when (value) {
+                    is Float -> glUniform1f(location, value)
+                    is Int -> glUniform1i(location, value)
+                    is Vec2 -> glUniform2f(location, value.x, value.y)
+                    is Vec3 -> glUniform3f(location, value.x, value.y, value.z)
+                    is Vec4 -> glUniform4f(location, value.x, value.y, value.z, value.w)
+                    else -> println("Uniform type for $name not supported.")
+                }
+            }
+        }
+
+        vao.bind()
+        val ibo = vao.getIndexBuffer()
+        if (ibo != null) {
+            // draw using index buffer
+            glDrawElements(renderMode, ibo.getCount(), GL_UNSIGNED_INT, 0)
+        } else {
+            // fallback if there's no index buffer
+            // ideally you have a known vertex count from the VBO or VAO
+            glDrawArrays(renderMode, 0, 3)
+        }
+        vao.unbind()
+
+        unbind()
+    }
+
     fun bind() {
         glUseProgram(rendererID)
     }

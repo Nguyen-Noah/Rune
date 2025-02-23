@@ -1,5 +1,6 @@
 package rune.core
 
+import glm_.vec4.Vec4
 import rune.events.Event
 import rune.events.EventDispatcher
 import rune.events.WindowCloseEvent
@@ -7,9 +8,8 @@ import rune.events.WindowCloseEvent
 import org.lwjgl.opengl.GL33.*
 import rune.Application
 import rune.imgui.ImguiLayer
-import rune.renderer.IndexBuffer
-import rune.renderer.Shader
-import rune.renderer.VertexBuffer
+import rune.renderer.*
+import rune.rune.renderer.RenderCommand
 
 abstract class Application {
     private val window = Window.create()
@@ -17,10 +17,10 @@ abstract class Application {
     private val layerStack = LayerStack()
     private val imGuiLayer = ImguiLayer()
 
-    lateinit var shader: Shader
-    var vaoId: Int = 0
-    lateinit var vbo: VertexBuffer
-    lateinit var ibo: IndexBuffer
+    private lateinit var shader: Shader
+    private lateinit var vao: VertexArray
+    private lateinit var vbo: VertexBuffer
+    private lateinit var ibo: IndexBuffer
 
     init {
         // setting global instance for Appliation
@@ -34,23 +34,20 @@ abstract class Application {
 
 
         // TEST STUFF FOR OPENGL ----------------------------------------
-        vaoId = glGenVertexArrays()
-        glBindVertexArray(vaoId)
-
         val vertices = floatArrayOf(
             -0.5f, -0.5f, 0.0f,
              0.5f, -0.5f, 0.0f,
-             0.0f,  0.5f, 0.0f
+             0.5f,  0.5f, 0.0f,
+            -0.5f,  0.5f, 0.0f
         )
 
         vbo = VertexBuffer.create(vertices, vertices.size)
+        ibo = IndexBuffer.create(intArrayOf(0, 1, 2, 2, 3, 0), 6)
 
-        glEnableVertexAttribArray(0)
-        glVertexAttribPointer(0, 3, GL_FLOAT, false, 3 * 4, 0)
-
-        val indices = intArrayOf(0, 1, 2)
-
-        ibo = IndexBuffer.create(indices, 3)
+        vao = VertexArray.create(vbo, bufferLayout {
+            attribute("a_Position", 3)
+        })
+        vao.setIndexBuffer(ibo)
 
         val vertexSrc = """
             #version 330 core
@@ -110,13 +107,15 @@ abstract class Application {
     fun run() {
         // (!glfwWindowShouldClose(window.getNativeWindow()))
         while (running) {
-            glClearColor(0.1f, 0.1f, 0.1f, 1.0f)
-            glClear(GL_COLOR_BUFFER_BIT)
+            RenderCommand.setClearColor(Vec4(0.1f, 0.1f, 0.1f, 1.0f))
+            RenderCommand.clear()
+
+            Renderer.beginScene()
+            shader.bind()
+            Renderer.submit(vao)
+            Renderer.endScene()
 
             // OPENGL TEST STUFF ----------------------------------------
-            shader.bind()
-            glBindVertexArray(vaoId)
-            glDrawArrays(GL_TRIANGLES, 0, ibo.getCount())
 
             for (layer in layerStack) {
                 layer.onUpdate()

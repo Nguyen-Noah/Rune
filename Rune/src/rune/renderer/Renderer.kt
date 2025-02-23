@@ -1,18 +1,23 @@
 package rune.renderer
 
-enum class RendererAPI {
-    None,
-    OpenGL
-}
+import rune.rune.renderer.RenderCommand
 
 class Renderer {
 
 
     companion object {
-        private val rendererAPI = RendererAPI.OpenGL
-
-        fun getAPI(): RendererAPI {
-            return rendererAPI
+        fun beginScene() {
+            println("Begin Scene")
         }
+
+        fun endScene() {
+
+        }
+
+        fun submit(vao: VertexArray) {
+            vao.bind()
+            RenderCommand.drawIndexed(vao)
+        }
+        fun getAPI() = RendererAPI.getAPI()
     }
 }

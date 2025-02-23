@@ -1,7 +1,6 @@
-package rune.platform.opengl
+package rune.platforms.opengl
 
 import org.lwjgl.opengl.GL45.*
-import org.lwjgl.system.MemoryUtil
 import rune.renderer.VertexBuffer
 
 class OpenGLVertexBuffer(private val vertices: FloatArray, private val size: Int) : VertexBuffer {
