@@ -74,6 +74,7 @@ dependencies {
 
     // glm
     implementation("io.github.kotlin-graphics:glm:0.9.9.1-12")
+    implementation("io.github.kotlin-graphics:kool:0.9.79")
 
     // Natives (Windows in this example). If you need other OS natives, add them similarly.
     runtimeOnly("org.lwjgl:lwjgl::$lwjglNatives")

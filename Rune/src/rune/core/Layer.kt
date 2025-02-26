@@ -9,7 +9,7 @@ abstract class Layer(val name: String = "Layer") {
     open fun onDetach() {
 
     }
-    open fun onUpdate() {
+    open fun onUpdate(dt: Float) {
 
     }
     open fun onEvent(event: Event) {

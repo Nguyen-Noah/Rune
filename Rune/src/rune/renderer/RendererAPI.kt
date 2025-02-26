@@ -8,6 +8,7 @@ enum class RendererPlatform {
 }
 
 interface RendererAPI {
+    fun init()
     fun setClearColor(color: Vec4)
     fun clear()
     fun drawIndexed(vao: VertexArray)

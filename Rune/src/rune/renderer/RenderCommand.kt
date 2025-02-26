@@ -8,6 +8,10 @@ class RenderCommand {
     companion object {
         private val rendererAPI = OpenGLRendererAPI()
 
+        fun init() {
+            rendererAPI.init()
+        }
+
         fun setClearColor(color: Vec4) {
             rendererAPI.setClearColor(color)
         }

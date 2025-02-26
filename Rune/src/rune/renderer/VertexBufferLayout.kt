@@ -10,7 +10,8 @@ data class VertexAttribute(
 )
 class VertexBufferLayout {
     private val attributes = mutableListOf<VertexAttribute>()
-    val stride: Int = attributes.sumOf { it.count * 4 }
+    val stride: Int
+        get() = attributes.sumOf { it.count * 4 }
 
     fun attribute(name: String, count: Int, type: Int = GL_FLOAT, normalized: Boolean = false) {
         attributes.add(VertexAttribute(name, count, type, normalized))

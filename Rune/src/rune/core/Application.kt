@@ -1,26 +1,21 @@
 package rune.core
 
-import glm_.vec4.Vec4
+import org.lwjgl.glfw.GLFW.glfwGetTime
 import rune.events.Event
 import rune.events.EventDispatcher
 import rune.events.WindowCloseEvent
 
-import org.lwjgl.opengl.GL33.*
 import rune.Application
 import rune.imgui.ImguiLayer
-import rune.renderer.*
-import rune.rune.renderer.RenderCommand
+import rune.renderer.Renderer
+
 
 abstract class Application {
     private val window = Window.create()
     private var running: Boolean = true
+    private var lastFrameTime = 0.0f
     private val layerStack = LayerStack()
     private val imGuiLayer = ImguiLayer()
-
-    private lateinit var shader: Shader
-    private lateinit var vao: VertexArray
-    private lateinit var vbo: VertexBuffer
-    private lateinit var ibo: IndexBuffer
 
     init {
         // setting global instance for Appliation
@@ -31,50 +26,7 @@ abstract class Application {
 
         window.setEventCallback(::onEvent)
 
-
-
-        // TEST STUFF FOR OPENGL ----------------------------------------
-        val vertices = floatArrayOf(
-            -0.5f, -0.5f, 0.0f,
-             0.5f, -0.5f, 0.0f,
-             0.5f,  0.5f, 0.0f,
-            -0.5f,  0.5f, 0.0f
-        )
-
-        vbo = VertexBuffer.create(vertices, vertices.size)
-        ibo = IndexBuffer.create(intArrayOf(0, 1, 2, 2, 3, 0), 6)
-
-        vao = VertexArray.create(vbo, bufferLayout {
-            attribute("a_Position", 3)
-        })
-        vao.setIndexBuffer(ibo)
-
-        val vertexSrc = """
-            #version 330 core
-        
-            layout(location = 0) in vec3 a_Position;
-            out vec3 v_Position;
-        
-            void main()
-            {
-                v_Position = a_Position;
-                gl_Position = vec4(a_Position, 1.0);    
-            }
-        """.trimIndent()
-
-        val fragmentSrc = """
-            #version 330 core
-        
-            layout(location = 0) out vec4 color;
-            in vec3 v_Position;
-        
-            void main()
-            {
-                color = vec4(v_Position * 0.5 + 0.5, 1.0);
-            }
-        """.trimIndent()
-
-        shader = Shader(vertexSrc, fragmentSrc)
+        Renderer.init()
     }
 
     fun pushLayer(layer: Layer) {
@@ -107,18 +59,12 @@ abstract class Application {
     fun run() {
         // (!glfwWindowShouldClose(window.getNativeWindow()))
         while (running) {
-            RenderCommand.setClearColor(Vec4(0.1f, 0.1f, 0.1f, 1.0f))
-            RenderCommand.clear()
-
-            Renderer.beginScene()
-            shader.bind()
-            Renderer.submit(vao)
-            Renderer.endScene()
-
-            // OPENGL TEST STUFF ----------------------------------------
+            val time: Float = glfwGetTime().toFloat()       // Platform.getTime() instead of hard coding glfw
+            val dt = time - lastFrameTime
+            lastFrameTime = time
 
             for (layer in layerStack) {
-                layer.onUpdate()
+                layer.onUpdate(dt)
             }
 
             imGuiLayer.begin()

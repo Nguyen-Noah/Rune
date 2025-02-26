@@ -7,15 +7,8 @@ class OpenGLVertexBuffer(private val vertices: FloatArray, private val size: Int
     private var rendererID: Int = 0
 
     init {
-        // create the buffer object
         rendererID = glCreateBuffers()
-
-        // bind the buffer to GL_ARRAY_BUFFER
         glBindBuffer(GL_ARRAY_BUFFER, rendererID)
-
-        // upload the data
-        // in modern lwjgl, we usually call the overload that takes a buffer
-        // rather than passing 'size' and a raw pointer
         glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW)
     }
 
