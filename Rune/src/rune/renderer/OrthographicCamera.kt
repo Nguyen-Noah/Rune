@@ -6,10 +6,10 @@ import glm_.vec3.Vec3
 
 
 class OrthographicCamera(
-    private var left: Float,
-    private var right: Float,
-    private var bottom: Float,
-    private var top: Float
+    left: Float,
+    right: Float,
+    bottom: Float,
+    top: Float
 ) {
     private var projectionMatrix: Mat4 = Mat4(1.0)
     private var viewMatrix: Mat4 = Mat4(1.0)
@@ -42,6 +42,11 @@ class OrthographicCamera(
     private fun recalculateViewMatrix() {
         val transform = glm.translate(Mat4(1.0f), position) * glm.rotate(Mat4(1.0f), rotation, Vec3(0, 0, 1))
         viewMatrix = glm.inverse(transform)
+        viewProjectionMatrix = projectionMatrix * viewMatrix
+    }
+
+    fun setProjection(left: Float, right: Float, bottom: Float, top: Float) {
+        projectionMatrix = glm.ortho(left, right, bottom, top)
         viewProjectionMatrix = projectionMatrix * viewMatrix
     }
 }

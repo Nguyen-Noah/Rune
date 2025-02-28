@@ -12,8 +12,8 @@ class MouseMovedEvent(
 }
 
 class MouseScrolledEvent(
-    private val xOffset: Float,
-    private val yOffset: Float
+    val xOffset: Float,
+    val yOffset: Float
 ) : Event(EventCategory.Mouse.mask or EventCategory.Input.mask) {
     override fun toString(): String {
         return "MouseMovedEvent: ($xOffset, $yOffset)"

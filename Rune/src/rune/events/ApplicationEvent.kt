@@ -1,8 +1,8 @@
 package rune.events
 
 class WindowResizeEvent(
-    private val width: Int,
-    private val height: Int
+    val width: Int,
+    val height: Int
 ) : Event(EventCategory.Application.mask) {
     override fun toString(): String {
         return "WindowResizeEvent: ($width, $height)"

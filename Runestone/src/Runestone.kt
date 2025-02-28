@@ -8,6 +8,7 @@ import imgui.ImGui as imgui
 import rune.*
 import rune.core.Input
 import rune.core.Key
+import rune.events.Event
 import rune.platforms.opengl.OpenGLShader
 import rune.renderer.*
 import rune.rune.renderer.RenderCommand
@@ -23,7 +24,7 @@ class Test : Layer("Test") {
     private var vbo: VertexBuffer
     private var ibo: IndexBuffer
 
-    private var camera: OrthographicCamera
+    private var cameraController = OrthographicCameraController(1280.0f / 720.0f, true)
     private var cameraPos = Vec3(0.0)
     private val cameraSpeed = 0.5f
     private var cameraRotation = 0.0f
@@ -56,40 +57,14 @@ class Test : Layer("Test") {
         (shader as OpenGLShader).uploadUniform {
             uniform("u_Texture", 0)
         }
-
-        camera = OrthographicCamera(-1.6f, 1.6f, -0.9f, 0.9f)
     }
     override fun onUpdate(dt: Float) {
-        if (Input.isKeyPressed(Key.Left))
-            cameraPos.x -= cameraSpeed * dt
-        if (Input.isKeyPressed(Key.Right))
-            cameraPos.x += cameraSpeed * dt
-        if (Input.isKeyPressed(Key.Down))
-            cameraPos.y -= cameraSpeed * dt
-        if (Input.isKeyPressed(Key.Up))
-            cameraPos.y += cameraSpeed * dt
-        if (Input.isKeyPressed(Key.A))
-            cameraRotation -= cameraSpeed * dt
-        if (Input.isKeyPressed(Key.D))
-            cameraRotation += cameraSpeed * dt
-
-        if (Input.isKeyPressed(Key.J))
-            transform.x -= cameraSpeed * dt
-        if (Input.isKeyPressed(Key.L))
-            transform.x += cameraSpeed * dt
-        if (Input.isKeyPressed(Key.K))
-            transform.y -= cameraSpeed * dt
-        if (Input.isKeyPressed(Key.I))
-            transform.y += cameraSpeed * dt
-
+        cameraController.onUpdate(dt)
 
         RenderCommand.setClearColor(Vec4(0.1f, 0.1f, 0.1f, 1.0f))
         RenderCommand.clear()
 
-        camera.setPosition(cameraPos)
-        camera.setRotation(cameraRotation)
-
-        Renderer.beginScene(camera)
+        Renderer.beginScene(cameraController.camera)
 
         texture.bind()
         Renderer.submit(shader, vao, glm.scale(Mat4(1.0), Vec3(1.5)))
@@ -97,6 +72,10 @@ class Test : Layer("Test") {
         Renderer.submit(shader, vao, glm.translate(Mat4(1.0), Vec3(0.25, -0.25, 0.0)) *glm.scale(Mat4(1.0), Vec3(1.5)))
 
         Renderer.endScene()
+    }
+
+    override fun onEvent(event: Event) {
+        cameraController.onEvent(event)
     }
 
     override fun onImGuiRender() {
