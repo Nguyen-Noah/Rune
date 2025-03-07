@@ -12,6 +12,7 @@ interface RendererAPI {
     fun setClearColor(color: Vec4)
     fun clear()
     fun drawIndexed(vao: VertexArray)
+    fun setViewport(x: Int, y: Int, width: Int, height: Int)
 
     companion object {
         private val rendererAPI = RendererPlatform.OpenGL

@@ -10,7 +10,7 @@ import rune.renderer.Shader
 import java.io.File
 import java.nio.FloatBuffer
 
-class OpenGLShader(private val name: String, private val vertexSrc: String, private val fragmentSrc: String) : Shader {
+class OpenGLShader(private val name: String, private val vertexSrc: String, private val fragmentSrc: String) : Shader() {
     private var rendererID: Int = 0
     override fun getName() : String = name
 

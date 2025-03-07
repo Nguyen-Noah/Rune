@@ -2,10 +2,13 @@ package rune.renderer
 
 import rune.platforms.opengl.OpenGLShader
 
-interface Shader {
-    fun bind()
-    fun unbind()
-    fun getName(): String
+abstract class Shader {
+    abstract fun bind()
+    abstract fun unbind()
+    abstract fun getName(): String
+    open fun uploadUniform() {
+
+    }
 
     companion object {
         fun create(name: String, vertexSrc: String, fragmentSrc: String): Shader {

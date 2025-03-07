@@ -30,7 +30,6 @@ class OrthographicCameraController(private var aspectRatio: Float, private val r
         } else if (Input.isKeyPressed(Key.S)) {
             cameraPosition.y -= cameraTranslationSpeed * dt
         }
-        println(rotation)
 
         if (rotation) {
             if (Input.isKeyPressed(Key.Q)) {
@@ -63,5 +62,9 @@ class OrthographicCameraController(private var aspectRatio: Float, private val r
         aspectRatio = e.width.toFloat() / e.height.toFloat()
         camera.setProjection(-aspectRatio * zoomLevel, aspectRatio * zoomLevel, -zoomLevel, zoomLevel)
         return false
+    }
+
+    fun setZoomLevel(level: Float) {
+        zoomLevel = level
     }
 }

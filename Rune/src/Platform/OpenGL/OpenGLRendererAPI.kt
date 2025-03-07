@@ -22,4 +22,8 @@ class OpenGLRendererAPI : RendererAPI {
     override fun drawIndexed(vao: VertexArray) {
         vao.getIndexBuffer()?.let { glDrawElements(GL_TRIANGLES, it.getCount(), GL_UNSIGNED_INT, 0) }
     }
+
+    override fun setViewport(x: Int, y: Int, width: Int, height: Int) {
+        glViewport(x, y, width, height)
+    }
 }

@@ -2,16 +2,23 @@ package rune.renderer
 
 import glm_.mat4x4.Mat4
 import rune.platforms.opengl.OpenGLShader
-import rune.rune.renderer.RenderCommand
+import rune.renderer.RenderCommand
 
 class Renderer {
 
     companion object {
         private var sceneData: SceneData? = null
 
+        data class SceneData(
+            var viewProjectionMatrix: Mat4 = Mat4(1.0)
+        )
+
         fun init() {
             RenderCommand.init()
+            Renderer2D.init()
         }
+
+        fun getAPI() = RendererAPI.getAPI()
 
         fun beginScene(camera: OrthographicCamera) {
             if (sceneData == null) {
@@ -34,10 +41,9 @@ class Renderer {
             vao.bind()
             RenderCommand.drawIndexed(vao)
         }
-        fun getAPI() = RendererAPI.getAPI()
 
-        data class SceneData(
-            var viewProjectionMatrix: Mat4 = Mat4(1.0)
-        )
+        fun onWindowResize(width: Int, height: Int) {
+            RenderCommand.setViewport(0, 0, width, height)
+        }
     }
 }

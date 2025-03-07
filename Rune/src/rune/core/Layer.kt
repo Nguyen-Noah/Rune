@@ -12,7 +12,7 @@ abstract class Layer(val name: String = "Layer") {
     open fun onUpdate(dt: Float) {
 
     }
-    open fun onEvent(event: Event) {
+    open fun onEvent(e: Event) {
 
     }
 

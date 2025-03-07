@@ -5,14 +5,15 @@ import rune.events.Event
 import rune.events.EventDispatcher
 import rune.events.WindowCloseEvent
 
-import rune.Application
+import rune.events.WindowResizeEvent
 import rune.imgui.ImguiLayer
 import rune.renderer.Renderer
 
 
 abstract class Application {
     private val window = Window.create()
-    private var running: Boolean = true
+    private var running = true
+    private var minimized = false
     private var lastFrameTime = 0.0f
     private val layerStack = LayerStack()
     private val imGuiLayer = ImguiLayer()
@@ -42,6 +43,7 @@ abstract class Application {
     private fun onEvent(event: Event) {
         val dispatcher = EventDispatcher(event)
         dispatcher.dispatch<WindowCloseEvent>(::onWindowClosed)
+        dispatcher.dispatch<WindowResizeEvent>(::onWindowResize)
 
         for (i in layerStack.lastIndex downTo 0) {
             layerStack[i].onEvent(event)
@@ -51,9 +53,20 @@ abstract class Application {
         }
     }
 
-    private fun onWindowClosed(closeEvent: WindowCloseEvent): Boolean {
+    private fun onWindowClosed(e: WindowCloseEvent): Boolean {
         running = false
         return true
+    }
+
+    private fun onWindowResize(e: WindowResizeEvent): Boolean {
+        if (e.width == 0 || e.height == 0) {
+            minimized = true
+            return false
+        }
+        minimized = false
+        Renderer.onWindowResize(e.width, e.height)
+
+        return false
     }
 
     fun run() {
@@ -63,8 +76,10 @@ abstract class Application {
             val dt = time - lastFrameTime
             lastFrameTime = time
 
-            for (layer in layerStack) {
-                layer.onUpdate(dt)
+            if (!minimized) {
+                for (layer in layerStack) {
+                    layer.onUpdate(dt)
+                }
             }
 
             imGuiLayer.begin()

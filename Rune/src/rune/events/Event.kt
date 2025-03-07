@@ -4,7 +4,7 @@ enum class EventType {
     None,
     WindowClose, WindowResize, WindowFocus, WindowLostFocus, WindowMoved,
     AppTick, AppUpdate, AppRender,
-    KeyPressed, KeyReleased,
+    KeyPressed, KeyReleased, KeyTyped,
     MouseButtonPressed, MouseButtonReleased, MouseMoved, MouseScrolled
 }
 
@@ -17,7 +17,12 @@ enum class EventCategory(val mask: Int) {
     MouseButton(1 shl 4)
 }
 
-sealed class Event(private val categoryFlags: Int, var handled: Boolean = false) {
+sealed class Event(
+    private val categoryFlags: Int,
+    var handled: Boolean = false
+) {
+    abstract val eventType: EventType
+
     fun isInCategory(category: EventCategory): Boolean {
         return (categoryFlags and category.mask) != 0
     }

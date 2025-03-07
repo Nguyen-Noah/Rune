@@ -5,14 +5,11 @@ import glm_.mat4x4.Mat4
 import glm_.vec3.Vec3
 import glm_.vec4.Vec4
 import imgui.ImGui as imgui
-import rune.*
-import rune.core.Input
-import rune.core.Key
+import rune.core.Application
+import rune.core.Layer
 import rune.events.Event
 import rune.platforms.opengl.OpenGLShader
 import rune.renderer.*
-import rune.rune.renderer.RenderCommand
-
 
 class Test : Layer("Test") {
     private val shaderLib = ShaderLibrary()
@@ -25,11 +22,6 @@ class Test : Layer("Test") {
     private var ibo: IndexBuffer
 
     private var cameraController = OrthographicCameraController(1280.0f / 720.0f, true)
-    private var cameraPos = Vec3(0.0)
-    private val cameraSpeed = 0.5f
-    private var cameraRotation = 0.0f
-
-    private var transform = Vec3(0.0)
 
     private val red = Vec4(0.8, 0.2, 0.3, 1.0)
 
@@ -74,8 +66,8 @@ class Test : Layer("Test") {
         Renderer.endScene()
     }
 
-    override fun onEvent(event: Event) {
-        cameraController.onEvent(event)
+    override fun onEvent(e: Event) {
+        cameraController.onEvent(e)
     }
 
     override fun onImGuiRender() {
@@ -93,7 +85,8 @@ class Test : Layer("Test") {
 class Runestone : Application() {
     init {
         println("Runestone initialized.")
-        pushOverlay(Test())
+        //pushLayer(Test())
+        pushLayer(Sandbox2D())
     }
 }
 
