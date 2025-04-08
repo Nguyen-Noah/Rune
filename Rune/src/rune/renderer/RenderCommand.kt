@@ -20,8 +20,8 @@ class RenderCommand {
             rendererAPI.clear()
         }
 
-        fun drawIndexed(vao: VertexArray) {
-            rendererAPI.drawIndexed(vao)
+        fun drawIndexed(vao: VertexArray, count: Int = 0) {
+            rendererAPI.drawIndexed(vao, count)
         }
 
         fun setViewport(x: Int, y: Int, width: Int, height: Int) {

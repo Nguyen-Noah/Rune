@@ -72,41 +72,43 @@ class OpenGLShader(private val name: String, private val vertexSrc: String, priv
         glDeleteShader(fragmentShader)
     }
 
-
-    class UniformDSL {
-        internal val uniforms = mutableMapOf<String, Any>()
-
-        fun uniform(name: String, value: Float) { uniforms[name] = value }
-        fun uniform(name: String, value: Int)   { uniforms[name] = value }
-        fun uniform(name: String, value: Vec2)  { uniforms[name] = value }
-        fun uniform(name: String, value: Vec3)  { uniforms[name] = value }
-        fun uniform(name: String, value: Vec4)  { uniforms[name] = value }
-        fun uniform(name: String, value: Mat4)  { uniforms[name] = value }
+    override fun uploadUniform(name: String, value: Float) {
+        val loc = glGetUniformLocation(rendererID, name)
+        if (loc != -1) glUniform1f(loc, value)
     }
 
-    fun uploadUniform(block: UniformDSL.() -> Unit) {
-        val dsl = UniformDSL()
-        dsl.block()
+    override fun uploadUniform(name: String, value: Int) {
+        val loc = glGetUniformLocation(rendererID, name)
+        if (loc != -1) glUniform1i(loc, value)
+    }
 
-        bind()
-        dsl.uniforms.forEach { (name, value) ->
-            val location = glGetUniformLocation(rendererID, name)
-            if (location != -1) {
-                when (value) {
-                    is Float -> glUniform1f(location, value)
-                    is Int -> glUniform1i(location, value)
-                    is Vec2 -> glUniform2f(location, value.x, value.y)
-                    is Vec3 -> glUniform3f(location, value.x, value.y, value.z)
-                    is Vec4 -> glUniform4f(location, value.x, value.y, value.z, value.w)
-                    is Mat4 -> {
-                        MemoryStack.stackPush().use { stack ->
-                            val fb: FloatBuffer = stack.mallocFloat(16)
-                            value to fb
-                            glUniformMatrix4fv(location, false, fb)
-                        }
-                    }
-                    else -> println("Uniform type for '$name' not supported: $value")
-                }
+    override fun uploadUniform(name: String, values: IntArray) {
+        val loc = glGetUniformLocation(rendererID, name)
+        if (loc != -1) glUniform1iv(loc, values)
+    }
+
+    override fun uploadUniform(name: String, value: Vec2) {
+        val loc = glGetUniformLocation(rendererID, name)
+        if (loc != -1) glUniform2f(loc, value.x, value.y)
+    }
+
+    override fun uploadUniform(name: String, value: Vec3) {
+        val loc = glGetUniformLocation(rendererID, name)
+        if (loc != -1) glUniform3f(loc, value.x, value.y, value.z)
+    }
+
+    override fun uploadUniform(name: String, value: Vec4) {
+        val loc = glGetUniformLocation(rendererID, name)
+        if (loc != -1) glUniform4f(loc, value.x, value.y, value.z, value.w)
+    }
+
+    override fun uploadUniform(name: String, value: Mat4) {
+        val loc = glGetUniformLocation(rendererID, name)
+        if (loc != -1) {
+            MemoryStack.stackPush().use { stack ->
+                val fb: FloatBuffer = stack.mallocFloat(16)
+                value to fb
+                glUniformMatrix4fv(loc, false, fb)
             }
         }
     }

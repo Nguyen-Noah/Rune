@@ -10,13 +10,13 @@ class OpenGLVertexArray(
     vbo: VertexBuffer,
     private val layout: VertexBufferLayout
 ) : VertexArray {
-    private val vao: Int = glGenVertexArrays()
+    private val rendererId: Int = glGenVertexArrays()
     private var nextAttribIndex = 0
     private val vertexBuffers = mutableListOf<VertexBuffer>()
     private lateinit var indexBuffer: IndexBuffer
 
     init {
-        glBindVertexArray(vao)
+        glBindVertexArray(rendererId)
         addVertexBuffer(vbo, layout)
         glBindVertexArray(0)
     }
@@ -26,7 +26,7 @@ class OpenGLVertexArray(
     }
 
     fun addVertexBuffer(vbo: VertexBuffer, layout: VertexBufferLayout) {
-        glBindVertexArray(vao)
+        glBindVertexArray(rendererId)
         vbo.bind()
 
         layout.computeOffsets().forEach { (_, offset, attr) ->
@@ -49,7 +49,7 @@ class OpenGLVertexArray(
     }
 
     override fun setIndexBuffer(ibo: IndexBuffer) {
-        glBindVertexArray(vao)
+        glBindVertexArray(rendererId)
         ibo.bind()
         indexBuffer = ibo
     }
@@ -59,7 +59,7 @@ class OpenGLVertexArray(
     }
 
     override fun bind() {
-        glBindVertexArray(vao)
+        glBindVertexArray(rendererId)
     }
 
     override fun unbind() {

@@ -92,5 +92,6 @@ class Runestone : Application() {
 
 fun main() {
     val app: Application = Runestone()
+
     app.run()
 }
