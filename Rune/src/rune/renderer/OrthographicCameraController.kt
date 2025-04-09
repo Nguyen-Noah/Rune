@@ -16,7 +16,18 @@ class OrthographicCameraController(private var aspectRatio: Float, private val r
     private var cameraTranslationSpeed: Float = 5.0f
     private val cameraRotationSpeed: Float = 10.0f
 
-    val camera = OrthographicCamera(-aspectRatio * zoomLevel, aspectRatio * zoomLevel, -zoomLevel, zoomLevel)
+    data class OrthographicCameraBounds(
+        val left: Float,
+        val right: Float,
+        val bottom: Float,
+        val top: Float,
+    ) {
+        fun getWidth(): Float = right - left
+        fun getHeight(): Float = top - bottom
+    }
+
+    private var bounds = OrthographicCameraBounds(-aspectRatio * zoomLevel, aspectRatio * zoomLevel, -zoomLevel, zoomLevel)
+    val camera = OrthographicCamera(bounds.left, bounds.right, bounds.bottom, bounds.top)
 
     fun onUpdate(dt: Float) {
         if (Input.isKeyPressed(Key.A)) {
@@ -54,17 +65,21 @@ class OrthographicCameraController(private var aspectRatio: Float, private val r
     private fun onMouseScrolled(e: MouseScrolledEvent): Boolean {
         zoomLevel -= e.yOffset * 0.25f
         zoomLevel = max(zoomLevel, 0.25f)
-        camera.setProjection(-aspectRatio * zoomLevel, aspectRatio * zoomLevel, -zoomLevel, zoomLevel)
+        bounds = OrthographicCameraBounds(-aspectRatio * zoomLevel, aspectRatio * zoomLevel, -zoomLevel, zoomLevel)
+        camera.setProjection(bounds.left, bounds.right, bounds.bottom, bounds.top)
         return false
     }
 
     private fun onWindowResized(e: WindowResizeEvent): Boolean {
         aspectRatio = e.width.toFloat() / e.height.toFloat()
-        camera.setProjection(-aspectRatio * zoomLevel, aspectRatio * zoomLevel, -zoomLevel, zoomLevel)
+        bounds = OrthographicCameraBounds(-aspectRatio * zoomLevel, aspectRatio * zoomLevel, -zoomLevel, zoomLevel)
+        camera.setProjection(bounds.left, bounds.right, bounds.bottom, bounds.top)
         return false
     }
 
     fun setZoomLevel(level: Float) {
         zoomLevel = level
     }
+
+    fun getBounds(): OrthographicCameraBounds = bounds
 }

@@ -22,13 +22,13 @@ class OpenGLRendererAPI : RendererAPI {
     }
 
     override fun drawIndexed(vao: VertexArray, indexCount: Int) {
-        val count = if (indexCount == 0) {
-            vao.getIndexBuffer()?.getCount() ?: 0
-        } else {
-            indexCount
-        }
+//        val count = if (indexCount == 0) {
+//            vao.getIndexBuffer()?.getCount() ?: 0
+//        } else {
+//            indexCount
+//        }
 
-        glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_INT, 0L)
+        glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0L)
         glBindTexture(GL_TEXTURE_2D, 0)
     }
 

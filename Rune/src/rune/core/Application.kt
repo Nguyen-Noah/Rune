@@ -17,6 +17,7 @@ abstract class Application {
     private var lastFrameTime = 0.0f
     private val layerStack = LayerStack()
     private val imGuiLayer = ImguiLayer()
+    private var dt = 0f
 
     init {
         // setting global instance for Appliation
@@ -72,8 +73,8 @@ abstract class Application {
     fun run() {
         // (!glfwWindowShouldClose(window.getNativeWindow()))
         while (running) {
-            val time: Float = glfwGetTime().toFloat()       // Platform.getTime() instead of hard coding glfw
-            val dt = time - lastFrameTime
+            val time: Float = glfwGetTime().toFloat()       // TODO: Platform.getTime() instead of hard coding glfw
+            dt = time - lastFrameTime
             lastFrameTime = time
 
             if (!minimized) {
@@ -93,6 +94,10 @@ abstract class Application {
     }
 
     fun getWindow(): Window = window
+    fun getFPS(): Int = (1f / dt).toInt()
+
+    // TODO: TEMP
+    fun close() { running = false }
 
     companion object {
         private lateinit var instance: Application

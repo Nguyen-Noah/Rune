@@ -64,13 +64,6 @@ class Renderer2D {
         fun init() {
             data.quadVertexWriter = QuadVertexBufferWriter(data.maxVertices)
 
-            val vertices = floatArrayOf(
-                -0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
-                 0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
-                 0.5f,  0.5f, 0.0f, 1.0f, 1.0f,
-                -0.5f,  0.5f, 0.0f, 0.0f, 1.0f,
-            )
-
             val indices = IntArray(data.maxIndices)
 
             var offset = 0
@@ -133,7 +126,7 @@ class Renderer2D {
         }
 
         fun endScene() {
-            data.vbo!!.setData(data.quadVertexWriter!!.getBuffer(), data.quadVertexWriter!!.getSizeInBytes())
+            data.vbo?.setData(data.quadVertexWriter!!.getBuffer(), data.quadVertexWriter!!.getSizeInBytes())
 
             flush()
         }
@@ -158,61 +151,86 @@ class Renderer2D {
         }
 
         // primitives
+        private fun drawQuadInternal(
+            position: Vec3,
+            size: Vec2,
+            rotation: Float = 0f,
+            color: Vec4 = Vec4(1f),
+            texture: Texture2D? = null,
+            tilingFactor: Float = 1f
+        ) {
+            // 1. if we are out of space, flush
+            if (data.quadIndexCount >= data.maxIndices) {
+                flushAndReset()
+            }
+
+            // 2. figure out tex index
+            var textureIndex = 0f
+
+            if (texture != null) {
+                for (i in 1 until data.textureSlotIndex) {
+                    if (data.textureSlots[i] == texture) {
+                        textureIndex = i.toFloat()
+                        break
+                    }
+                }
+
+                // not found
+                if (textureIndex == 0f) {
+                    textureIndex = data.textureSlotIndex.toFloat()
+                    data.textureSlots[data.textureSlotIndex] = texture
+                    data.textureSlotIndex++
+                }
+            }
+
+            // 3. build transform matrix (translate -> rotate -> scale)
+            val transform = glm.translate(Mat4(1f), position) *
+                    glm.rotate(Mat4(1f), rotation, Vec3(0f, 0f, 1f)) *
+                    glm.scale(Mat4(1f), Vec3(size.x, size.y, 1f))
+
+            val texCoords: Array<Vec2> = arrayOf(
+                Vec2(0.0f, 0.0f),
+                Vec2(1.0f, 0.0f),
+                Vec2(1.0f, 1.0f),
+                Vec2(0.0f, 1.0f),
+            )
+
+            // 4. write out 4 vertices
+            for (i in 0 until 4) {
+                data.quadVertexWriter!!.write(
+                    position = (transform * data.quadVertexPositions[i]!!).toVec3(),
+                    color = color,
+                    texCoords = texCoords[i],
+                    texIndex = textureIndex,
+                    tilingFactor = tilingFactor
+                )
+            }
+
+            // 5) increment indexCount by 6
+            data.quadIndexCount += 6
+            data.stats.quadCount++
+        }
+
         fun drawQuad(position: Vec2, size: Vec2, color: Vec4) {
-            drawQuad(Vec3(position.x, position.y, 0.0f), size, color)
+            drawQuadInternal(
+                position = Vec3(position, 0f),
+                size = size,
+                rotation = 0f,
+                color = color,
+                texture = null,
+                tilingFactor = 1f
+            )
         }
 
         fun drawQuad(position: Vec3, size: Vec2, color: Vec4) {
-            if (data.quadIndexCount >= data.maxIndices) {
-                flushAndReset()
-            }
-
-            val textureIndex = 0f
-            val tilingFactor = 1f
-
-            val transform: Mat4 = glm.translate(Mat4(1f), position) *
-                    glm.scale(Mat4(1f), Vec3(size.x, size.y, 1f))
-
-            // Bottom-left
-            data.quadVertexWriter!!.write(
-                position = (transform * data.quadVertexPositions[0]!!).toVec3(),
+            drawQuadInternal(
+                position = position,
+                size = size,
+                rotation = 0f,
                 color = color,
-                texCoords = Vec2(0.0f, 0.0f),
-                texIndex = textureIndex,
-                tilingFactor = tilingFactor
+                texture = null,
+                tilingFactor = 1f
             )
-
-            // Bottom-right
-            data.quadVertexWriter!!.write(
-                position = (transform * data.quadVertexPositions[1]!!).toVec3(),
-                color = color,
-                texCoords = Vec2(1.0f, 0.0f),
-                texIndex = textureIndex,
-                tilingFactor = tilingFactor
-            )
-
-            // Top-right
-            data.quadVertexWriter!!.write(
-                position = (transform * data.quadVertexPositions[2]!!).toVec3(),
-                color = color,
-                texCoords = Vec2(1.0f, 1.0f),
-                texIndex = textureIndex,
-                tilingFactor = tilingFactor
-            )
-
-            // Top-left
-            data.quadVertexWriter!!.write(
-                position = (transform * data.quadVertexPositions[3]!!).toVec3(),
-                color = color,
-                texCoords = Vec2(0.0f, 1.0f),
-                texIndex = textureIndex,
-                tilingFactor = tilingFactor
-            )
-
-            data.quadIndexCount += 6
-
-            // stats
-            data.stats.quadCount++
         }
 
         fun drawQuad(
@@ -222,7 +240,14 @@ class Renderer2D {
             tilingFactor: Float = 1.0f,
             tintColor: Vec4 = Vec4(1.0f)
         ) {
-            drawQuad(Vec3(position.x, position.y, 0.0f), size, texture, tilingFactor, tintColor)
+            drawQuadInternal(
+                position = Vec3(position, 0f),
+                size = size,
+                rotation = 0f,
+                color = tintColor,
+                texture = texture,
+                tilingFactor = tilingFactor
+            )
         }
 
         fun drawQuad(
@@ -232,128 +257,33 @@ class Renderer2D {
             tilingFactor: Float = 1.0f,
             tintColor: Vec4 = Vec4(1.0f)
         ) {
-            if (data.quadIndexCount >= data.maxIndices) {
-                flushAndReset()
-            }
-
-            val color = Vec4(1f)
-
-            var textureIndex = 0f
-
-            for (i in 1..data.textureSlotIndex) {
-                if (data.textureSlots[i] == texture) {
-                    textureIndex = i.toFloat()
-                    break
-                }
-            }
-
-            if (textureIndex == 0f) {
-                textureIndex = data.textureSlotIndex.toFloat()
-                data.textureSlots[data.textureSlotIndex] = texture
-                data.textureSlotIndex++
-            }
-
-            val transform: Mat4 = glm.translate(Mat4(1f), position) *
-                    glm.scale(Mat4(1f), Vec3(size.x, size.y, 1f))
-
-            // Bottom-left
-            data.quadVertexWriter!!.write(
-                position = (transform * data.quadVertexPositions[0]!!).toVec3(),
-                color = color,
-                texCoords = Vec2(0.0f, 0.0f),
-                texIndex = textureIndex,
+            drawQuadInternal(
+                position = position,
+                size = size,
+                rotation = 0f,
+                color = tintColor,
+                texture = texture,
                 tilingFactor = tilingFactor
             )
-
-            // Bottom-right
-            data.quadVertexWriter!!.write(
-                position = (transform * data.quadVertexPositions[1]!!).toVec3(),
-                color = color,
-                texCoords = Vec2(1.0f, 0.0f),
-                texIndex = textureIndex,
-                tilingFactor = tilingFactor
-            )
-
-            // Top-right
-            data.quadVertexWriter!!.write(
-                position = (transform * data.quadVertexPositions[2]!!).toVec3(),
-                color = color,
-                texCoords = Vec2(1.0f, 1.0f),
-                texIndex = textureIndex,
-                tilingFactor = tilingFactor
-            )
-
-            // Top-left
-            data.quadVertexWriter!!.write(
-                position = (transform * data.quadVertexPositions[3]!!).toVec3(),
-                color = color,
-                texCoords = Vec2(0.0f, 1.0f),
-                texIndex = textureIndex,
-                tilingFactor = tilingFactor
-            )
-
-            data.quadIndexCount += 6
-
-            // stats
-            data.stats.quadCount++
         }
 
+        // rotation in radians
         fun drawRotatedQuad(position: Vec2, size: Vec2, rotation: Float, color: Vec4) {
-            drawRotatedQuad(Vec3(position.x, position.y, 0.0f), size, rotation, color)
+            drawQuadInternal(
+                position = Vec3(position, 0f),
+                size = size,
+                rotation = rotation,
+                color = color
+            )
         }
 
         fun drawRotatedQuad(position: Vec3, size: Vec2, rotation: Float, color: Vec4) {
-            if (data.quadIndexCount >= data.maxIndices) {
-                flushAndReset()
-            }
-
-            val textureIndex = 0f
-            val tilingFactor = 1f
-
-            val transform: Mat4 = glm.translate(Mat4(1f), position) *
-                    glm.rotate(Mat4(1f), glm.radians(rotation), Vec3(0f, 0f, 1f)) *
-                    glm.scale(Mat4(1f), Vec3(size.x, size.y, 1f))
-
-            // Bottom-left
-            data.quadVertexWriter!!.write(
-                position = (transform * data.quadVertexPositions[0]!!).toVec3(),
-                color = color,
-                texCoords = Vec2(0.0f, 0.0f),
-                texIndex = textureIndex,
-                tilingFactor = tilingFactor
+            drawQuadInternal(
+                position = position,
+                size = size,
+                rotation = rotation,
+                color = color
             )
-
-            // Bottom-right
-            data.quadVertexWriter!!.write(
-                position = (transform * data.quadVertexPositions[1]!!).toVec3(),
-                color = color,
-                texCoords = Vec2(1.0f, 0.0f),
-                texIndex = textureIndex,
-                tilingFactor = tilingFactor
-            )
-
-            // Top-right
-            data.quadVertexWriter!!.write(
-                position = (transform * data.quadVertexPositions[2]!!).toVec3(),
-                color = color,
-                texCoords = Vec2(1.0f, 1.0f),
-                texIndex = textureIndex,
-                tilingFactor = tilingFactor
-            )
-
-            // Top-left
-            data.quadVertexWriter!!.write(
-                position = (transform * data.quadVertexPositions[3]!!).toVec3(),
-                color = color,
-                texCoords = Vec2(0.0f, 1.0f),
-                texIndex = textureIndex,
-                tilingFactor = tilingFactor
-            )
-
-            data.quadIndexCount += 6
-
-            // stats
-            data.stats.quadCount++
         }
 
         fun drawRotatedQuad(
@@ -364,7 +294,14 @@ class Renderer2D {
             tilingFactor: Float = 1.0f,
             tintColor: Vec4 = Vec4(1.0f)
         ) {
-            drawRotatedQuad(Vec3(position.x, position.y, 0.0f), size, rotation, texture, tilingFactor, tintColor)
+            drawQuadInternal(
+                position = Vec3(position, 0f),
+                size = size,
+                rotation = rotation,
+                color = tintColor,
+                texture = texture,
+                tilingFactor = tilingFactor
+            )
         }
 
         fun drawRotatedQuad(
@@ -375,71 +312,14 @@ class Renderer2D {
             tilingFactor: Float = 1.0f,
             tintColor: Vec4 = Vec4(1.0f)
         ) {
-            if (data.quadIndexCount >= data.maxIndices) {
-                flushAndReset()
-            }
-
-            val color = Vec4(1f)
-
-            var textureIndex = 0f
-
-            for (i in 1..data.textureSlotIndex) {
-                if (data.textureSlots[i] == texture) {
-                    textureIndex = i.toFloat()
-                    break
-                }
-            }
-
-            if (textureIndex == 0f) {
-                textureIndex = data.textureSlotIndex.toFloat()
-                data.textureSlots[data.textureSlotIndex] = texture
-                data.textureSlotIndex++
-            }
-
-            val transform: Mat4 = glm.translate(Mat4(1f), position) *
-                    glm.rotate(Mat4(1f), glm.radians(rotation), Vec3(0f, 0f, 1f)) *
-                    glm.scale(Mat4(1f), Vec3(size.x, size.y, 1f))
-
-            // Bottom-left
-            data.quadVertexWriter!!.write(
-                position = (transform * data.quadVertexPositions[0]!!).toVec3(),
-                color = color,
-                texCoords = Vec2(0.0f, 0.0f),
-                texIndex = textureIndex,
+            drawQuadInternal(
+                position = position,
+                size = size,
+                rotation = rotation,
+                color = tintColor,
+                texture = texture,
                 tilingFactor = tilingFactor
             )
-
-            // Bottom-right
-            data.quadVertexWriter!!.write(
-                position = (transform * data.quadVertexPositions[1]!!).toVec3(),
-                color = color,
-                texCoords = Vec2(1.0f, 0.0f),
-                texIndex = textureIndex,
-                tilingFactor = tilingFactor
-            )
-
-            // Top-right
-            data.quadVertexWriter!!.write(
-                position = (transform * data.quadVertexPositions[2]!!).toVec3(),
-                color = color,
-                texCoords = Vec2(1.0f, 1.0f),
-                texIndex = textureIndex,
-                tilingFactor = tilingFactor
-            )
-
-            // Top-left
-            data.quadVertexWriter!!.write(
-                position = (transform * data.quadVertexPositions[3]!!).toVec3(),
-                color = color,
-                texCoords = Vec2(0.0f, 1.0f),
-                texIndex = textureIndex,
-                tilingFactor = tilingFactor
-            )
-
-            data.quadIndexCount += 6
-
-            // stats
-            data.stats.quadCount++
         }
 
 
