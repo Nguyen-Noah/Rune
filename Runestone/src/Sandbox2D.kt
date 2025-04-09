@@ -5,13 +5,18 @@ import glm_.vec2.Vec2
 import glm_.vec3.Vec3
 import glm_.vec4.Vec4
 import imgui.ImGui
+import imgui.ImVec2
+import imgui.flag.ImGuiConfigFlags
+import imgui.flag.ImGuiDockNodeFlags
+import imgui.flag.ImGuiStyleVar
+import imgui.flag.ImGuiWindowFlags
+import imgui.type.ImBoolean
 import rune.core.*
 import rune.events.Event
 import rune.renderer.*
 
 class Sandbox2D: Layer("Sandbox2D") {
     private lateinit var texture: Texture2D
-    private lateinit var spritesheet: Texture2D
 
     private val cameraController = OrthographicCameraController(1280.0f / 720.0f, true)
     private val color = Vec4(0.8, 0.2, 0.3, 1.0)
@@ -23,7 +28,6 @@ class Sandbox2D: Layer("Sandbox2D") {
 
     override fun onAttach() {
         texture = Texture2D.create("assets/textures/checkerboard.png")
-        spritesheet = Texture2D.create("assets/textures/RPGpack_sheet_2X.png")
 
         // particle
         prop.colorBegin = Vec4(254/255f, 212/255f, 123/255f, 1f)
@@ -50,35 +54,35 @@ class Sandbox2D: Layer("Sandbox2D") {
         RenderCommand.setClearColor(Vec4(0.1f, 0.1f, 0.1f, 1.0f))
         RenderCommand.clear()
 
-//        Renderer2D.beginScene(cameraController.camera)
-//
-//        Renderer2D.drawQuad(Vec2(0.0, 0.0), Vec2(1.0, 1.0), color)
-//        Renderer2D.drawQuad(
-//            Vec3(1.0, 1.0, -0.1),
-//            Vec2(8.0, 8.0),
-//            texture,
-//            tilingFactor = 10.0f,
-//            tintColor = Vec4(0.8f)
-//        )
-//
-//        Renderer2D.drawRotatedQuad(
-//            Vec3(-2.0, 0.0, -0.1),
-//            Vec2(1.0, 1.0),
-//            glm.radians(45f),
-//            texture,
-//            tilingFactor = 20.0f,
-//            tintColor = Vec4(0.8f)
-//        )
-//        rotation += dt * 20f
-//
-//        Renderer2D.drawRotatedQuad(
-//            Vec3(4.0, 0.0, -0.1),
-//            Vec2(2.0, 2.0),
-//            glm.radians(rotation),
-//            Vec4(0.8f, 0.3f, 0.2f, 1.0f)
-//        )
-//
-//        Renderer2D.endScene()
+        Renderer2D.beginScene(cameraController.camera)
+
+        Renderer2D.drawQuad(Vec2(0.0, 0.0), Vec2(1.0, 1.0), color)
+        Renderer2D.drawQuad(
+            Vec3(1.0, 1.0, -0.1),
+            Vec2(8.0, 8.0),
+            texture,
+            tilingFactor = 10.0f,
+            tintColor = Vec4(0.8f)
+        )
+
+        Renderer2D.drawRotatedQuad(
+            Vec3(-2.0, 0.0, -0.1),
+            Vec2(1.0, 1.0),
+            glm.radians(45f),
+            texture,
+            tilingFactor = 20.0f,
+            tintColor = Vec4(0.8f)
+        )
+        rotation += dt * 20f
+
+        Renderer2D.drawRotatedQuad(
+            Vec3(4.0, 0.0, -0.1),
+            Vec2(2.0, 2.0),
+            glm.radians(rotation),
+            Vec4(0.8f, 0.3f, 0.2f, 1.0f)
+        )
+
+        Renderer2D.endScene()
 
         if (Input.isMouseButtonPressed(MouseButton.ButtonLeft)) {
             var (x, y) = Input.getMousePosition()
@@ -95,12 +99,6 @@ class Sandbox2D: Layer("Sandbox2D") {
             }
         }
 
-        Renderer2D.beginScene(cameraController.camera)
-
-        Renderer2D.drawQuad(Vec3(0f), Vec2(1f), spritesheet)
-
-        Renderer2D.endScene()
-
         particleSystem.onUpdate(dt)
         particleSystem.onRender(cameraController.camera)
     }
@@ -115,25 +113,112 @@ class Sandbox2D: Layer("Sandbox2D") {
     }
 
     override fun onImGuiRender() {
-        ImGui.begin("Settings")
+        // dockspace
+        val dockingEnabled = false
+        if (dockingEnabled) {
+            val dockSpaceOpen = ImBoolean(true)
+            val optFullscreenPersistent = true
+            val optFullscreen = optFullscreenPersistent
+            val dockspaceFlags: Int = ImGuiDockNodeFlags.None
 
-        // stats
-        val stats = Renderer2D.getStats()
-        ImGui.text("Renderer2D Stats:")
-        ImGui.text("Draw Calls: ${stats.drawCalls}")
-        ImGui.text("Quads: ${stats.quadCount}")
-        ImGui.text("Vertices: ${stats.getTotalVertexCount()}")
-        ImGui.text("Indices: ${stats.getTotalIndexCount()}")
-        ImGui.text("FPS ${Application.get().getFPS()}")
+            // using ImGuiWindowFlags.NoDocking to make the parent window not dockable into
+            var windowFlags = ImGuiWindowFlags.MenuBar or ImGuiWindowFlags.NoDocking
+            if (optFullscreen) {
+                val viewport = ImGui.getMainViewport()
+                ImGui.setNextWindowPos(viewport.pos)
+                ImGui.setNextWindowSize(viewport.size)
+                ImGui.setNextWindowViewport(viewport.id)
+                ImGui.pushStyleVar(ImGuiStyleVar.WindowRounding, 0.0f)
+                ImGui.pushStyleVar(ImGuiStyleVar.WindowBorderSize, 0.0f)
 
-        // color
-        val col = floatArrayOf(color.r, color.g, color.b, color.a)
-        if (ImGui.colorEdit4("Square Color", col)) {
-            color.r = col[0]
-            color.g = col[1]
-            color.b = col[2]
-            color.a = col[3]
+                windowFlags = windowFlags or ImGuiWindowFlags.NoTitleBar or
+                        ImGuiWindowFlags.NoCollapse or
+                        ImGuiWindowFlags.NoResize or
+                        ImGuiWindowFlags.NoMove or
+                        ImGuiWindowFlags.NoBringToFrontOnFocus or
+                        ImGuiWindowFlags.NoNavFocus
+            }
+
+            // when using ImGuiDockNodeFlags.PassthruCentralNode, DockSpace() will render our background and handle the pass-thru hole, so we ask Begin() to not render a background
+            if ((dockspaceFlags and ImGuiDockNodeFlags.PassthruCentralNode) != 0)
+                windowFlags = windowFlags or ImGuiWindowFlags.NoBackground
+
+            // Important: note that we proceed even if Begin() returns false (aka window is collapsed).
+            // This is because we want to keep our DockSpace() active. If a DockSpace() is inactive,
+            // all active windows docked into it will lose their parent and become undocked.
+            // We cannot preserve the docking relationship between an active window and an inactive docking, otherwise
+            // any change of dockspace/settings would lead to windows being stuck in limbo and never being visible.
+            ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, ImVec2(0.0f, 0.0f))
+            ImGui.begin("Dockspace", dockSpaceOpen, windowFlags)
+            ImGui.popStyleVar()
+
+            if (optFullscreen)
+                ImGui.popStyleVar(2)
+
+            val io = ImGui.getIO()
+            if ((io.configFlags and ImGuiConfigFlags.DockingEnable) != 0) {
+                val dockspaceId = ImGui.getID(("MyDockSpace"))
+                ImGui.dockSpace(dockspaceId, ImVec2(0.0f, 0.0f), dockspaceFlags)
+            }
+
+            if (ImGui.beginMenuBar()) {
+                if (ImGui.beginMenu("File")) {
+                    // Disabling fullscreen would allow the window to be moved to the front of other windows,
+                    // which we can't undo at the moment without finer window depth/z control.
+                    //ImGui::MenuItem("Fullscreen", NULL, &opt_fullscreen_persistant)
+                    if (ImGui.menuItem("Exit"))
+                        Application.get().close()
+                    ImGui.endMenu()
+                }
+                ImGui.endMenuBar()
+            }
+
+            ImGui.begin("Settings")
+
+            // stats
+            val stats = Renderer2D.getStats()
+            ImGui.text("Renderer2D Stats:")
+            ImGui.text("Draw Calls: ${stats.drawCalls}")
+            ImGui.text("Quads: ${stats.quadCount}")
+            ImGui.text("Vertices: ${stats.getTotalVertexCount()}")
+            ImGui.text("Indices: ${stats.getTotalIndexCount()}")
+            ImGui.text("FPS ${Application.get().getFPS()}")
+
+            // color
+            val col = floatArrayOf(color.r, color.g, color.b, color.a)
+            if (ImGui.colorEdit4("Square Color", col)) {
+                color.r = col[0]
+                color.g = col[1]
+                color.b = col[2]
+                color.a = col[3]
+            }
+            ImGui.end()
+
+            ImGui.end()
+        } else {
+            ImGui.begin("Settings")
+
+            // stats
+            val stats = Renderer2D.getStats()
+            ImGui.text("Renderer2D Stats:")
+            ImGui.text("Draw Calls: ${stats.drawCalls}")
+            ImGui.text("Quads: ${stats.quadCount}")
+            ImGui.text("Vertices: ${stats.getTotalVertexCount()}")
+            ImGui.text("Indices: ${stats.getTotalIndexCount()}")
+            ImGui.text("FPS ${Application.get().getFPS()}")
+
+            // color
+            val col = floatArrayOf(color.r, color.g, color.b, color.a)
+            if (ImGui.colorEdit4("Square Color", col)) {
+                color.r = col[0]
+                color.g = col[1]
+                color.b = col[2]
+                color.a = col[3]
+            }
+
+            ImGui.image(texture.rendererID.toLong(), ImVec2(256f, 256f))
+
+            ImGui.end()
         }
-        ImGui.end()
     }
 }
