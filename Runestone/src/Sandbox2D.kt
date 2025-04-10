@@ -23,11 +23,19 @@ class Sandbox2D: Layer("Sandbox2D") {
 
     private var rotation = 0f
 
+    private lateinit var framebuffer: Framebuffer
+
     private val prop: ParticleProps = ParticleProps()
     private val particleSystem = ParticleSystem()
 
     override fun onAttach() {
         texture = Texture2D.create("assets/textures/checkerboard.png")
+
+        val spec = FramebufferSpecification(
+            width = 1280,
+            height = 720,
+        )
+        framebuffer = Framebuffer.create(spec)
 
         // particle
         prop.colorBegin = Vec4(254/255f, 212/255f, 123/255f, 1f)
@@ -51,6 +59,7 @@ class Sandbox2D: Layer("Sandbox2D") {
 
         // Render
         Renderer2D.resetStats()
+        framebuffer.bind()
         RenderCommand.setClearColor(Vec4(0.1f, 0.1f, 0.1f, 1.0f))
         RenderCommand.clear()
 
@@ -82,6 +91,17 @@ class Sandbox2D: Layer("Sandbox2D") {
             Vec4(0.8f, 0.3f, 0.2f, 1.0f)
         )
 
+        var yp = -5f
+        while (yp <= 5f) {
+            var xp = -5f
+            while (xp <= 5f) {
+                val color = Vec4((xp + 5f) / 10, 0.4f, (yp + 5f) / 10f, 0.7f)
+                Renderer2D.drawQuad(Vec2(xp, yp), Vec2(0.45f), color)
+                xp += 0.5f
+            }
+            yp += 0.5f
+        }
+
         Renderer2D.endScene()
 
         if (Input.isMouseButtonPressed(MouseButton.ButtonLeft)) {
@@ -101,6 +121,8 @@ class Sandbox2D: Layer("Sandbox2D") {
 
         particleSystem.onUpdate(dt)
         particleSystem.onRender(cameraController.camera)
+
+        framebuffer.unbind()
     }
 
     override fun onEvent(e: Event) {
@@ -216,7 +238,12 @@ class Sandbox2D: Layer("Sandbox2D") {
                 color.a = col[3]
             }
 
-            ImGui.image(texture.rendererID.toLong(), ImVec2(256f, 256f))
+            ImGui.image(
+                framebuffer.getColorAttachment().toLong(),
+                ImVec2(320f, 180f),
+                ImVec2(0f, 1f),
+                ImVec2(1f, 0f)
+            )
 
             ImGui.end()
         }
