@@ -1,6 +1,5 @@
 package rune.platforms.opengl
 
-import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL45.*
 import org.lwjgl.system.MemoryUtil
 import rune.renderer.Framebuffer
@@ -8,7 +7,7 @@ import rune.renderer.FramebufferSpecification
 
 // TODO: update all rendering API to take in specifications
 class OpenGLFramebuffer(private val spec: FramebufferSpecification) : Framebuffer {
-    private var rendererId: Int = 0
+    private var rendererId: Int = -1
     private var colorAttachment: Int = 0
     private var depthAttachment: Int = 0
 
@@ -17,6 +16,12 @@ class OpenGLFramebuffer(private val spec: FramebufferSpecification) : Framebuffe
     }
 
     override fun invalidate() {
+        if (rendererId != -1) {
+            glDeleteFramebuffers(rendererId)
+            glDeleteTextures(colorAttachment)
+            glDeleteTextures(depthAttachment)
+        }
+
         rendererId = glCreateFramebuffers()
         glBindFramebuffer(GL_FRAMEBUFFER, rendererId)
 
@@ -32,7 +37,6 @@ class OpenGLFramebuffer(private val spec: FramebufferSpecification) : Framebuffe
         depthAttachment = glCreateTextures(GL_TEXTURE_2D)
         glBindTexture(GL_TEXTURE_2D, depthAttachment)
         glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8, spec.width, spec.height)
-        //glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, spec.width, spec.height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, MemoryUtil.NULL)
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depthAttachment, 0)
 
         // check framebuffer
@@ -42,8 +46,15 @@ class OpenGLFramebuffer(private val spec: FramebufferSpecification) : Framebuffe
         glBindFramebuffer(GL_FRAMEBUFFER, 0)
     }
 
+    override fun resize(width: Int, height: Int) {
+        spec.width = width
+        spec.height = height
+        invalidate()
+    }
+
     override fun bind() {
         glBindFramebuffer(GL_FRAMEBUFFER, rendererId)
+        glViewport(0, 0, spec.width, spec.height)
     }
 
     override fun unbind() {

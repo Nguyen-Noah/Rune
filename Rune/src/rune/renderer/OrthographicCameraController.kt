@@ -77,6 +77,11 @@ class OrthographicCameraController(private var aspectRatio: Float, private val r
         return false
     }
 
+    fun onResize(width: Float, height: Float) {
+        aspectRatio = width / height
+        camera.setProjection(-aspectRatio * zoomLevel, aspectRatio * zoomLevel, -zoomLevel, zoomLevel)
+    }
+
     fun setZoomLevel(level: Float) {
         zoomLevel = level
     }

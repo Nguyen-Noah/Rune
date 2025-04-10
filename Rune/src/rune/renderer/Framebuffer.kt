@@ -3,8 +3,8 @@ package rune.renderer
 import rune.platforms.opengl.OpenGLFramebuffer
 
 data class FramebufferSpecification(
-    val width: Int,
-    val height: Int,
+    var width: Int,
+    var height: Int,
     val samples: Int = 1,
     val swapChainTarget: Boolean = false,   // are we rendering to the screen or nah
 
@@ -12,6 +12,7 @@ data class FramebufferSpecification(
 
 interface Framebuffer {
     fun invalidate()
+    fun resize(width: Int, height: Int)
     fun bind()
     fun unbind()
     fun getSpecification(): FramebufferSpecification
