@@ -95,6 +95,7 @@ abstract class Application {
 
     fun getWindow(): Window = window
     fun getFPS(): Int = (1f / dt).toInt()
+    fun getImGuiLayer(): ImguiLayer = imGuiLayer
 
     // TODO: TEMP
     fun close() { running = false }

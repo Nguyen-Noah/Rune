@@ -7,6 +7,9 @@ import rune.renderer.FramebufferSpecification
 
 // TODO: update all rendering API to take in specifications
 class OpenGLFramebuffer(private val spec: FramebufferSpecification) : Framebuffer {
+    companion object {
+        val maxFramebufferSize = 8192       // TODO: get this number from the gpu
+    }
     private var rendererId: Int = -1
     private var colorAttachment: Int = 0
     private var depthAttachment: Int = 0
@@ -47,6 +50,9 @@ class OpenGLFramebuffer(private val spec: FramebufferSpecification) : Framebuffe
     }
 
     override fun resize(width: Int, height: Int) {
+        if (width == 0 || height == 0 || width > maxFramebufferSize || height > maxFramebufferSize)
+            return
+
         spec.width = width
         spec.height = height
         invalidate()

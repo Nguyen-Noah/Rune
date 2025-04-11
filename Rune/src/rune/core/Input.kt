@@ -3,12 +3,12 @@ package rune.core
 import glm_.vec2.Vec2
 
 interface Input {
-    abstract fun init(): Boolean
-    abstract fun isKeyPressed(key: Key): Boolean
-    abstract fun isMouseButtonPressed(button: MouseButton): Boolean
-    abstract fun getMousePosition(): Vec2
-    abstract fun getMouseX(): Float
-    abstract fun getMouseY(): Float
+    fun init(): Boolean
+    fun isKeyPressed(key: Key): Boolean
+    fun isMouseButtonPressed(button: MouseButton): Boolean
+    fun getMousePosition(): Vec2
+    fun getMouseX(): Float
+    fun getMouseY(): Float
 
     companion object : Input {
         /**

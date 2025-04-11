@@ -11,6 +11,7 @@ import org.lwjgl.opengl.GL
 import rune.core.Application
 import rune.core.Layer
 import rune.events.Event
+import rune.events.EventCategory
 
 class ImguiLayer : Layer("ImGuiLayer") {
     private var imGuiGlfw: ImGuiImplGlfw = ImGuiImplGlfw()
@@ -55,8 +56,12 @@ class ImguiLayer : Layer("ImGuiLayer") {
         imGuiGl3.init("#version 330")
     }
 
-    override fun onEvent(event: Event) {
-
+    override fun onEvent(e: Event) {
+        if (blockEvents) {
+            val io = ImGui.getIO()
+            e.handled = e.handled or e.isInCategory(EventCategory.Mouse) and io.wantCaptureMouse
+            e.handled = e.handled or e.isInCategory(EventCategory.Keyboard) and io.wantCaptureKeyboard
+        }
     }
 
     override fun onDetach() {
@@ -68,4 +73,6 @@ class ImguiLayer : Layer("ImGuiLayer") {
     override fun onImGuiRender() {
         ImGui.showDemoWindow()
     }
+
+    fun blockEvents(block: Boolean) { blockEvents = block }
 }

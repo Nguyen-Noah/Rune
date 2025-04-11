@@ -29,6 +29,9 @@ class EditorLayer: Layer("Sandbox2D") {
     private val prop: ParticleProps = ParticleProps()
     private val particleSystem = ParticleSystem()
 
+    private var viewportFocused = false
+    private var viewportHovered = false
+
     override fun onAttach() {
         texture = Texture2D.create("assets/textures/checkerboard.png")
 
@@ -56,7 +59,8 @@ class EditorLayer: Layer("Sandbox2D") {
 
     override fun onUpdate(dt: Float) {
         // Update
-        cameraController.onUpdate(dt)
+        if (viewportFocused)
+            cameraController.onUpdate(dt)
 
         // Render
         Renderer2D.resetStats()
@@ -221,8 +225,15 @@ class EditorLayer: Layer("Sandbox2D") {
         ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, ImVec2(0f, 0f))
         ImGui.begin("Viewport")
 
+        viewportFocused = ImGui.isWindowFocused()
+        viewportHovered = ImGui.isWindowHovered()
+        Application.get().getImGuiLayer().blockEvents(!viewportFocused or !viewportHovered)
+
         ImGui.getContentRegionAvail().also { (w, h) ->
-            if (w > 0 && h > 0 && (w.toInt() != viewportSize.x.toInt() || h.toInt() != viewportSize.y.toInt())) {
+            if (
+                w > 0 && h > 0 &&
+                (w.toInt() != viewportSize.x.toInt() || h.toInt() != viewportSize.y.toInt())
+            ) {
                 viewportSize.put(w, h)
                 framebuffer.resize(w.toInt(), h.toInt())
 
