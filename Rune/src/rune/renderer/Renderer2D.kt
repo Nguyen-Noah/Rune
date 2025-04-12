@@ -108,6 +108,7 @@ class Renderer2D {
 
         }
 
+        // TODO: remove
         fun beginScene(camera: OrthographicCamera) {
             // initializes an array with [0, 1, 2, ... data.maxTextureSlots - 1]
             val samplers = IntArray(data.maxTextureSlots) { it }
@@ -115,6 +116,25 @@ class Renderer2D {
             data.texShader?.bind()
             data.texShader?.uploadUniform {
                 uniform("u_ViewProjection", camera.getViewProjectionMatrix())
+                uniform("u_Textures", samplers)
+            }
+
+
+            data.quadVertexWriter?.reset()
+            data.quadIndexCount = 0
+
+            data.textureSlotIndex = 1
+        }
+
+        fun beginScene(camera: RuneCamera, transform: Mat4) {
+            // initializes an array with [0, 1, 2, ... data.maxTextureSlots - 1]
+            val samplers = IntArray(data.maxTextureSlots) { it }
+
+            val viewProj = camera.projection * glm.inverse(transform)
+
+            data.texShader?.bind()
+            data.texShader?.uploadUniform {
+                uniform("u_ViewProjection", viewProj)
                 uniform("u_Textures", samplers)
             }
 
@@ -265,6 +285,79 @@ class Renderer2D {
                 texture = texture,
                 tilingFactor = tilingFactor
             )
+        }
+
+        fun drawQuad(transform: Mat4, color: Vec4) {
+            if (data.quadIndexCount >= data.maxIndices) {
+                flushAndReset()
+            }
+
+            val texCoords: Array<Vec2> = arrayOf(
+                Vec2(0.0f, 0.0f),
+                Vec2(1.0f, 0.0f),
+                Vec2(1.0f, 1.0f),
+                Vec2(0.0f, 1.0f),
+            )
+
+            val textureIndex = 0f
+            val tilingFactor = 1f
+
+            for (i in 0 until 4) {
+                data.quadVertexWriter!!.write(
+                    position = (transform * data.quadVertexPositions[i]!!).toVec3(),
+                    color = color,
+                    texCoords = texCoords[i],
+                    texIndex = textureIndex,
+                    tilingFactor = tilingFactor
+                )
+            }
+
+            data.quadIndexCount += 6
+            data.stats.quadCount++
+        }
+
+        fun drawQuad(transform: Mat4, texture: Texture2D, tilingFactor: Float = 1f, tintColor: Vec4 = Vec4(1f)) {
+            if (data.quadIndexCount >= data.maxIndices) {
+                flushAndReset()
+            }
+
+            val texCoords: Array<Vec2> = arrayOf(
+                Vec2(0.0f, 0.0f),
+                Vec2(1.0f, 0.0f),
+                Vec2(1.0f, 1.0f),
+                Vec2(0.0f, 1.0f),
+            )
+
+            var textureIndex = 0f
+            for (i in 1 until data.textureSlotIndex) {
+                if (data.textureSlots[i] == texture) {
+                    textureIndex = i.toFloat()
+                    break
+                }
+            }
+
+            if (textureIndex == 0f) {
+                if (data.textureSlotIndex >= data.maxTextureSlots) {
+                    flushAndReset()
+                }
+
+                textureIndex = data.textureSlotIndex.toFloat()
+                data.textureSlots[data.textureSlotIndex] = texture
+                data.textureSlotIndex++
+            }
+
+            for (i in 0 until 4) {
+                data.quadVertexWriter!!.write(
+                    position = (transform * data.quadVertexPositions[i]!!).toVec3(),
+                    color = tintColor,
+                    texCoords = texCoords[i],
+                    texIndex = textureIndex,
+                    tilingFactor = tilingFactor
+                )
+            }
+
+            data.quadIndexCount += 6
+            data.stats.quadCount++
         }
 
         // rotation in radians

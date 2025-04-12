@@ -11,6 +11,9 @@ repositories {
 val lwjglVersion = "3.3.6"
 val jomlVersion = "1.10.7"
 val imguiVersion = "1.89.0"
+val glmVersion = "0.9.9.1-12"
+val koolVersion = "0.9.79"
+val fleksVersion = "2.11"
 val lwjglNatives = "natives-windows"
 
 dependencies {
@@ -73,8 +76,11 @@ dependencies {
     implementation("io.github.spair:imgui-java-app:${imguiVersion}")
 
     // glm
-    implementation("io.github.kotlin-graphics:glm:0.9.9.1-12")
-    implementation("io.github.kotlin-graphics:kool:0.9.79")
+    implementation("io.github.kotlin-graphics:glm:$glmVersion")
+    implementation("io.github.kotlin-graphics:kool:$koolVersion")
+
+    // fleks
+    implementation("io.github.quillraven.fleks:Fleks:$fleksVersion")
 
     // Natives (Windows in this example). If you need other OS natives, add them similarly.
     runtimeOnly("org.lwjgl:lwjgl::$lwjglNatives")

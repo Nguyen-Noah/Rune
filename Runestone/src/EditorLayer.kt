@@ -1,5 +1,6 @@
 package runestone
 
+import com.github.quillraven.fleks.Entity
 import glm_.glm
 import glm_.vec2.Vec2
 import glm_.vec3.Vec3
@@ -11,46 +12,53 @@ import imgui.flag.ImGuiDockNodeFlags
 import imgui.flag.ImGuiStyleVar
 import imgui.flag.ImGuiWindowFlags
 import imgui.type.ImBoolean
+import rune.components.CameraComponent
+import rune.components.SpriteRenderer
+import rune.components.TransformComponent
 import rune.core.*
 import rune.events.Event
 import rune.renderer.*
+import rune.scene.Scene
+import javax.xml.crypto.dsig.Transform
 
 class EditorLayer: Layer("Sandbox2D") {
     private lateinit var texture: Texture2D
 
-    private val cameraController = OrthographicCameraController(1280.0f / 720.0f, true)
+    //private val cameraController = OrthographicCameraController(1280.0f / 720.0f, true)
     private val color = Vec4(0.8, 0.2, 0.3, 1.0)
-
-    private var rotation = 0f
 
     private lateinit var framebuffer: Framebuffer
     private var viewportSize: Vec2 = Vec2(0f)
 
-    private val prop: ParticleProps = ParticleProps()
-    private val particleSystem = ParticleSystem()
-
     private var viewportFocused = false
     private var viewportHovered = false
+
+    private var activeScene = Scene()
+    private lateinit var camera: Entity
+    private lateinit var square: Entity
 
     override fun onAttach() {
         texture = Texture2D.create("assets/textures/checkerboard.png")
 
+        // viewport
         val spec = FramebufferSpecification(
             width = 1280,
             height = 720,
         )
         framebuffer = Framebuffer.create(spec)
 
-        // particle
-        prop.colorBegin = Vec4(254/255f, 212/255f, 123/255f, 1f)
-        prop.colorEnd = Vec4(254/255f, 109/255f, 41/255f, 1f)
-        prop.sizeBegin = 0.5f
-        prop.sizeVariation = 0.3f
-        prop.sizeEnd = 0f
-        prop.lifeTime = 1f
-        prop.velocity = Vec2(0f, 0f)
-        prop.velocityVariation = Vec2(2f, 1f)
-        prop.position = Vec2(0f, 0f)
+        // scene
+        camera = activeScene.createEntity("Camera Entity")
+        square = activeScene.createEntity("Test Square")
+
+        with(activeScene.world) {
+            camera.configure {
+                it += CameraComponent()
+            }
+            square.configure {
+                it += SpriteRenderer(color)
+            }
+        }
     }
 
     override fun onDetach() {
@@ -58,9 +66,21 @@ class EditorLayer: Layer("Sandbox2D") {
     }
 
     override fun onUpdate(dt: Float) {
+        // Resize
+        val spec = framebuffer.getSpecification()
+
+        if (viewportSize.x > 0f && viewportSize.y > 0f &&
+            (spec.width != viewportSize.x.toInt() || spec.height != viewportSize.y.toInt())
+        ) {
+            framebuffer.resize(viewportSize.x.toInt(), viewportSize.y.toInt())
+            //cameraController.onResize(viewportSize.x, viewportSize.y)
+
+            activeScene.onViewportResize(viewportSize.x.toInt(), viewportSize.y.toInt())
+        }
+
         // Update
-        if (viewportFocused)
-            cameraController.onUpdate(dt)
+        //if (viewportFocused)
+            //cameraController.onUpdate(dt)
 
         // Render
         Renderer2D.resetStats()
@@ -68,70 +88,16 @@ class EditorLayer: Layer("Sandbox2D") {
         RenderCommand.setClearColor(Vec4(0.1f, 0.1f, 0.1f, 1.0f))
         RenderCommand.clear()
 
-        Renderer2D.beginScene(cameraController.camera)
+        activeScene.onUpdate(dt)
 
-        Renderer2D.drawQuad(Vec2(0.0, 0.0), Vec2(1.0, 1.0), color)
-        Renderer2D.drawQuad(
-            Vec3(1.0, 1.0, -0.1),
-            Vec2(8.0, 8.0),
-            texture,
-            tilingFactor = 10.0f,
-            tintColor = Vec4(0.8f)
-        )
-
-        Renderer2D.drawRotatedQuad(
-            Vec3(-2.0, 0.0, -0.1),
-            Vec2(1.0, 1.0),
-            glm.radians(45f),
-            texture,
-            tilingFactor = 20.0f,
-            tintColor = Vec4(0.8f)
-        )
-        rotation += dt * 20f
-
-        Renderer2D.drawRotatedQuad(
-            Vec3(4.0, 0.0, -0.1),
-            Vec2(2.0, 2.0),
-            glm.radians(rotation),
-            Vec4(0.8f, 0.3f, 0.2f, 1.0f)
-        )
-
-        var yp = -5f
-        while (yp <= 5f) {
-            var xp = -5f
-            while (xp <= 5f) {
-                val color = Vec4((xp + 5f) / 10, 0.4f, (yp + 5f) / 10f, 0.7f)
-                Renderer2D.drawQuad(Vec2(xp, yp), Vec2(0.45f), color)
-                xp += 0.5f
-            }
-            yp += 0.5f
-        }
-
-        Renderer2D.endScene()
-
-        if (Input.isMouseButtonPressed(MouseButton.ButtonLeft)) {
-            var (x, y) = Input.getMousePosition()
-            val width = Application.get().getWindow().width
-            val height = Application.get().getWindow().height
-
-            val bounds = cameraController.getBounds()
-            val pos = cameraController.camera.getPosition()
-            x = (x / width) * bounds.getWidth() - bounds.getWidth() * 0.5f
-            y = bounds.getHeight() * 0.5f - (y / height) * bounds.getHeight()
-            prop.position = Vec2(x + pos.x, y + pos.y)
-            for (i in 0 until 5) {
-                particleSystem.emit(prop)
-            }
-        }
-
-        particleSystem.onUpdate(dt)
-        particleSystem.onRender(cameraController.camera)
+        //Renderer2D.beginScene(cameraController.camera)
+        //Renderer2D.endScene()
 
         framebuffer.unbind()
     }
 
     override fun onEvent(e: Event) {
-        cameraController.onEvent(e)
+        //cameraController.onEvent(e)
 
         if (Input.isKeyPressed(Key.Escape)) {
             Application.get().close()
@@ -143,12 +109,11 @@ class EditorLayer: Layer("Sandbox2D") {
         // dockspace
         val dockSpaceOpen = ImBoolean(true)
         val optFullscreenPersistent = true
-        val optFullscreen = optFullscreenPersistent
         val dockspaceFlags: Int = ImGuiDockNodeFlags.None
 
         // using ImGuiWindowFlags.NoDocking to make the parent window not dockable into
         var windowFlags = ImGuiWindowFlags.MenuBar or ImGuiWindowFlags.NoDocking
-        if (optFullscreen) {
+        if (optFullscreenPersistent) {
             val viewport = ImGui.getMainViewport()
             ImGui.setNextWindowPos(viewport.pos)
             ImGui.setNextWindowSize(viewport.size)
@@ -168,16 +133,19 @@ class EditorLayer: Layer("Sandbox2D") {
         if ((dockspaceFlags and ImGuiDockNodeFlags.PassthruCentralNode) != 0)
             windowFlags = windowFlags or ImGuiWindowFlags.NoBackground
 
-        // Important: note that we proceed even if Begin() returns false (aka window is collapsed).
-        // This is because we want to keep our DockSpace() active. If a DockSpace() is inactive,
-        // all active windows docked into it will lose their parent and become undocked.
-        // We cannot preserve the docking relationship between an active window and an inactive docking, otherwise
-        // any change of dockspace/settings would lead to windows being stuck in limbo and never being visible.
+
+        /**
+         * Important: note that we proceed even if Begin() returns false (aka window is collapsed).
+         * This is because we want to keep our DockSpace() active. If a DockSpace() is inactive,
+         * all active windows docked into it will lose their parent and become undocked.
+         * We cannot preserve the docking relationship between an active window and an inactive docking, otherwise
+         * any change of dockspace/settings would lead to windows being stuck in limbo and never being visible.
+         */
         ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, ImVec2(0.0f, 0.0f))
         ImGui.begin("Dockspace", dockSpaceOpen, windowFlags)
         ImGui.popStyleVar()
 
-        if (optFullscreen)
+        if (optFullscreenPersistent)
             ImGui.popStyleVar(2)
 
         val io = ImGui.getIO()
@@ -218,6 +186,15 @@ class EditorLayer: Layer("Sandbox2D") {
             color.a = col[3]
         }
 
+        // camera
+        val cameraTransform = with(activeScene.world) {
+            camera[TransformComponent].transform[3]
+        }
+        val newTransform = floatArrayOf(cameraTransform.x, cameraTransform.y, cameraTransform.z)
+        ImGui.dragFloat3("Camera Transform", newTransform)
+        cameraTransform.x = newTransform[0]
+        cameraTransform.y = newTransform[1]
+        cameraTransform.z = newTransform[2]
 
         ImGui.end()
 
@@ -229,17 +206,8 @@ class EditorLayer: Layer("Sandbox2D") {
         viewportHovered = ImGui.isWindowHovered()
         Application.get().getImGuiLayer().blockEvents(!viewportFocused or !viewportHovered)
 
-        ImGui.getContentRegionAvail().also { (w, h) ->
-            if (
-                w > 0 && h > 0 &&
-                (w.toInt() != viewportSize.x.toInt() || h.toInt() != viewportSize.y.toInt())
-            ) {
-                viewportSize.put(w, h)
-                framebuffer.resize(w.toInt(), h.toInt())
-
-                cameraController.onResize(w, h)
-            }
-        }
+        val viewportPanelSize = ImGui.getContentRegionAvail()
+        viewportSize = Vec2(viewportPanelSize.x, viewportPanelSize.y)
 
         ImGui.image(
             framebuffer.getColorAttachment().toLong(),

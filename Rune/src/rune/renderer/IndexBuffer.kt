@@ -5,7 +5,7 @@ import rune.platforms.opengl.OpenGLIndexBuffer
 interface IndexBuffer {
     fun bind()
     fun unbind()
-    abstract fun getCount(): Int
+    fun getCount(): Int
 
     companion object {
         fun create(indices: IntArray, count: Int): IndexBuffer {
