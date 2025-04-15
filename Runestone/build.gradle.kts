@@ -25,6 +25,10 @@ dependencies {
 
     // fleks
     implementation("io.github.quillraven.fleks:Fleks:$fleksVersion")
+
+    // Scripting TODO: get the kotlin version instead of hard coding it
+    implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:2.1.0")
+    implementation("org.jetbrains.kotlin:kotlin-scripting-jvm-host:2.1.0")
 }
 
 sourceSets {

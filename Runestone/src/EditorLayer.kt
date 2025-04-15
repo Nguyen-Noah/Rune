@@ -13,6 +13,7 @@ import imgui.flag.ImGuiStyleVar
 import imgui.flag.ImGuiWindowFlags
 import imgui.type.ImBoolean
 import rune.components.CameraComponent
+import rune.components.ScriptComponent
 import rune.components.SpriteRenderer
 import rune.components.TransformComponent
 import rune.core.*
@@ -53,7 +54,8 @@ class EditorLayer: Layer("Sandbox2D") {
 
         with(activeScene.world) {
             camera.configure {
-                it += CameraComponent()
+                //it += CameraComponent()
+                it += ScriptComponent()
             }
             square.configure {
                 it += SpriteRenderer(color)

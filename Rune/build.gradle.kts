@@ -126,6 +126,14 @@ dependencies {
 
     // JOML
     implementation("org.joml:joml:$jomlVersion")
+
+    // Reflection
+    implementation(kotlin("reflect"))
+
+    // Scripting TODO: get the kotlin version instead of hard coding it
+    implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:2.1.0")
+    implementation("org.jetbrains.kotlin:kotlin-scripting-jvm-host:2.1.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
 }
 
 // (Optional) If you’re using a non-standard src folder:
