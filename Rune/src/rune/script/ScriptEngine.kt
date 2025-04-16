@@ -11,28 +11,6 @@ import kotlin.script.experimental.jvm.dependenciesFromClassContext
 import kotlin.script.experimental.jvm.jvm
 import kotlin.script.experimental.jvmhost.BasicJvmScriptingHost
 
-@KotlinScript
-object ScriptConfiguration : ScriptCompilationConfiguration(
-    {
-        baseClass(ScriptableEntity::class)
-
-        jvm {
-            compilerOptions("-jvm-target", "21")    // TODO: maybe dont hard code
-            dependenciesFromClassContext(ScriptableEntity::class, wholeClasspath = true)
-        }
-
-        defaultImports(
-            "rune.scene.ScriptableEntity",
-            "rune.components.TransformComponent",
-            "rune.scene.Scene",
-            "rune.components.*"
-        )
-    }
-) {
-    private fun readResolve(): Any = ScriptConfiguration
-}
-object ScriptEvaluation : ScriptEvaluationConfiguration()
-
 object ScriptEngine {
     private data class ScriptCacheKey(
         val filePath: String,

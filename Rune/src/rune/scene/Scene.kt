@@ -1,19 +1,15 @@
 package rune.scene
 
 import com.github.quillraven.fleks.Entity
-import com.github.quillraven.fleks.Family
 import com.github.quillraven.fleks.World
 import com.github.quillraven.fleks.configureWorld
 import glm_.mat4x4.Mat4
 import kotlinx.coroutines.*
 import rune.components.*
 import rune.core.Coroutine
-import rune.core.Input
-import rune.core.Key
 import rune.core.UUID
 import rune.renderer.Renderer2D
 import rune.renderer.RuneCamera
-import rune.script.ScriptCache
 import rune.script.ScriptEngine
 import java.io.File
 
@@ -29,22 +25,8 @@ class Scene {
         onRemoveEntity {
 
         }
-    }
 
-    var cameraScript: ScriptableEntity? = null
-    val entity: Entity = createEntity("TEST SCRIPT ENTITY")
 
-    init {
-        // TEST
-        Coroutine(Dispatchers.IO).launchTask {
-            cameraScript = ScriptEngine.loadScript(File("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\src\\scripts\\CameraController.runescript.kts"))
-        }
-
-        with(world) {
-            entity.configure {
-                it += CameraComponent()
-            }
-        }
     }
 
     fun createEntity(name: String? = null): Entity {
@@ -88,13 +70,7 @@ class Scene {
         world.family { all(ScriptComponent) }
             .forEach {entity ->
                 val scriptComp = entity[ScriptComponent]
-                cameraScript?.let {
-                    if (!scriptComp.isBound) {
-                        scriptComp.bind(cameraScript!!)
-                        scriptComp.instance.entity = entity
-                        scriptComp.instance.scene = this@Scene
-                        scriptComp.instance.onCreate()
-                    }
+                if (scriptComp.isBound) {
                     scriptComp.instance.onUpdate(dt)
                 }
             }
@@ -115,7 +91,9 @@ class Scene {
             Renderer2D.beginScene(mainCamera!!, transform!!)
 
             val renderers = world.family { all(SpriteRenderer, TransformComponent) }
+
             renderers.forEach {
+                //println("Actual: ${System.identityHashCode(it)}")
                 Renderer2D.drawQuad(it[TransformComponent].transform, it[SpriteRenderer].color)
             }
 

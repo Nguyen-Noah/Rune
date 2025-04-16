@@ -4,7 +4,7 @@ import com.github.quillraven.fleks.Component
 import com.github.quillraven.fleks.ComponentType
 
 data class TagComponent(
-    val tag: String
+    var tag: String
 ) : Component<TagComponent> {
     override fun type(): ComponentType<TagComponent> = TagComponent
 

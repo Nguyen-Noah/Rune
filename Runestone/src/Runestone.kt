@@ -1,10 +1,11 @@
 package runestone
 
 import rune.core.Application
+import rune.core.Logger
 
 class Runestone : Application() {
     init {
-        println("Runestone initialized.")
+        Logger.info("Runestone initialized.")
         pushLayer(EditorLayer())
     }
 }

@@ -12,6 +12,7 @@ import imgui.flag.ImGuiDockNodeFlags
 import imgui.flag.ImGuiStyleVar
 import imgui.flag.ImGuiWindowFlags
 import imgui.type.ImBoolean
+import kotlinx.coroutines.*
 import rune.components.CameraComponent
 import rune.components.ScriptComponent
 import rune.components.SpriteRenderer
@@ -20,6 +21,10 @@ import rune.core.*
 import rune.events.Event
 import rune.renderer.*
 import rune.scene.Scene
+import rune.scene.ScriptableEntity
+import rune.script.ScriptEngine
+import runestone.panels.SceneHierarchyPanel
+import java.io.File
 import javax.xml.crypto.dsig.Transform
 
 class EditorLayer: Layer("Sandbox2D") {
@@ -33,6 +38,8 @@ class EditorLayer: Layer("Sandbox2D") {
 
     private var viewportFocused = false
     private var viewportHovered = false
+
+    private lateinit var sceneHierarchyPanel: SceneHierarchyPanel
 
     private var activeScene = Scene()
     private lateinit var camera: Entity
@@ -50,17 +57,38 @@ class EditorLayer: Layer("Sandbox2D") {
 
         // scene
         camera = activeScene.createEntity("Camera Entity")
+        var cameraScript: ScriptableEntity?
         square = activeScene.createEntity("Test Square")
 
         with(activeScene.world) {
             camera.configure {
-                //it += CameraComponent()
+                it += CameraComponent()
                 it += ScriptComponent()
             }
             square.configure {
                 it += SpriteRenderer(color)
             }
         }
+
+        // script loading
+        Coroutine(Dispatchers.IO).launchTask {
+            cameraScript = ScriptEngine.loadScript(File("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\scripts\\CameraController.runescript.kts"))
+
+            activeScene.world.family { all(ScriptComponent) }
+            .forEach {entity ->
+                val scriptComp = entity[ScriptComponent]
+                cameraScript?.let {
+                    if (!scriptComp.isBound) {
+                        scriptComp.bind(cameraScript!!)
+                        scriptComp.instance.entity = entity
+                        scriptComp.instance.scene = activeScene
+                        scriptComp.instance.onCreate()
+                    }
+                }
+            }
+        }
+
+        sceneHierarchyPanel = SceneHierarchyPanel(activeScene)
     }
 
     override fun onDetach() {
@@ -167,6 +195,10 @@ class EditorLayer: Layer("Sandbox2D") {
             }
             ImGui.endMenuBar()
         }
+
+
+        sceneHierarchyPanel.onImGuiRender()
+
 
         ImGui.begin("Settings")
 
