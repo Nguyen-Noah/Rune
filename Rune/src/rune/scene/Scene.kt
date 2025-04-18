@@ -90,11 +90,11 @@ class Scene {
         if (mainCamera != null) {
             Renderer2D.beginScene(mainCamera!!, transform!!)
 
-            val renderers = world.family { all(SpriteRenderer, TransformComponent) }
+            val renderers = world.family { all(SpriteRendererComponent, TransformComponent) }
 
             renderers.forEach {
                 //println("Actual: ${System.identityHashCode(it)}")
-                Renderer2D.drawQuad(it[TransformComponent].transform, it[SpriteRenderer].color)
+                Renderer2D.drawQuad(it[TransformComponent].transform, it[SpriteRendererComponent].color)
             }
 
             Renderer2D.endScene()

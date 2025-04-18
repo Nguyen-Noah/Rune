@@ -4,10 +4,10 @@ import com.github.quillraven.fleks.Component
 import com.github.quillraven.fleks.ComponentType
 import glm_.vec4.Vec4
 
-class SpriteRenderer(
+class SpriteRendererComponent(
     val color: Vec4 = Vec4(1.0f)
-) : Component<SpriteRenderer> {
-    override fun type() = SpriteRenderer
+) : Component<SpriteRendererComponent> {
+    override fun type() = SpriteRendererComponent
 
-    companion object : ComponentType<SpriteRenderer>()
+    companion object : ComponentType<SpriteRendererComponent>()
 }

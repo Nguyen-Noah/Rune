@@ -15,7 +15,7 @@ import imgui.type.ImBoolean
 import kotlinx.coroutines.*
 import rune.components.CameraComponent
 import rune.components.ScriptComponent
-import rune.components.SpriteRenderer
+import rune.components.SpriteRendererComponent
 import rune.components.TransformComponent
 import rune.core.*
 import rune.events.Event
@@ -44,6 +44,7 @@ class EditorLayer: Layer("Sandbox2D") {
     private var activeScene = Scene()
     private lateinit var camera: Entity
     private lateinit var square: Entity
+    private lateinit var greenSquare: Entity
 
     override fun onAttach() {
         texture = Texture2D.create("assets/textures/checkerboard.png")
@@ -59,6 +60,7 @@ class EditorLayer: Layer("Sandbox2D") {
         camera = activeScene.createEntity("Camera Entity")
         var cameraScript: ScriptableEntity?
         square = activeScene.createEntity("Test Square")
+        greenSquare = activeScene.createEntity("Green Square")
 
         with(activeScene.world) {
             camera.configure {
@@ -66,7 +68,10 @@ class EditorLayer: Layer("Sandbox2D") {
                 it += ScriptComponent()
             }
             square.configure {
-                it += SpriteRenderer(color)
+                it += SpriteRendererComponent(color)
+            }
+            greenSquare.configure {
+                it += SpriteRendererComponent(Vec4(0.3, 0.8, 0.2, 1.0))
             }
         }
 
@@ -200,7 +205,7 @@ class EditorLayer: Layer("Sandbox2D") {
         sceneHierarchyPanel.onImGuiRender()
 
 
-        ImGui.begin("Settings")
+        ImGui.begin("Stats")
 
         // stats
         val stats = Renderer2D.getStats()
@@ -211,27 +216,7 @@ class EditorLayer: Layer("Sandbox2D") {
         ImGui.text("Indices: ${stats.getTotalIndexCount()}")
         ImGui.text("FPS ${Application.get().getFPS()}")
 
-        // color
-        val col = floatArrayOf(color.r, color.g, color.b, color.a)
-        if (ImGui.colorEdit4("Square Color", col)) {
-            color.r = col[0]
-            color.g = col[1]
-            color.b = col[2]
-            color.a = col[3]
-        }
-
-        // camera
-        val cameraTransform = with(activeScene.world) {
-            camera[TransformComponent].transform[3]
-        }
-        val newTransform = floatArrayOf(cameraTransform.x, cameraTransform.y, cameraTransform.z)
-        ImGui.dragFloat3("Camera Transform", newTransform)
-        cameraTransform.x = newTransform[0]
-        cameraTransform.y = newTransform[1]
-        cameraTransform.z = newTransform[2]
-
         ImGui.end()
-
 
         ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, ImVec2(0f, 0f))
         ImGui.begin("Viewport")
