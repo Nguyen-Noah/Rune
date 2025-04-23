@@ -1,6 +1,7 @@
 
 plugins {
     kotlin("jvm")
+    kotlin("plugin.serialization") version "2.1.0"
 }
 
 repositories {
@@ -14,6 +15,7 @@ val imguiVersion = "1.89.0"
 val glmVersion = "0.9.9.1-12"
 val koolVersion = "0.9.79"
 val fleksVersion = "2.11"
+val kamlVersion = "0.77.0"
 val lwjglNatives = "natives-windows"
 
 dependencies {
@@ -133,7 +135,11 @@ dependencies {
     // Scripting TODO: get the kotlin version instead of hard coding it
     implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:2.1.0")
     implementation("org.jetbrains.kotlin:kotlin-scripting-jvm-host:2.1.0")
+    implementation("org.jetbrains.kotlin:kotlin-scripting-common:2.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
+
+    // Serialization
+    implementation("com.charleskorn.kaml:kaml:$kamlVersion")
 }
 
 // (Optional) If you’re using a non-standard src folder:
@@ -141,6 +147,9 @@ sourceSets {
     main {
         kotlin {
             srcDirs("src")
+        }
+        resources {
+            srcDir("resources")
         }
     }
 }

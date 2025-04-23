@@ -29,7 +29,10 @@ dependencies {
     // Scripting TODO: get the kotlin version instead of hard coding it
     implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:2.1.0")
     implementation("org.jetbrains.kotlin:kotlin-scripting-jvm-host:2.1.0")
+    implementation("org.jetbrains.kotlin:kotlin-scripting-common:2.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
+
+    implementation(project(":Rune"))
 }
 
 sourceSets {
@@ -37,6 +40,8 @@ sourceSets {
         kotlin {
             setSrcDirs(listOf("src"))
         }
+
+        resources.srcDir("scripts")
     }
 }
 

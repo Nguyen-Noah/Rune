@@ -2,6 +2,9 @@ package rune.components
 
 import com.github.quillraven.fleks.Component
 import com.github.quillraven.fleks.ComponentType
+import com.github.quillraven.fleks.Entity
+import com.github.quillraven.fleks.World
+import rune.scene.Scene
 import rune.scene.SceneCamera
 
 class CameraComponent(
@@ -12,4 +15,12 @@ class CameraComponent(
     override fun type() = CameraComponent
 
     companion object : ComponentType<CameraComponent>()
+
+    override fun World.onAdd(entity: Entity) {
+        val scene = this.inject<Scene>()
+        val cameraComp = entity[CameraComponent]
+        if (!cameraComp.fixedAspectRatio) {
+            cameraComp.camera.setViewportSize(scene.viewportWidth, scene.viewportHeight)
+        }
+    }
 }

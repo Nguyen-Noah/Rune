@@ -4,20 +4,20 @@ import com.github.quillraven.fleks.Entity
 import com.github.quillraven.fleks.World
 import com.github.quillraven.fleks.configureWorld
 import glm_.mat4x4.Mat4
-import kotlinx.coroutines.*
 import rune.components.*
-import rune.core.Coroutine
 import rune.core.UUID
 import rune.renderer.Renderer2D
 import rune.renderer.RuneCamera
-import rune.script.ScriptEngine
-import java.io.File
+import rune.scene.systems.ScriptSystem
 
 class Scene {
     private val entityMap = hashMapOf<UUID, Entity>()
-    private var viewportWidth = 0
-    private var viewportHeight = 0
+    var viewportWidth = 0
+    var viewportHeight = 0
     val world: World = configureWorld {
+        injectables {
+            add(this@Scene)
+        }
         onAddEntity {
 
         }
@@ -26,7 +26,16 @@ class Scene {
 
         }
 
+        systems {
+            add(ScriptSystem())
+        }
+    }
 
+    fun destroyEntity(entity: Entity) {
+        with(world) {
+            entityMap.remove(entity[IDComponent].id)
+            entity.remove()
+        }
     }
 
     fun createEntity(name: String? = null): Entity {
@@ -37,7 +46,9 @@ class Scene {
         val entity = world.entity {
             it += IDComponent(uuid)
             it += TransformComponent()
-            it += TagComponent(name ?: "Entity")
+            if (name != null) {
+                it += TagComponent(name)
+            }
         }
         entityMap[uuid] = entity
 
@@ -66,23 +77,14 @@ class Scene {
         var mainCamera: RuneCamera? = null
         var transform: Mat4? = null
 
-        // update scripts
-        world.family { all(ScriptComponent) }
-            .forEach {entity ->
-                val scriptComp = entity[ScriptComponent]
-                if (scriptComp.isBound) {
-                    scriptComp.instance.onUpdate(dt)
-                }
-            }
-
-        // -------------------------
+        world.update(dt)
 
         val family = world.family { all(TransformComponent, CameraComponent) }
         family.forEach {
             val camera = it[CameraComponent]
             if (camera.primary) {
                 mainCamera = camera.camera
-                transform = it[TransformComponent].transform
+                transform = it[TransformComponent].getTransform()
                 return@forEach      // same as break but for forEach
             }
         }
@@ -94,7 +96,7 @@ class Scene {
 
             renderers.forEach {
                 //println("Actual: ${System.identityHashCode(it)}")
-                Renderer2D.drawQuad(it[TransformComponent].transform, it[SpriteRendererComponent].color)
+                Renderer2D.drawQuad(it[TransformComponent].getTransform(), it[SpriteRendererComponent].color)
             }
 
             Renderer2D.endScene()

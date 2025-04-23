@@ -1,10 +1,7 @@
 package rune.script
 
 import rune.scene.ScriptableEntity
-import kotlin.script.experimental.api.ScriptCompilationConfiguration
-import kotlin.script.experimental.api.baseClass
-import kotlin.script.experimental.api.compilerOptions
-import kotlin.script.experimental.api.defaultImports
+import kotlin.script.experimental.api.*
 import kotlin.script.experimental.jvm.dependenciesFromClassContext
 import kotlin.script.experimental.jvm.jvm
 
@@ -17,13 +14,17 @@ object ScriptConfiguration : ScriptCompilationConfiguration(
             dependenciesFromClassContext(ScriptableEntity::class, wholeClasspath = true)
         }
 
+        ide {
+            acceptedLocations(ScriptAcceptedLocation.Everywhere)
+        }
+
         defaultImports(
             "rune.scene.ScriptableEntity",
-            "rune.components.TransformComponent",
             "rune.scene.Scene",
             "rune.components.*",
             "rune.core.Input",
-            "rune.core.Key"
+            "rune.core.Key",
+            "glm_.glm"                  // TODO: wrap in Rune primitives
         )
     }
 ) {

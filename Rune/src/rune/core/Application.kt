@@ -8,6 +8,7 @@ import rune.events.WindowCloseEvent
 import rune.events.WindowResizeEvent
 import rune.imgui.ImguiLayer
 import rune.renderer.Renderer
+import kotlin.system.exitProcess
 
 
 abstract class Application {
@@ -91,6 +92,7 @@ abstract class Application {
 
             window.onUpdate()
         }
+        exitProcess(0)
     }
 
     fun getWindow(): Window = window

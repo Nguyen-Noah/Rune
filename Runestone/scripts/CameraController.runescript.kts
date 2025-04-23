@@ -1,4 +1,9 @@
 
+import rune.core.Input
+import rune.core.Key
+import rune.components.*
+import rune.scene.ScriptableEntity
+
 fun init(): ScriptableEntity = Camera()
 
 class Camera : ScriptableEntity() {
@@ -11,15 +16,15 @@ class Camera : ScriptableEntity() {
     }
 
     override fun onUpdate(dt: Float) {
-        val t = transform.transform
+        val t = transform.translation
         if (Input.isKeyPressed(Key.A))
-            t[3][0] -= speed * dt
+            t.x -= speed * dt
         if (Input.isKeyPressed(Key.D))
-            t[3][0] += speed * dt
+            t.x += speed * dt
         if (Input.isKeyPressed(Key.W))
-            t[3][1] += speed * dt
+            t.y += speed * dt
         if (Input.isKeyPressed(Key.S))
-            t[3][1] -= speed * dt
+            t.y -= speed * dt
     }
 
     override fun onDestroy() {

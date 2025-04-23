@@ -13,7 +13,7 @@ sealed class KeyEvent(
 
 class KeyPressedEvent(
     keyCode: Key,
-    private val isRepeat: Boolean = false
+    val isRepeat: Boolean = false
 ) : KeyEvent(keyCode) {
     override val eventType = EventType.KeyPressed
 

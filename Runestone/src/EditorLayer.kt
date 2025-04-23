@@ -1,9 +1,7 @@
 package runestone
 
 import com.github.quillraven.fleks.Entity
-import glm_.glm
 import glm_.vec2.Vec2
-import glm_.vec3.Vec3
 import glm_.vec4.Vec4
 import imgui.ImGui
 import imgui.ImVec2
@@ -12,20 +10,14 @@ import imgui.flag.ImGuiDockNodeFlags
 import imgui.flag.ImGuiStyleVar
 import imgui.flag.ImGuiWindowFlags
 import imgui.type.ImBoolean
-import kotlinx.coroutines.*
-import rune.components.CameraComponent
-import rune.components.ScriptComponent
-import rune.components.SpriteRendererComponent
-import rune.components.TransformComponent
 import rune.core.*
 import rune.events.Event
+import rune.events.EventDispatcher
+import rune.events.KeyPressedEvent
 import rune.renderer.*
 import rune.scene.Scene
-import rune.scene.ScriptableEntity
-import rune.script.ScriptEngine
+import rune.scene.serialization.SceneSerializer
 import runestone.panels.SceneHierarchyPanel
-import java.io.File
-import javax.xml.crypto.dsig.Transform
 
 class EditorLayer: Layer("Sandbox2D") {
     private lateinit var texture: Texture2D
@@ -57,47 +49,43 @@ class EditorLayer: Layer("Sandbox2D") {
         framebuffer = Framebuffer.create(spec)
 
         // scene
-        camera = activeScene.createEntity("Camera Entity")
-        var cameraScript: ScriptableEntity?
-        square = activeScene.createEntity("Test Square")
-        greenSquare = activeScene.createEntity("Green Square")
-
-        with(activeScene.world) {
-            camera.configure {
-                it += CameraComponent()
-                it += ScriptComponent()
-            }
-            square.configure {
-                it += SpriteRendererComponent(color)
-            }
-            greenSquare.configure {
-                it += SpriteRendererComponent(Vec4(0.3, 0.8, 0.2, 1.0))
-            }
-        }
-
-        // script loading
-        Coroutine(Dispatchers.IO).launchTask {
-            cameraScript = ScriptEngine.loadScript(File("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\scripts\\CameraController.runescript.kts"))
-
-            activeScene.world.family { all(ScriptComponent) }
-            .forEach {entity ->
-                val scriptComp = entity[ScriptComponent]
-                cameraScript?.let {
-                    if (!scriptComp.isBound) {
-                        scriptComp.bind(cameraScript!!)
-                        scriptComp.instance.entity = entity
-                        scriptComp.instance.scene = activeScene
-                        scriptComp.instance.onCreate()
-                    }
-                }
-            }
-        }
-
+//        camera = activeScene.createEntity("Camera Entity")
+//        var cameraScript: ScriptableEntity?
+//        square = activeScene.createEntity("Test Square")
+//        greenSquare = activeScene.createEntity("Green Square")
+//
+//        with(activeScene.world) {
+//            camera.configure {
+//                it += CameraComponent()
+//                it += ScriptComponent()
+//            }
+//            square.configure {
+//                it += SpriteRendererComponent(color)
+//            }
+//            greenSquare.configure {
+//                it += SpriteRendererComponent(Vec4(0.3, 0.8, 0.2, 1.0))
+//            }
+//        }
+//
+//        // script loading
+//        Coroutine(Dispatchers.IO).launchTask {
+//            cameraScript = ScriptEngine.loadScript(File("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\scripts\\CameraController.runescript.kts"))
+//
+//            activeScene.world.family { all(ScriptComponent) }
+//            .forEach {entity ->
+//                val scriptComp = entity[ScriptComponent]
+//                cameraScript?.let {
+//                    if (!scriptComp.isBound) {
+//                        scriptComp.bind(cameraScript!!)
+//                        scriptComp.instance.entity = entity
+//                        scriptComp.instance.scene = activeScene
+//                        scriptComp.instance.onCreate()
+//                    }
+//                }
+//            }
+//        }
+//
         sceneHierarchyPanel = SceneHierarchyPanel(activeScene)
-    }
-
-    override fun onDetach() {
-
     }
 
     override fun onUpdate(dt: Float) {
@@ -108,15 +96,9 @@ class EditorLayer: Layer("Sandbox2D") {
             (spec.width != viewportSize.x.toInt() || spec.height != viewportSize.y.toInt())
         ) {
             framebuffer.resize(viewportSize.x.toInt(), viewportSize.y.toInt())
-            //cameraController.onResize(viewportSize.x, viewportSize.y)
 
             activeScene.onViewportResize(viewportSize.x.toInt(), viewportSize.y.toInt())
         }
-
-        // Update
-        //if (viewportFocused)
-            //cameraController.onUpdate(dt)
-
         // Render
         Renderer2D.resetStats()
         framebuffer.bind()
@@ -125,18 +107,70 @@ class EditorLayer: Layer("Sandbox2D") {
 
         activeScene.onUpdate(dt)
 
-        //Renderer2D.beginScene(cameraController.camera)
-        //Renderer2D.endScene()
-
         framebuffer.unbind()
     }
 
-    override fun onEvent(e: Event) {
-        //cameraController.onEvent(e)
+    private fun newScene() {
+        activeScene = Scene()
+        activeScene.onViewportResize(viewportSize.x.toInt(), viewportSize.y.toInt())
+        sceneHierarchyPanel.setContext(activeScene)
+    }
 
+    private fun openScene() {
+        val nfd = rune.utils.FileDialog()
+        val filePath = nfd.openFile()
+
+        if (filePath.isNotEmpty()) {
+            activeScene = Scene()
+            activeScene.onViewportResize(viewportSize.x.toInt(), viewportSize.y.toInt())
+            sceneHierarchyPanel.setContext(activeScene)
+
+            // deserializing the scene
+            val sceneSerializer = SceneSerializer(activeScene)
+            sceneSerializer.deserialize(filePath)
+        }
+    }
+
+    private fun saveSceneAs() {
+        val nfd = rune.utils.FileDialog()
+        val filepath = nfd.saveAs("Untitled")
+
+        if (filepath.isNotEmpty()) {
+            val sceneSerializer = SceneSerializer(activeScene)
+            sceneSerializer.serialize(filepath)
+        }
+    }
+
+    private fun onKeyPressed(e: KeyPressedEvent): Boolean {
+        if (e.isRepeat) return false
+
+        val control = Input.isKeyPressed(Key.LeftControl) || Input.isKeyPressed(Key.RightControl)
+        val shift = Input.isKeyPressed(Key.LeftShift) || Input.isKeyPressed(Key.RightShift)
+
+        return when (e.keyCode) {
+            Key.N -> {
+                if (control) newScene()
+                true
+            }
+            Key.O -> {
+                if (control) openScene()
+                true
+            }
+            Key.S -> {
+                if (control && shift) saveSceneAs()
+                true
+            }
+            else -> false
+        }
+    }
+
+    override fun onEvent(e: Event) {
         if (Input.isKeyPressed(Key.Escape)) {
             Application.get().close()
         }
+
+        val dispatcher = EventDispatcher(e)
+        dispatcher.dispatch<KeyPressedEvent>(::onKeyPressed)
 
     }
 
@@ -184,16 +218,33 @@ class EditorLayer: Layer("Sandbox2D") {
             ImGui.popStyleVar(2)
 
         val io = ImGui.getIO()
+
+        val style = ImGui.getStyle()
+        val minWinSize = style.windowMinSize
+        style.setWindowMinSize(370f, 1f)
+
         if ((io.configFlags and ImGuiConfigFlags.DockingEnable) != 0) {
             val dockspaceId = ImGui.getID(("MyDockSpace"))
             ImGui.dockSpace(dockspaceId, ImVec2(0.0f, 0.0f), dockspaceFlags)
         }
+
+        style.windowMinSize = minWinSize
 
         if (ImGui.beginMenuBar()) {
             if (ImGui.beginMenu("File")) {
                 // Disabling fullscreen would allow the window to be moved to the front of other windows,
                 // which we can't undo at the moment without finer window depth/z control.
                 //ImGui::MenuItem("Fullscreen", NULL, &opt_fullscreen_persistant)
+                if (ImGui.menuItem("New", "Ctrl+N")) {
+                    newScene()
+                }
+                if (ImGui.menuItem("Open...", "Ctrl+O")) {
+                    openScene()
+                }
+                if (ImGui.menuItem("Save As...", "Ctrl+Shift+S")) {
+                    saveSceneAs()
+                }
+
                 if (ImGui.menuItem("Exit"))
                     Application.get().close()
                 ImGui.endMenu()
