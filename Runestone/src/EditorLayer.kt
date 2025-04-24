@@ -1,10 +1,7 @@
 package runestone
 
-import com.github.quillraven.fleks.Entity
-import glm_.glm
 import glm_.mat4x4.Mat4
 import glm_.vec2.Vec2
-import glm_.vec3.Vec3
 import glm_.vec4.Vec4
 import imgui.ImGui
 import imgui.ImVec2
@@ -16,7 +13,6 @@ import imgui.flag.ImGuiDockNodeFlags
 import imgui.flag.ImGuiStyleVar
 import imgui.flag.ImGuiWindowFlags
 import imgui.type.ImBoolean
-import rune.components.CameraComponent
 import rune.components.TransformComponent
 import rune.core.*
 import rune.events.Event
@@ -25,16 +21,11 @@ import rune.events.KeyPressedEvent
 import rune.renderer.*
 import rune.scene.Scene
 import rune.scene.serialization.SceneSerializer
-import rune.utils.FileDialog
 import rune.utils.decomposeTransform
 import runestone.panels.SceneHierarchyPanel
-import javax.xml.crypto.dsig.Transform
 
 class EditorLayer: Layer("Sandbox2D") {
     private lateinit var texture: Texture2D
-
-    //private val cameraController = OrthographicCameraController(1280.0f / 720.0f, true)
-    private val color = Vec4(0.8, 0.2, 0.3, 1.0)
 
     private lateinit var framebuffer: Framebuffer
     private var viewportSize: Vec2 = Vec2(0f)
@@ -53,10 +44,19 @@ class EditorLayer: Layer("Sandbox2D") {
         texture = Texture2D.create("assets/textures/checkerboard.png")
 
         // viewport
-        val spec = FramebufferSpecification(
-            width = 1280,
-            height = 720,
-        )
+//        val spec = FramebufferSpecification(
+//            width = 1280,
+//            height = 720,
+//        )
+        val spec = framebuffer {
+            width = 1280
+            height = 720
+
+            attachments {
+                color(FramebufferTextureFormat.RGBA8)
+                depth(FramebufferTextureFormat.DEPTH24STENCIL8)
+            }
+        }
         framebuffer = Framebuffer.create(spec)
 
         // scene
@@ -113,9 +113,7 @@ class EditorLayer: Layer("Sandbox2D") {
             activeScene.onViewportResize(viewportSize.x.toInt(), viewportSize.y.toInt())
         }
 
-        if (viewportFocused) {
-            editorCamera.onUpdate(dt)
-        }
+        editorCamera.onUpdate(dt)
 
         // Render
         Renderer2D.resetStats()
