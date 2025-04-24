@@ -1,11 +1,13 @@
 package rune.scene.serialization
 
 import com.charleskorn.kaml.PolymorphismStyle
-import com.charleskorn.kaml.SequenceStyle
 import com.charleskorn.kaml.Yaml
 import com.charleskorn.kaml.YamlConfiguration
 import com.github.quillraven.fleks.Entity
 import com.github.quillraven.fleks.World
+import glm_.vec3.Vec3
+import glm_.vec4.Vec4
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import rune.components.*
@@ -14,7 +16,6 @@ import rune.core.UUID
 import rune.scene.ProjectionType
 import rune.scene.Scene
 import java.io.File
-import javax.xml.crypto.dsig.Transform
 
 private val componentModule = SerializersModule {
     polymorphic(RuneComponent::class) {
@@ -147,3 +148,52 @@ class SceneSerializer(private val scene: Scene) {
         )
     }
 }
+
+
+@Serializable
+sealed interface RuneComponent
+
+@Serializable
+private data class RuneScene(
+    val Scene: String,
+    val Entities: List<RuneEntity>
+) : RuneComponent
+
+@Serializable
+private data class RuneEntity(
+    val Entity: Long,
+    val Components: List<RuneComponent> = emptyList()
+) : RuneComponent
+
+@Serializable
+private data class RuneTagComponent(val Tag: String) : RuneComponent
+
+@Serializable
+private data class RuneTransformComponent(
+    @Serializable(with = Vec3AsList::class) val Translation: Vec3,
+    @Serializable(with = Vec3AsList::class) val Rotation: Vec3,
+    @Serializable(with = Vec3AsList::class) val Scale: Vec3
+) : RuneComponent
+
+@Serializable
+private data class RuneCameraComponent(
+    val Camera: RuneCamera,
+    val Primary: Boolean,
+    val FixedAspectRatio: Boolean
+) : RuneComponent
+
+@Serializable
+private data class RuneCamera(
+    val ProjectionType: Int,
+    val PerspectiveFOV: Float,
+    val PerspectiveNear: Float,
+    val PerspectiveFar: Float,
+    val OrthographicSize: Float,
+    val OrthographicNear: Float,
+    val OrthographicFar: Float
+)
+
+@Serializable
+private data class RuneSpriteRendererComponent(
+    @Serializable(with = Vec4AsList::class) val Color: Vec4
+) : RuneComponent

@@ -11,5 +11,4 @@ open class RuneCamera {
     constructor(projection: Mat4) {
         this.projection = projection
     }
-
 }

@@ -108,6 +108,18 @@ class Renderer2D {
 
         }
 
+        fun beginScene(camera: EditorCamera) {
+            val viewProj = camera.getViewProjection()
+
+            data.texShader?.bind()
+            data.texShader?.uploadUniform {
+                uniform("u_ViewProjection", viewProj)
+            }
+
+            data.quadVertexWriter?.reset()
+            data.quadIndexCount = 0
+        }
+
         // TODO: remove
         fun beginScene(camera: OrthographicCamera) {
             // initializes an array with [0, 1, 2, ... data.maxTextureSlots - 1]

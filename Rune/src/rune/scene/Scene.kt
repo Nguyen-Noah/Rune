@@ -6,6 +6,7 @@ import com.github.quillraven.fleks.configureWorld
 import glm_.mat4x4.Mat4
 import rune.components.*
 import rune.core.UUID
+import rune.renderer.EditorCamera
 import rune.renderer.Renderer2D
 import rune.renderer.RuneCamera
 import rune.scene.systems.ScriptSystem
@@ -72,7 +73,7 @@ class Scene {
         }
     }
 
-    fun onUpdate(dt: Float) {
+    fun onUpdateRuntime(dt: Float) {
         // camera
         var mainCamera: RuneCamera? = null
         var transform: Mat4? = null
@@ -101,6 +102,18 @@ class Scene {
 
             Renderer2D.endScene()
         }
+    }
+
+    fun onUpdateEditor(dt: Float, camera: EditorCamera) {
+        Renderer2D.beginScene(camera)
+
+        val renderers = world.family { all(SpriteRendererComponent, TransformComponent) }
+
+        renderers.forEach {
+            Renderer2D.drawQuad(it[TransformComponent].getTransform(), it[SpriteRendererComponent].color)
+        }
+
+        Renderer2D.endScene()
     }
 
     fun getPrimaryCameraEntity(): Entity {

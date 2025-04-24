@@ -47,6 +47,7 @@ class EditorLayer: Layer("Sandbox2D") {
     private var activeScene = Scene()
 
     private var gizmoType = -1
+    val editorCamera = EditorCamera(30f, 1778f, 0.1f, 1000f)
 
     override fun onAttach() {
         texture = Texture2D.create("assets/textures/checkerboard.png")
@@ -97,7 +98,7 @@ class EditorLayer: Layer("Sandbox2D") {
 //
         sceneHierarchyPanel = SceneHierarchyPanel(activeScene)
 
-        SceneSerializer(activeScene).deserialize("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\assets\\scenes\\3D.rune")
+        //SceneSerializer(activeScene).deserialize("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\assets\\scenes\\3D.rune")
     }
 
     override fun onUpdate(dt: Float) {
@@ -108,16 +109,22 @@ class EditorLayer: Layer("Sandbox2D") {
             (spec.width != viewportSize.x.toInt() || spec.height != viewportSize.y.toInt())
         ) {
             framebuffer.resize(viewportSize.x.toInt(), viewportSize.y.toInt())
-
+            editorCamera.setViewportSize(viewportSize.x, viewportSize.y)
             activeScene.onViewportResize(viewportSize.x.toInt(), viewportSize.y.toInt())
         }
+
+        if (viewportFocused) {
+            editorCamera.onUpdate(dt)
+        }
+
         // Render
         Renderer2D.resetStats()
         framebuffer.bind()
         RenderCommand.setClearColor(Vec4(0.1f, 0.1f, 0.1f, 1.0f))
         RenderCommand.clear()
 
-        activeScene.onUpdate(dt)
+        activeScene.onUpdateEditor(dt, editorCamera)
+        //activeScene.onUpdateRuntime(dt)
 
         framebuffer.unbind()
     }
@@ -179,9 +186,10 @@ class EditorLayer: Layer("Sandbox2D") {
     }
 
     override fun onEvent(e: Event) {
-        if (Input.isKeyPressed(Key.Escape)) {
+        if (Input.isKeyPressed(Key.Escape))
             Application.get().close()
-        }
+
+        editorCamera.onEvent(e)
 
         val dispatcher = EventDispatcher(e)
         dispatcher.dispatch<KeyPressedEvent>(::onKeyPressed)
@@ -311,12 +319,16 @@ class EditorLayer: Layer("Sandbox2D") {
                 val windowHeight = ImGui.getWindowHeight()
                 ImGuizmo.setRect(ImGui.getWindowPosX(), ImGui.getWindowPosY(), windowWidth, windowHeight)
 
-                val cameraEntity = activeScene.getPrimaryCameraEntity()
                 with (activeScene.world) {
-                    val camera = cameraEntity[CameraComponent].camera
+                    // runtime entity camera
+//                    val cameraEntity = activeScene.getPrimaryCameraEntity()
+//                    val camera = cameraEntity[CameraComponent].camera
+//                    val cameraProjection: Mat4 = camera.projection
+//                    val cameraView: Mat4 = glm.inverse(cameraEntity[TransformComponent].getTransform())
 
-                    val cameraProjection: Mat4 = camera.projection
-                    val cameraView: Mat4 = glm.inverse(cameraEntity[TransformComponent].getTransform())
+                    // editorCamera
+                    val cameraProjection: Mat4 = editorCamera.projection
+                    val cameraView: Mat4 = editorCamera.viewMatrix
 
                     val entityTransform = selectedEntity[TransformComponent]
                     val transform: Mat4 = entityTransform.getTransform()
