@@ -102,4 +102,17 @@ class Scene {
             Renderer2D.endScene()
         }
     }
+
+    fun getPrimaryCameraEntity(): Entity {
+        var primaryCamera: Entity = world.entity()  // default to an empty entity
+        world.family { all(CameraComponent) }.forEach {
+            val comp = it[CameraComponent]
+
+            if (comp.primary) {
+                primaryCamera = it
+                return@forEach
+            }
+        }
+        return primaryCamera
+    }
 }

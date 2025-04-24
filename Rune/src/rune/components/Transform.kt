@@ -22,10 +22,3 @@ data class TransformComponent(
 
     companion object : ComponentType<TransformComponent>()
 }
-//data class TransformComponent(
-//    val transform: Mat4 = Mat4(1.0f)
-//) : Component<TransformComponent> {
-//    override fun type(): ComponentType<TransformComponent> = TransformComponent
-//
-//    companion object : ComponentType<TransformComponent>()
-//}

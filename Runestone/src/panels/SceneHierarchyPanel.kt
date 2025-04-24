@@ -22,6 +22,7 @@ class SceneHierarchyPanel(private var scene: Scene) {
     private val tmpFloat = FloatArray(1)
     private val tmpColor = FloatArray(4)
 
+    // TODO: make this a callback in a different file and just send out onSelectedEntityChangeEvent or something
     var selectedEntity: Entity? = null
 
     fun setContext(scene: Scene) {

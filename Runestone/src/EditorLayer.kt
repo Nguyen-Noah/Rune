@@ -1,15 +1,23 @@
 package runestone
 
 import com.github.quillraven.fleks.Entity
+import glm_.glm
+import glm_.mat4x4.Mat4
 import glm_.vec2.Vec2
+import glm_.vec3.Vec3
 import glm_.vec4.Vec4
 import imgui.ImGui
 import imgui.ImVec2
+import imgui.extension.imguizmo.ImGuizmo
+import imgui.extension.imguizmo.flag.Mode
+import imgui.extension.imguizmo.flag.Operation
 import imgui.flag.ImGuiConfigFlags
 import imgui.flag.ImGuiDockNodeFlags
 import imgui.flag.ImGuiStyleVar
 import imgui.flag.ImGuiWindowFlags
 import imgui.type.ImBoolean
+import rune.components.CameraComponent
+import rune.components.TransformComponent
 import rune.core.*
 import rune.events.Event
 import rune.events.EventDispatcher
@@ -17,7 +25,10 @@ import rune.events.KeyPressedEvent
 import rune.renderer.*
 import rune.scene.Scene
 import rune.scene.serialization.SceneSerializer
+import rune.utils.FileDialog
+import rune.utils.decomposeTransform
 import runestone.panels.SceneHierarchyPanel
+import javax.xml.crypto.dsig.Transform
 
 class EditorLayer: Layer("Sandbox2D") {
     private lateinit var texture: Texture2D
@@ -34,9 +45,8 @@ class EditorLayer: Layer("Sandbox2D") {
     private lateinit var sceneHierarchyPanel: SceneHierarchyPanel
 
     private var activeScene = Scene()
-    private lateinit var camera: Entity
-    private lateinit var square: Entity
-    private lateinit var greenSquare: Entity
+
+    private var gizmoType = -1
 
     override fun onAttach() {
         texture = Texture2D.create("assets/textures/checkerboard.png")
@@ -86,6 +96,8 @@ class EditorLayer: Layer("Sandbox2D") {
 //        }
 //
         sceneHierarchyPanel = SceneHierarchyPanel(activeScene)
+
+        SceneSerializer(activeScene).deserialize("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\assets\\scenes\\3D.rune")
     }
 
     override fun onUpdate(dt: Float) {
@@ -147,21 +159,23 @@ class EditorLayer: Layer("Sandbox2D") {
         val control = Input.isKeyPressed(Key.LeftControl) || Input.isKeyPressed(Key.RightControl)
         val shift = Input.isKeyPressed(Key.LeftShift) || Input.isKeyPressed(Key.RightShift)
 
-        return when (e.keyCode) {
-            Key.N -> {
-                if (control) newScene()
-                true
-            }
-            Key.O -> {
-                if (control) openScene()
-                true
-            }
-            Key.S -> {
-                if (control && shift) saveSceneAs()
-                true
-            }
-            else -> false
+        when (e.keyCode) {
+            Key.N -> if (control) newScene()
+            Key.O -> if (control) openScene()
+            Key.S -> if (control && shift) saveSceneAs()
+            else -> {}
         }
+
+        // gizmos
+        when (e.keyCode) {
+            Key.Q -> gizmoType = -1
+            Key.T -> gizmoType = Operation.TRANSLATE
+            Key.S -> gizmoType = Operation.SCALE
+            Key.R -> gizmoType = Operation.ROTATE
+            else -> {}
+        }
+
+        return true
     }
 
     override fun onEvent(e: Event) {
@@ -274,7 +288,7 @@ class EditorLayer: Layer("Sandbox2D") {
 
         viewportFocused = ImGui.isWindowFocused()
         viewportHovered = ImGui.isWindowHovered()
-        Application.get().getImGuiLayer().blockEvents(!viewportFocused or !viewportHovered)
+        Application.get().getImGuiLayer().blockEvents(!viewportFocused and !viewportHovered)
 
         val viewportPanelSize = ImGui.getContentRegionAvail()
         viewportSize = Vec2(viewportPanelSize.x, viewportPanelSize.y)
@@ -285,6 +299,62 @@ class EditorLayer: Layer("Sandbox2D") {
             ImVec2(0f, 1f),
             ImVec2(1f, 0f)
         )
+
+        // gizmos
+        if (gizmoType != -1) {
+            val selectedEntity = sceneHierarchyPanel.selectedEntity
+            if (selectedEntity != null) {
+                ImGuizmo.setOrthographic(false)     // TODO: check for orthographic or nah
+                ImGuizmo.setDrawList()
+
+                val windowWidth = ImGui.getWindowWidth()
+                val windowHeight = ImGui.getWindowHeight()
+                ImGuizmo.setRect(ImGui.getWindowPosX(), ImGui.getWindowPosY(), windowWidth, windowHeight)
+
+                val cameraEntity = activeScene.getPrimaryCameraEntity()
+                with (activeScene.world) {
+                    val camera = cameraEntity[CameraComponent].camera
+
+                    val cameraProjection: Mat4 = camera.projection
+                    val cameraView: Mat4 = glm.inverse(cameraEntity[TransformComponent].getTransform())
+
+                    val entityTransform = selectedEntity[TransformComponent]
+                    val transform: Mat4 = entityTransform.getTransform()
+
+                    // snapping
+                    val snap = Input.isKeyPressed(Key.LeftControl)
+                    var snapValue = 0.5f
+                    if (gizmoType == Operation.ROTATE)
+                        snapValue = 45f
+
+                    val snapValues = floatArrayOf(snapValue, snapValue, snapValue)
+
+                    val oldTransform = transform.toFloatArray()
+                    ImGuizmo.manipulate(
+                        cameraView.toFloatArray(),
+                        cameraProjection.toFloatArray(),
+                        gizmoType,
+                        Mode.LOCAL,
+                        oldTransform,
+                        null,
+                        if (snap) { snapValues } else null
+                    )
+
+                    if (ImGuizmo.isUsing()) {
+                        decomposeTransform(Mat4(oldTransform))?.let { dec ->
+                            selectedEntity[TransformComponent].translation  = dec.translation
+
+                            val deltaRotation = dec.rotation - entityTransform.rotation
+                            selectedEntity[TransformComponent].rotation = selectedEntity[TransformComponent].rotation + deltaRotation
+
+                            selectedEntity[TransformComponent].scale = dec.scale
+                        }
+                    }
+                }
+            }
+        }
+
+
         ImGui.end()
         ImGui.popStyleVar()
 
@@ -292,5 +362,6 @@ class EditorLayer: Layer("Sandbox2D") {
     }
 }
 
+// extensions
 private operator fun ImVec2.component1(): Float = x
 private operator fun ImVec2.component2(): Float = y
