@@ -96,8 +96,8 @@ class Scene {
             val renderers = world.family { all(SpriteRendererComponent, TransformComponent) }
 
             renderers.forEach {
-                //println("Actual: ${System.identityHashCode(it)}")
-                Renderer2D.drawQuad(it[TransformComponent].getTransform(), it[SpriteRendererComponent].color)
+                //Renderer2D.drawQuad(it[TransformComponent].getTransform(), it[SpriteRendererComponent].color)
+                Renderer2D.drawSprite(it[TransformComponent].getTransform(), it[SpriteRendererComponent], it.id)
             }
 
             Renderer2D.endScene()
@@ -110,7 +110,7 @@ class Scene {
         val renderers = world.family { all(SpriteRendererComponent, TransformComponent) }
 
         renderers.forEach {
-            Renderer2D.drawQuad(it[TransformComponent].getTransform(), it[SpriteRendererComponent].color)
+            Renderer2D.drawSprite(it[TransformComponent].getTransform(), it[SpriteRendererComponent], it.id)
         }
 
         Renderer2D.endScene()

@@ -1,9 +1,8 @@
 package rune.platforms.opengl
 
 import org.lwjgl.opengl.GL45.*
-import org.lwjgl.system.MemoryUtil
-import rune.renderer.QuadVertex
 import rune.renderer.VertexBuffer
+import java.nio.ByteBuffer
 
 class OpenGLVertexBuffer : VertexBuffer {
     private var rendererID: Int = 0
@@ -27,7 +26,7 @@ class OpenGLVertexBuffer : VertexBuffer {
         glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW)
     }
 
-    override fun setData(vertices: FloatArray, size: Int) {
+    override fun setData(vertices: ByteBuffer) {
         glBindBuffer(GL_ARRAY_BUFFER, rendererID)
         glBufferSubData(GL_ARRAY_BUFFER, 0L, vertices)
     }

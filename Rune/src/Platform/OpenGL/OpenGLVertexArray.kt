@@ -6,6 +6,8 @@ import rune.renderer.VertexArray
 import rune.renderer.VertexBuffer
 import rune.renderer.VertexBufferLayout
 
+private val INTEGER_TYPES = setOf(GL_INT, GL_UNSIGNED_INT, GL_UNSIGNED_SHORT, GL_UNSIGNED_BYTE)
+
 class OpenGLVertexArray(
     vbo: VertexBuffer,
     private val layout: VertexBufferLayout
@@ -31,14 +33,24 @@ class OpenGLVertexArray(
 
         layout.computeOffsets().forEach { (_, offset, attr) ->
             glEnableVertexAttribArray(nextAttribIndex)
-            glVertexAttribPointer(
-                nextAttribIndex,
-                attr.count,
-                attr.type,
-                attr.normalized,
-                layout.stride,
-                offset.toLong()
-            )
+            if (attr.type in INTEGER_TYPES) {
+                glVertexAttribIPointer(
+                    nextAttribIndex,
+                    attr.count,
+                    attr.type,
+                    layout.stride,
+                    offset.toLong()
+                )
+            } else {
+                glVertexAttribPointer(
+                    nextAttribIndex,
+                    attr.count,
+                    attr.type,
+                    attr.normalized,
+                    layout.stride,
+                    offset.toLong()
+                )
+            }
             nextAttribIndex++
         }
 

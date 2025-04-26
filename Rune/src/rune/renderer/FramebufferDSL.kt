@@ -42,6 +42,9 @@ enum class FramebufferTextureFormat(val glEnum: Int) {
     // color
     RGBA8(GL45.GL_RGBA8),
 
+    // for entity id
+    RED_INTEGER(GL45.GL_RED_INTEGER),
+
     // depth/stencil
     DEPTH24STENCIL8(GL45.GL_DEPTH24_STENCIL8),
 

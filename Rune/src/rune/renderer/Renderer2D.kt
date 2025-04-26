@@ -5,6 +5,7 @@ import glm_.mat4x4.Mat4
 import glm_.vec2.Vec2
 import glm_.vec3.Vec3
 import glm_.vec4.Vec4
+import rune.components.SpriteRendererComponent
 
 class Renderer2D {
     companion object {
@@ -23,7 +24,8 @@ class Renderer2D {
 
             var quadIndexCount: Int = 0,
 
-            var quadVertexWriter: QuadVertexBufferWriter? = null,
+            var quadLayout: VertexLayout? = null,
+            var quadVertexWriter: VertexBufferWriter? = null,
 
             val textureSlots: Array<Texture2D?> = arrayOfNulls(maxTextureSlots),
             var textureSlotIndex: Int = 1,  // 0 = white texture
@@ -62,10 +64,19 @@ class Renderer2D {
         }
 
         fun init() {
-            data.quadVertexWriter = QuadVertexBufferWriter(data.maxVertices)
+            // describing the vertex
+            data.quadLayout = VertexLayout.build {
+                attr(0, BufferType.Float3)  // position
+                attr(1, BufferType.Float4)  // color
+                attr(2, BufferType.Float2)  // texcoords
+                attr(3, BufferType.Float1)  // texIndex
+                attr(4, BufferType.Float1)  // tilingFactor
+                attr(5, BufferType.Int1)    // entityID
+            }
+            data.quadVertexWriter = VertexBufferWriter(data.maxVertices, data.quadLayout!!)
 
+            // index buffer
             val indices = IntArray(data.maxIndices)
-
             var offset = 0
             for (i in 0 until data.maxIndices step 6) {
                 indices[i + 0] = offset + 0
@@ -79,7 +90,7 @@ class Renderer2D {
                 offset += 4
             }
 
-            data.vbo = VertexBuffer.create(data.maxVertices * QuadVertex.BYTE_SIZE)
+            data.vbo = VertexBuffer.create(data.maxVertices * data.quadLayout!!.stride)
             val ibo = IndexBuffer.create(indices, data.maxIndices)
 
             // creating and binding the default white texture
@@ -87,12 +98,14 @@ class Renderer2D {
             data.whiteTex?.setData(0xffffffff.toInt(), 4)
             data.textureSlots[0] = data.whiteTex
 
+            // TODO: maybe mix this bufferLayout stuff into the VertexBufferWriter
             data.vao = VertexArray.create(data.vbo!!, bufferLayout {
                 attribute("a_Position", 3)
                 attribute("a_Color", 4)
                 attribute("a_TexCoord", 2)
                 attribute("a_TexIndex", 1)
                 attribute("a_TilingFactor", 1)
+                attribute("a_EntityID", 1)
             })
             data.vao!!.setIndexBuffer(ibo)
 
@@ -131,7 +144,6 @@ class Renderer2D {
                 uniform("u_Textures", samplers)
             }
 
-
             data.quadVertexWriter?.reset()
             data.quadIndexCount = 0
 
@@ -150,7 +162,6 @@ class Renderer2D {
                 uniform("u_Textures", samplers)
             }
 
-
             data.quadVertexWriter?.reset()
             data.quadIndexCount = 0
 
@@ -158,8 +169,8 @@ class Renderer2D {
         }
 
         fun endScene() {
-            data.vbo?.setData(data.quadVertexWriter!!.getBuffer(), data.quadVertexWriter!!.getSizeInBytes())
-
+            // drawing the data
+            data.vbo?.setData(data.quadVertexWriter!!.slice())
             flush()
         }
 
@@ -183,14 +194,7 @@ class Renderer2D {
         }
 
         // primitives
-        private fun drawQuadInternal(
-            position: Vec3,
-            size: Vec2,
-            rotation: Float = 0f,
-            color: Vec4 = Vec4(1f),
-            texture: Texture2D? = null,
-            tilingFactor: Float = 1f
-        ) {
+        private fun drawQuadInternal(position: Vec3, size: Vec2, rotation: Float = 0f, color: Vec4 = Vec4(1f), texture: Texture2D? = null, tilingFactor: Float = 1f) {
             // 1. if we are out of space, flush
             if (data.quadIndexCount >= data.maxIndices) {
                 flushAndReset()
@@ -229,11 +233,11 @@ class Renderer2D {
 
             // 4. write out 4 vertices
             for (i in 0 until 4) {
-                data.quadVertexWriter!!.write(
+                pushVertex(
                     position = (transform * data.quadVertexPositions[i]!!).toVec3(),
                     color = color,
-                    texCoords = texCoords[i],
-                    texIndex = textureIndex,
+                    uv = texCoords[i],
+                    texId = textureIndex,
                     tilingFactor = tilingFactor
                 )
             }
@@ -253,7 +257,6 @@ class Renderer2D {
                 tilingFactor = 1f
             )
         }
-
         fun drawQuad(position: Vec3, size: Vec2, color: Vec4) {
             drawQuadInternal(
                 position = position,
@@ -264,14 +267,7 @@ class Renderer2D {
                 tilingFactor = 1f
             )
         }
-
-        fun drawQuad(
-            position: Vec2,
-            size: Vec2,
-            texture: Texture2D,
-            tilingFactor: Float = 1.0f,
-            tintColor: Vec4 = Vec4(1.0f)
-        ) {
+        fun drawQuad(position: Vec2, size: Vec2, texture: Texture2D, tilingFactor: Float = 1.0f, tintColor: Vec4 = Vec4(1.0f)) {
             drawQuadInternal(
                 position = Vec3(position, 0f),
                 size = size,
@@ -281,14 +277,7 @@ class Renderer2D {
                 tilingFactor = tilingFactor
             )
         }
-
-        fun drawQuad(
-            position: Vec3,
-            size: Vec2,
-            texture: Texture2D,
-            tilingFactor: Float = 1.0f,
-            tintColor: Vec4 = Vec4(1.0f)
-        ) {
+        fun drawQuad(position: Vec3, size: Vec2, texture: Texture2D, tilingFactor: Float = 1.0f, tintColor: Vec4 = Vec4(1.0f)) {
             drawQuadInternal(
                 position = position,
                 size = size,
@@ -299,7 +288,7 @@ class Renderer2D {
             )
         }
 
-        fun drawQuad(transform: Mat4, color: Vec4) {
+        fun drawQuad(transform: Mat4, color: Vec4, entityId: Int = -1) {
             if (data.quadIndexCount >= data.maxIndices) {
                 flushAndReset()
             }
@@ -315,20 +304,20 @@ class Renderer2D {
             val tilingFactor = 1f
 
             for (i in 0 until 4) {
-                data.quadVertexWriter!!.write(
+                pushVertex(
                     position = (transform * data.quadVertexPositions[i]!!).toVec3(),
                     color = color,
-                    texCoords = texCoords[i],
-                    texIndex = textureIndex,
-                    tilingFactor = tilingFactor
+                    uv = texCoords[i],
+                    texId = textureIndex,
+                    tilingFactor = tilingFactor,
+                    entityId = entityId
                 )
             }
 
             data.quadIndexCount += 6
             data.stats.quadCount++
         }
-
-        fun drawQuad(transform: Mat4, texture: Texture2D, tilingFactor: Float = 1f, tintColor: Vec4 = Vec4(1f)) {
+        fun drawQuad(transform: Mat4, texture: Texture2D, tilingFactor: Float = 1f, tintColor: Vec4 = Vec4(1f), entityId: Int = -1) {
             if (data.quadIndexCount >= data.maxIndices) {
                 flushAndReset()
             }
@@ -359,11 +348,11 @@ class Renderer2D {
             }
 
             for (i in 0 until 4) {
-                data.quadVertexWriter!!.write(
+                pushVertex(
                     position = (transform * data.quadVertexPositions[i]!!).toVec3(),
                     color = tintColor,
-                    texCoords = texCoords[i],
-                    texIndex = textureIndex,
+                    uv = texCoords[i],
+                    texId = textureIndex,
                     tilingFactor = tilingFactor
                 )
             }
@@ -381,7 +370,6 @@ class Renderer2D {
                 color = color
             )
         }
-
         fun drawRotatedQuad(position: Vec3, size: Vec2, rotation: Float, color: Vec4) {
             drawQuadInternal(
                 position = position,
@@ -390,15 +378,7 @@ class Renderer2D {
                 color = color
             )
         }
-
-        fun drawRotatedQuad(
-            position: Vec2,
-            size: Vec2,
-            rotation: Float,
-            texture: Texture2D,
-            tilingFactor: Float = 1.0f,
-            tintColor: Vec4 = Vec4(1.0f)
-        ) {
+        fun drawRotatedQuad(position: Vec2, size: Vec2, rotation: Float, texture: Texture2D, tilingFactor: Float = 1.0f, tintColor: Vec4 = Vec4(1.0f)) {
             drawQuadInternal(
                 position = Vec3(position, 0f),
                 size = size,
@@ -408,15 +388,7 @@ class Renderer2D {
                 tilingFactor = tilingFactor
             )
         }
-
-        fun drawRotatedQuad(
-            position: Vec3,
-            size: Vec2,
-            rotation: Float,
-            texture: Texture2D,
-            tilingFactor: Float = 1.0f,
-            tintColor: Vec4 = Vec4(1.0f)
-        ) {
+        fun drawRotatedQuad(position: Vec3, size: Vec2, rotation: Float, texture: Texture2D, tilingFactor: Float = 1.0f, tintColor: Vec4 = Vec4(1.0f)) {
             drawQuadInternal(
                 position = position,
                 size = size,
@@ -425,6 +397,10 @@ class Renderer2D {
                 texture = texture,
                 tilingFactor = tilingFactor
             )
+        }
+
+        fun drawSprite(transform: Mat4, src: SpriteRendererComponent, entityId: Int) {
+            drawQuad(transform, src.color, entityId)
         }
 
 
@@ -439,5 +415,17 @@ class Renderer2D {
             data.stats.drawCalls = 0
         }
         fun getStats(): Statistics = data.stats
+
+        private inline fun pushVertex(
+            position: Vec3, color: Vec4, uv: Vec2,
+            texId: Float, tilingFactor: Float, entityId: Int = -1
+        ) = data.quadVertexWriter?.write {
+            putFloat(position.x); putFloat(position.y); putFloat(position.z)
+            putFloat(color.r); putFloat(color.g); putFloat(color.b); putFloat(color.a)
+            putFloat(uv.x);  putFloat(uv.y)
+            putFloat(texId)
+            putFloat(tilingFactor)
+            putInt(entityId)
+        }
     }
 }

@@ -1,66 +1,60 @@
 package rune.renderer
 
-import glm_.vec2.Vec2
-import glm_.vec3.Vec3
-import glm_.vec4.Vec4
+import org.lwjgl.opengl.GL45.GL_INT
+import org.lwjgl.opengl.GL45.GL_FLOAT
+import org.lwjgl.opengl.GL45.GL_UNSIGNED_BYTE
+import org.lwjgl.system.MemoryUtil
+import java.nio.ByteBuffer
 
-data class QuadVertex(
-    val position: Vec3 = Vec3(0.0f, 0.0f, 0.0f),
-    val color: Vec4 = Vec4(1.0f),
-    val texCoords: Vec2 = Vec2(0.0f, 0.0f),
-    val texIndex: Float = 0f,       // default to white texture
-    val tilingFactor: Float = 1f
-) {
+enum class BufferType(val comps: Int, val bytes: Int, val glType: Int) {
+    Float1(1, 4, GL_FLOAT),   Float2(2, 4, GL_FLOAT),   Float3(3, 4, GL_FLOAT),   Float4(4, 4, GL_FLOAT),
+    Int1  (1, 4, GL_INT),     Int2  (2, 4, GL_INT),     Int3  (3, 4, GL_INT),     Int4  (4, 4, GL_INT),
+    Bool1 (1, 1, GL_UNSIGNED_BYTE);
+    val sizeBytes get() = comps * bytes
+}
+
+class VertexLayout private constructor(val attributes: List<Attr>) {
+    class Attr(val loc: Int, val component: BufferType, var offset: Int = 0)
+    val stride = attributes.sumOf { it.component.sizeBytes }
+
     companion object {
-        const val FLOAT_COUNT = 3 + 4 + 2 + 1 + 1
-        const val BYTE_SIZE = FLOAT_COUNT * 4
+        fun build(block: Builder.() -> Unit): VertexLayout = Builder().apply(block).build()
+    }
+    class Builder {
+        private val attrs = mutableListOf<Attr>()
+        fun attr(loc: Int, c: BufferType) { attrs += Attr(loc, c) }
+        fun build(): VertexLayout {
+            var off = 0
+            attrs.forEach { it.offset = off; off += it.component.sizeBytes }
+            return VertexLayout(attrs)
+        }
     }
 }
 
-class QuadVertexBufferWriter(maxQuads: Int) {
-    private val maxVertices = maxQuads
-    // Preallocate the underlying float array large enough to hold all vertices.
-    private val buffer = FloatArray(maxVertices * QuadVertex.FLOAT_COUNT)
-    private var vertexCount = 0
+class VertexBufferWriter(val maxVertices: Int, val layout: VertexLayout) {
+    private val capacity = maxVertices * layout.stride
+    private val buf: ByteBuffer = MemoryUtil.memAlloc(capacity)
+    private var vertices = 0
 
-    fun reset() {
-        vertexCount = 0
+    fun reset() { vertices = 0; buf.clear() }
+
+    fun putFloat(f: Float) = buf.putFloat(f)
+    fun putInt(i: Int) = buf.putInt(i)
+    //fun putBool(b: Boolean) = buf.put(b.toInt().toByte())
+
+    fun write(block: VertexBufferWriter.() -> Unit) {
+        require(vertices++ < maxVertices) { "vertex overflow" }
+        block()
     }
 
-    fun write(
-        position: Vec3,
-        color: Vec4,
-        texCoords: Vec2,
-        texIndex: Float,
-        tilingFactor: Float,
-    ) {
-        if (vertexCount >= maxVertices) {
-            throw IndexOutOfBoundsException("Exceeded maximum vertex count")
+    /** Slice ready for GL upload */
+    fun slice(): ByteBuffer  {
+        val bytesUsed = sizeBytes()
+        return (buf.duplicate() as ByteBuffer).apply {
+            position(0)
+            limit(bytesUsed)
         }
-        val offset = vertexCount * QuadVertex.FLOAT_COUNT
-
-        buffer[offset + 0] = position.x
-        buffer[offset + 1] = position.y
-        buffer[offset + 2] = position.z
-
-        buffer[offset + 3] = color.r
-        buffer[offset + 4] = color.g
-        buffer[offset + 5] = color.b
-        buffer[offset + 6] = color.a
-
-        buffer[offset + 7] = texCoords.x
-        buffer[offset + 8] = texCoords.y
-
-        buffer[offset + 9] = texIndex
-
-        buffer[offset + 10] = tilingFactor
-
-        vertexCount++
     }
-
-    // Returns the underlying FloatArray without rebuilding it.
-    fun getBuffer(): FloatArray = buffer
-
-    // Total data size in bytes for the vertices written so far.
-    fun getSizeInBytes(): Int = vertexCount * QuadVertex.BYTE_SIZE
+    fun sizeBytes(): Int = vertices * layout.stride
+    fun free() = MemoryUtil.memFree(buf)
 }

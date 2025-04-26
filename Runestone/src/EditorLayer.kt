@@ -1,5 +1,6 @@
 package runestone
 
+import com.github.quillraven.fleks.Entity
 import glm_.mat4x4.Mat4
 import glm_.vec2.Vec2
 import glm_.vec4.Vec4
@@ -13,6 +14,7 @@ import imgui.flag.ImGuiDockNodeFlags
 import imgui.flag.ImGuiStyleVar
 import imgui.flag.ImGuiWindowFlags
 import imgui.type.ImBoolean
+import rune.components.TagComponent
 import rune.components.TransformComponent
 import rune.core.*
 import rune.events.Event
@@ -40,20 +42,20 @@ class EditorLayer: Layer("Sandbox2D") {
     private var gizmoType = -1
     val editorCamera = EditorCamera(30f, 1778f, 0.1f, 1000f)
 
+    private var hoveredEntity: Entity? = null
+
+    private val viewportBounds: Array<Vec2> = Array(2) { Vec2() }
+
     override fun onAttach() {
         texture = Texture2D.create("assets/textures/checkerboard.png")
 
-        // viewport
-//        val spec = FramebufferSpecification(
-//            width = 1280,
-//            height = 720,
-//        )
         val spec = framebuffer {
             width = 1280
             height = 720
 
             attachments {
                 color(FramebufferTextureFormat.RGBA8)
+                color(FramebufferTextureFormat.RED_INTEGER)
                 depth(FramebufferTextureFormat.DEPTH24STENCIL8)
             }
         }
@@ -98,7 +100,7 @@ class EditorLayer: Layer("Sandbox2D") {
 //
         sceneHierarchyPanel = SceneHierarchyPanel(activeScene)
 
-        //SceneSerializer(activeScene).deserialize("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\assets\\scenes\\3D.rune")
+        SceneSerializer(activeScene).deserialize("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\assets\\scenes\\3D.rune")
     }
 
     override fun onUpdate(dt: Float) {
@@ -121,8 +123,27 @@ class EditorLayer: Layer("Sandbox2D") {
         RenderCommand.setClearColor(Vec4(0.1f, 0.1f, 0.1f, 1.0f))
         RenderCommand.clear()
 
+        // clear entity ID attachment to -1
+        framebuffer.clearAttachment(1, -1)
+
         activeScene.onUpdateEditor(dt, editorCamera)
         //activeScene.onUpdateRuntime(dt)
+
+        val mp = ImGui.getMousePos()
+        val mx   = (mp.x - viewportBounds[0].x).toInt()
+        var my   = (mp.y - viewportBounds[0].y).toInt()
+
+        my = (viewportSize.y - my).toInt()
+        if ((mx >= 0) and (my >= 0) and
+            (mx < viewportSize.x.toInt()) and (my < viewportSize.y.toInt())) {
+            val pixelData = framebuffer.readPixel(1, mx, my)
+//            hoveredEntity = when (pixelData) {
+//                -1 -> null
+//                else -> Entity(pixelData, 0u)
+//            }
+//            hoveredEntity?.let { println(activeScene.world.contains(it)) }
+            println(pixelData)
+        }
 
         framebuffer.unbind()
     }
@@ -278,6 +299,12 @@ class EditorLayer: Layer("Sandbox2D") {
 
         ImGui.begin("Stats")
 
+        // entity picking
+        var name = ""
+        if (hoveredEntity != null)
+            name = with (activeScene.world) { hoveredEntity!![TagComponent].tag }
+        ImGui.text("Hovered Entity: $name")
+
         // stats
         val stats = Renderer2D.getStats()
         ImGui.text("Renderer2D Stats:")
@@ -291,6 +318,16 @@ class EditorLayer: Layer("Sandbox2D") {
 
         ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, ImVec2(0f, 0f))
         ImGui.begin("Viewport")
+
+        // mouse picking
+        val viewportScreenPos = ImGui.getCursorScreenPos()
+
+        val avail = ImGui.getContentRegionAvail()
+        val viewportW = avail.x
+        val viewportH = avail.y
+
+        viewportBounds[0] = Vec2(viewportScreenPos.x,           viewportScreenPos.y)
+        viewportBounds[1] = Vec2(viewportScreenPos.x + viewportW, viewportScreenPos.y + viewportH)
 
         viewportFocused = ImGui.isWindowFocused()
         viewportHovered = ImGui.isWindowHovered()

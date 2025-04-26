@@ -1,10 +1,13 @@
 package rune.platforms.opengl
 
 import org.lwjgl.opengl.GL45.*
+import org.lwjgl.system.MemoryStack
 import rune.renderer.Framebuffer
 import rune.renderer.FramebufferSpecification
 import rune.renderer.FramebufferTextureFormat
 import rune.renderer.FramebufferTextureSpecification
+import java.nio.FloatBuffer
+import java.nio.IntBuffer
 
 // TODO: update all rendering API to take in specifications
 class OpenGLFramebuffer(private val spec: FramebufferSpecification) : Framebuffer {
@@ -16,7 +19,7 @@ class OpenGLFramebuffer(private val spec: FramebufferSpecification) : Framebuffe
     private val colorAttachmentSpecs: ArrayList<FramebufferTextureSpecification> = arrayListOf()
     private var depthAttachmentSpec: FramebufferTextureSpecification = FramebufferTextureSpecification()   // defaults to None
 
-    private var colorAttachments: IntArray = intArrayOf()       // render IDs (should be UInt)
+    private var colorAttachments: MutableList<Int> = mutableListOf()       // render IDs (should be UInt)
     private var depthAttachment: Int = 0
 
     init {
@@ -40,6 +43,7 @@ class OpenGLFramebuffer(private val spec: FramebufferSpecification) : Framebuffe
         if (rendererId != -1) {
             glDeleteFramebuffers(rendererId)
             colorAttachments.forEach { glDeleteTextures(it) }
+            colorAttachments.clear()
             if (depthAttachment != 0) glDeleteTextures(depthAttachment)
         }
 
@@ -51,14 +55,26 @@ class OpenGLFramebuffer(private val spec: FramebufferSpecification) : Framebuffe
         // Color
         spec.attachments
             .filterNot { isDepthFormat(it.format) }
-            .forEachIndexed { i, _ ->
+            .forEachIndexed { i, texSpec ->
                 val id = glGenTextures()
                 colorAttachments += id
                 bindTexture(ms, id)
-                attachColorTexture(
-                    id, spec.samples,
-                    GL_RGBA8, spec.width, spec.height, i
-                )
+
+                when (texSpec.format) {
+                    FramebufferTextureFormat.RGBA8 -> {
+                        attachColorTexture(
+                            id, spec.samples, GL_RGBA8, GL_RGBA,
+                            spec.width, spec.height, i
+                        )
+                    }
+                    FramebufferTextureFormat.RED_INTEGER -> {
+                        attachColorTexture(
+                            id, spec.samples, GL_R32I, GL_RED_INTEGER,
+                            spec.width, spec.height, i
+                        )
+                    }
+                    else -> {}
+                }
             }
 
         // Depth
@@ -92,6 +108,21 @@ class OpenGLFramebuffer(private val spec: FramebufferSpecification) : Framebuffe
         glBindFramebuffer(GL_FRAMEBUFFER, 0)
     }
 
+    override fun readPixel(attachmentIndex: Int, x: Int, y: Int): Int {
+        require(attachmentIndex < colorAttachments.size)
+
+        glReadBuffer(GL_COLOR_ATTACHMENT0 + attachmentIndex)
+
+        val pixel = MemoryStack.stackPush().use { stack ->
+            val buf: IntBuffer = stack.mallocInt(1)
+
+            glReadPixels(x, y, 1,1, GL_RED_INTEGER, GL_INT, buf)
+            buf[0]
+        }
+
+        return pixel
+    }
+
     override fun resize(width: Int, height: Int) {
         if (width == 0 || height == 0 || width > maxFramebufferSize || height > maxFramebufferSize)
             return
@@ -110,6 +141,15 @@ class OpenGLFramebuffer(private val spec: FramebufferSpecification) : Framebuffe
         glBindFramebuffer(GL_FRAMEBUFFER, 0)
     }
 
+    override fun clearAttachment(attachmentIndex: Int, value: Int) {
+        MemoryStack.stackPush().use { stack ->
+            val clearValue: IntBuffer = stack.ints(value)
+
+            val spec = colorAttachmentSpecs[attachmentIndex]
+            glClearTexImage(colorAttachments[1], 0, runeFBTextureFormatToGL(spec.format), GL_INT, clearValue)
+        }
+    }
+
     override fun getSpecification(): FramebufferSpecification = spec
     override fun getColorAttachment(index: Int): Int = colorAttachments[index]
 
@@ -126,14 +166,14 @@ class OpenGLFramebuffer(private val spec: FramebufferSpecification) : Framebuffe
         glBindTexture(textureTarget(multiSample), colorAttachment)
 
     private fun attachColorTexture(
-        colorAttachment: Int, samples: Int, glFormat: Int,
+        colorAttachment: Int, samples: Int, internalFormat: Int, glFormat: Int,
         w: Int, h: Int, slot: Int
     ) {
         val ms = samples > 1
         if (ms) {
             glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, glFormat, w, h, false)
         } else {
-            glTexImage2D(GL_TEXTURE_2D, 0, glFormat, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0L)
+            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, glFormat, GL_UNSIGNED_BYTE, 0L)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
@@ -165,6 +205,14 @@ class OpenGLFramebuffer(private val spec: FramebufferSpecification) : Framebuffe
         return when (format) {
             FramebufferTextureFormat.DEPTH24STENCIL8    -> true
             else                                        -> false
+        }
+    }
+
+    private fun runeFBTextureFormatToGL(format: FramebufferTextureFormat): Int {
+        return when(format) {
+            FramebufferTextureFormat.RGBA8          -> GL_RGBA8
+            FramebufferTextureFormat.RED_INTEGER    -> GL_RED_INTEGER
+            else -> -1
         }
     }
 }
