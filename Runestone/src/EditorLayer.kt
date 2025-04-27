@@ -20,6 +20,7 @@ import rune.core.*
 import rune.events.Event
 import rune.events.EventDispatcher
 import rune.events.KeyPressedEvent
+import rune.events.MouseButtonPressedEvent
 import rune.renderer.*
 import rune.scene.Scene
 import rune.scene.serialization.SceneSerializer
@@ -137,12 +138,14 @@ class EditorLayer: Layer("Sandbox2D") {
         if ((mx >= 0) and (my >= 0) and
             (mx < viewportSize.x.toInt()) and (my < viewportSize.y.toInt())) {
             val pixelData = framebuffer.readPixel(1, mx, my)
-//            hoveredEntity = when (pixelData) {
-//                -1 -> null
-//                else -> Entity(pixelData, 0u)
-//            }
-//            hoveredEntity?.let { println(activeScene.world.contains(it)) }
-            println(pixelData)
+            hoveredEntity = when (pixelData) {
+                -1 -> null
+                else ->  {
+                    // corner case in the event an invalid entity is created
+                    val e = Entity(pixelData, 0u)
+                    if (activeScene.world.contains(e)) e else null
+                }
+            }
         }
 
         framebuffer.unbind()
@@ -204,6 +207,15 @@ class EditorLayer: Layer("Sandbox2D") {
         return true
     }
 
+    private fun onMousePressed(e: MouseButtonPressedEvent): Boolean {
+        if (e.button == MouseButton.Button0) {  // TODO: this should be MouseButton.LeftButton
+            if (viewportHovered and !ImGuizmo.isOver() and !Input.isKeyPressed(Key.Space)) {    // TODO: probably have a boolean for when the camera is moving
+                sceneHierarchyPanel.selectedEntity = hoveredEntity
+            }
+        }
+        return true
+    }
+
     override fun onEvent(e: Event) {
         if (Input.isKeyPressed(Key.Escape))
             Application.get().close()
@@ -212,6 +224,7 @@ class EditorLayer: Layer("Sandbox2D") {
 
         val dispatcher = EventDispatcher(e)
         dispatcher.dispatch<KeyPressedEvent>(::onKeyPressed)
+        dispatcher.dispatch<MouseButtonPressedEvent>(::onMousePressed)
 
     }
 

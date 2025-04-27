@@ -66,7 +66,7 @@ class WindowsWindow(props: WindowProps) : Window {
         ctx.init()
 
         // enable v-sync
-        setVSync(true)
+        setVSync(false)
 
         // set GLFW callbacks
         glfwSetWindowSizeCallback(windowHandle) { _, newWidth, newHeight ->
