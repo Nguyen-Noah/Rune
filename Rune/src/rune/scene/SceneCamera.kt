@@ -76,6 +76,7 @@ class SceneCamera : RuneCamera() {
     }
 
     fun setViewportSize(width: Int, height: Int) {
+        //require(width > 0 && height > 0)      TODO: make this true when loading
         aspectRatio = width.toFloat() / height.toFloat()
         recalculateProjection()
     }

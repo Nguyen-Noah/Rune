@@ -19,7 +19,7 @@ class CameraComponent(
     override fun World.onAdd(entity: Entity) {
         val scene = this.inject<Scene>()
         val cameraComp = entity[CameraComponent]
-        if (!cameraComp.fixedAspectRatio) {
+        if ((!cameraComp.fixedAspectRatio) || (scene.viewportWidth != 0 && scene.viewportHeight != 0)) {
             cameraComp.camera.setViewportSize(scene.viewportWidth, scene.viewportHeight)
         }
     }

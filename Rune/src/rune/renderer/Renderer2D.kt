@@ -5,11 +5,16 @@ import glm_.mat4x4.Mat4
 import glm_.vec2.Vec2
 import glm_.vec3.Vec3
 import glm_.vec4.Vec4
+import org.lwjgl.system.MemoryUtil
 import rune.components.SpriteRendererComponent
+
+val FLOAT_MAT4_SIZE = 16 * 4
 
 class Renderer2D {
     companion object {
         private val data: Renderer2DData = Renderer2DData()
+
+        data class CameraData(var viewProjection: Mat4 = Mat4(1f))
 
         data class Renderer2DData(
             var vao: VertexArray? = null,
@@ -33,6 +38,8 @@ class Renderer2D {
             val quadVertexPositions: Array<Vec4?> = arrayOfNulls(4),
         ) {
             val stats: Statistics = Statistics()
+            val cameraBuffer: CameraData = CameraData()
+            val cameraUniformBuffer: UniformBuffer = UniformBuffer.create(FLOAT_MAT4_SIZE, 0)
 
             override fun equals(other: Any?): Boolean {
                 if (this === other) return true
@@ -75,6 +82,8 @@ class Renderer2D {
             }
             data.quadVertexWriter = VertexBufferWriter(data.maxVertices, data.quadLayout!!)
 
+            data.vbo = VertexBuffer.create(data.maxVertices * data.quadLayout!!.stride)
+
             // index buffer
             val indices = IntArray(data.maxIndices)
             var offset = 0
@@ -89,14 +98,7 @@ class Renderer2D {
 
                 offset += 4
             }
-
-            data.vbo = VertexBuffer.create(data.maxVertices * data.quadLayout!!.stride)
             val ibo = IndexBuffer.create(indices, data.maxIndices)
-
-            // creating and binding the default white texture
-            data.whiteTex = Texture2D.create(1, 1)
-            data.whiteTex?.setData(0xffffffff.toInt(), 4)
-            data.textureSlots[0] = data.whiteTex
 
             // TODO: maybe mix this bufferLayout stuff into the VertexBufferWriter
             data.vao = VertexArray.create(data.vbo!!, bufferLayout {
@@ -106,8 +108,13 @@ class Renderer2D {
                 attribute("a_TexIndex", 1)
                 attribute("a_TilingFactor", 1)
                 attribute("a_EntityID", 1)
-            })
-            data.vao!!.setIndexBuffer(ibo)
+            }).apply { setIndexBuffer(ibo) }
+
+            // creating and binding the default white texture
+            data.whiteTex = Texture2D.create(1, 1).also {
+                it.setData(0xffffffff.toInt(), 4)
+                data.textureSlots[0] = it
+            }
 
             data.texShader = Shader.create("assets/shaders/Texture.glsl")
 
@@ -117,20 +124,17 @@ class Renderer2D {
             data.quadVertexPositions[3] = Vec4(-0.5f,  0.5f, 0f, 1f)
         }
 
-        fun shutdown() {
-
-        }
+        fun shutdown() { }
 
         fun beginScene(camera: EditorCamera) {
-            val viewProj = camera.getViewProjection()
-
-            data.texShader?.bind()
-            data.texShader?.uploadUniform {
-                uniform("u_ViewProjection", viewProj)
+            data.cameraBuffer.viewProjection = camera.getViewProjection()
+            MemoryUtil.memAlloc(FLOAT_MAT4_SIZE).apply {
+                data.cameraBuffer.viewProjection to this
+                data.cameraUniformBuffer.setData(this)
+                MemoryUtil.memFree(this)
             }
 
-            data.quadVertexWriter?.reset()
-            data.quadIndexCount = 0
+            startBatch()
         }
 
         // TODO: remove
@@ -144,28 +148,19 @@ class Renderer2D {
                 uniform("u_Textures", samplers)
             }
 
-            data.quadVertexWriter?.reset()
-            data.quadIndexCount = 0
-
-            data.textureSlotIndex = 1
+            startBatch()
         }
 
         fun beginScene(camera: RuneCamera, transform: Mat4) {
-            // initializes an array with [0, 1, 2, ... data.maxTextureSlots - 1]
-            val samplers = IntArray(data.maxTextureSlots) { it }
-
-            val viewProj = camera.projection * glm.inverse(transform)
-
-            data.texShader?.bind()
-            data.texShader?.uploadUniform {
-                uniform("u_ViewProjection", viewProj)
-                uniform("u_Textures", samplers)
+            data.cameraBuffer.viewProjection = camera.projection * glm.inverse(transform)
+            MemoryUtil.memAlloc(FLOAT_MAT4_SIZE).apply {
+                data.cameraBuffer.viewProjection to this
+                flip()
+                data.cameraUniformBuffer.setData(this)
+                MemoryUtil.memFree(this)
             }
 
-            data.quadVertexWriter?.reset()
-            data.quadIndexCount = 0
-
-            data.textureSlotIndex = 1
+            startBatch()
         }
 
         fun endScene() {
@@ -175,7 +170,9 @@ class Renderer2D {
         }
 
         private fun flush() {
-            // bind textures
+            if (data.quadIndexCount == 0) return
+            data.texShader!!.bind()
+
             for ((i, texture) in data.textureSlots.withIndex()) {
                 texture?.bind(i)
             }
@@ -184,20 +181,23 @@ class Renderer2D {
             data.stats.drawCalls++
         }
 
-        private fun flushAndReset() {
-            endScene()
-
+        private fun startBatch() {
             data.quadVertexWriter?.reset()
             data.quadIndexCount = 0
 
             data.textureSlotIndex = 1
         }
 
+        private fun nextBatch() {
+            endScene()
+            startBatch()
+        }
+
         // primitives
         private fun drawQuadInternal(position: Vec3, size: Vec2, rotation: Float = 0f, color: Vec4 = Vec4(1f), texture: Texture2D? = null, tilingFactor: Float = 1f) {
             // 1. if we are out of space, flush
             if (data.quadIndexCount >= data.maxIndices) {
-                flushAndReset()
+                nextBatch()
             }
 
             // 2. figure out tex index
@@ -290,7 +290,7 @@ class Renderer2D {
 
         fun drawQuad(transform: Mat4, color: Vec4, entityId: Int = -1) {
             if (data.quadIndexCount >= data.maxIndices) {
-                flushAndReset()
+                nextBatch()
             }
 
             val texCoords: Array<Vec2> = arrayOf(
@@ -319,7 +319,7 @@ class Renderer2D {
         }
         fun drawQuad(transform: Mat4, texture: Texture2D, tilingFactor: Float = 1f, tintColor: Vec4 = Vec4(1f), entityId: Int = -1) {
             if (data.quadIndexCount >= data.maxIndices) {
-                flushAndReset()
+                nextBatch()
             }
 
             val texCoords: Array<Vec2> = arrayOf(
@@ -339,7 +339,7 @@ class Renderer2D {
 
             if (textureIndex == 0f) {
                 if (data.textureSlotIndex >= data.maxTextureSlots) {
-                    flushAndReset()
+                    nextBatch()
                 }
 
                 textureIndex = data.textureSlotIndex.toFloat()

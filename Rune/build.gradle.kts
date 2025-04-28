@@ -62,7 +62,7 @@ dependencies {
     implementation("org.lwjgl:lwjgl-remotery")
     implementation("org.lwjgl:lwjgl-rpmalloc")
     implementation("org.lwjgl:lwjgl-shaderc")
-    implementation("org.lwjgl:lwjgl-spvc")
+    implementation("org.lwjgl:lwjgl-spvc:$lwjglVersion")
     implementation("org.lwjgl:lwjgl-sse")
     implementation("org.lwjgl:lwjgl-stb")
     implementation("org.lwjgl:lwjgl-tinyexr")

@@ -43,3 +43,6 @@ bin/
 
 ### Rune files ###
 *.rune
+
+### Cache ###
+/Runestone/assets/cache/
