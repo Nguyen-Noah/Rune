@@ -15,15 +15,20 @@ import imgui.flag.ImGuiTreeNodeFlags
 import imgui.type.ImString
 import rune.components.*
 import rune.imgui.RuneFonts
+import rune.renderer.Texture2D
 import rune.scene.*
+import java.nio.file.Paths
 
 class SceneHierarchyPanel(private var scene: Scene) {
     // ─── reusable scratch buffers ────────────────────────────────────────────────
-    private val tmpFloat = FloatArray(1)
+    private var tmpFloat = FloatArray(1)
     private val tmpColor = FloatArray(4)
 
     // TODO: make this a callback in a different file and just send out onSelectedEntityChangeEvent or something
     var selectedEntity: Entity? = null
+
+    // TODO: remove this lmao -> see ContentBrowserPanel.kt
+    private val assetsDirectory: String = "assets"
 
     fun setContext(scene: Scene) {
         this.scene = scene
@@ -135,8 +140,10 @@ class SceneHierarchyPanel(private var scene: Scene) {
         if (entity.has(TagComponent)) {
             val tagComp = entity[TagComponent]
 
-            val newString = ImString(tagComp.tag, 256)
+            var newString = ImString(tagComp.tag, 256)
             if (ImGui.inputText("##Tag", newString)) {
+                if (newString.isEmpty)
+                    newString = ImString(tagComp.tag, 256)       // TODO: probably dont need to reinitialize
                 tagComp.tag = newString.toString()
             }
         }
@@ -178,8 +185,15 @@ class SceneHierarchyPanel(private var scene: Scene) {
             val cam     = camComp.camera
 
             val oldP = camComp.primary
-            if (ImGui.checkbox("Primary", oldP))
+            if (ImGui.checkbox("Primary", oldP)) {
+                with (scene.world) {
+                    family { all(CameraComponent) }.forEach {
+                        it[CameraComponent].primary = false
+                    }
+                }
                 camComp.primary = !oldP
+            }
+
 
             val types = arrayOf("Perspective", "Orthographic")
             var curr  = types[cam.projectionType.ordinal]
@@ -241,6 +255,21 @@ class SceneHierarchyPanel(private var scene: Scene) {
                 src.color.b = tmpColor[2]
                 src.color.a = tmpColor[3]
             }
+
+            // texture
+            ImGui.button("Texture", ImVec2(100f, 0f))
+            if (ImGui.beginDragDropTarget()) {
+                val payload: String? = ImGui.acceptDragDropPayload("CONTENT_BROWSER_ITEM")
+                payload?.let {
+                    src.texture = Texture2D.create("$assetsDirectory/$payload")
+                }
+                ImGui.endDragDropTarget()
+            }
+
+            // tiling factor
+            tmpFloat = floatArrayOf(1f)
+            ImGui.dragFloat("Tiling Factor", tmpFloat, 0.1f, 0f, 100f)
+            src.tilingFactor = tmpFloat.first()
         }
     }
 

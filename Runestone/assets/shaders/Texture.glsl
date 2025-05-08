@@ -19,19 +19,20 @@ struct VertexOutput
 {
     vec4 color;
     vec2 texCoord;
-    float texIndex;
     float tilingFactor;
 };
 
 layout (location = 0) out VertexOutput Output;
-layout (location = 4) out flat int v_EntityID;
+layout (location = 3) out flat float v_TexIndex;        // cant put flat vars in struct
+layout (location = 4) out flat int v_EntityID;          // flat means no interpolation
 
 void main()
 {
     Output.color = a_Color;
     Output.texCoord = a_TexCoord;
-    Output.texIndex = a_TexIndex;
     Output.tilingFactor = a_TilingFactor;
+
+    v_TexIndex = a_TexIndex;
     v_EntityID = a_EntityID;
 
     gl_Position = u_ViewProjection * vec4(a_Position, 1.0);
@@ -47,11 +48,11 @@ struct VertexOutput
 {
     vec4 color;
     vec2 texCoord;
-    float texIndex;
     float tilingFactor;
 };
 
 layout (location = 0) in VertexOutput Input;
+layout (location = 3) in flat float v_TexIndex;
 layout (location = 4) in flat int v_EntityID;
 
 layout (binding = 0) uniform sampler2D u_Textures[32];
@@ -60,7 +61,7 @@ void main()
 {
     vec4 texColor = Input.color;
 
-    switch(int(Input.texIndex))
+    switch(int(v_TexIndex))
     {
         case  0: texColor *= texture(u_Textures[ 0], Input.texCoord * Input.tilingFactor); break;
         case  1: texColor *= texture(u_Textures[ 1], Input.texCoord * Input.tilingFactor); break;

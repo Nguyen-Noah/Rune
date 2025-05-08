@@ -6,14 +6,14 @@ import glm_.vec2.Vec2
 import glm_.vec4.Vec4
 import imgui.ImGui
 import imgui.ImVec2
+import imgui.ImVec4
 import imgui.extension.imguizmo.ImGuizmo
 import imgui.extension.imguizmo.flag.Mode
 import imgui.extension.imguizmo.flag.Operation
-import imgui.flag.ImGuiConfigFlags
-import imgui.flag.ImGuiDockNodeFlags
-import imgui.flag.ImGuiStyleVar
-import imgui.flag.ImGuiWindowFlags
+import imgui.flag.*
+import imgui.internal.ImGuiWindow
 import imgui.type.ImBoolean
+import org.lwjgl.opengl.GL11.GL_LINEAR
 import rune.components.TagComponent
 import rune.components.TransformComponent
 import rune.core.*
@@ -25,10 +25,27 @@ import rune.renderer.*
 import rune.scene.Scene
 import rune.scene.serialization.SceneSerializer
 import rune.utils.decomposeTransform
+import runestone.panels.ContentBrowserPanel
 import runestone.panels.SceneHierarchyPanel
+import java.nio.file.Path
+import java.nio.file.Paths
+
+// TODO: create a scene renderer ref: https://youtu.be/U16wc8w8IA4?si=KzL82TfupQIPOq5z&t=2419
 
 class EditorLayer: Layer("Sandbox2D") {
-    private lateinit var texture: Texture2D
+    enum class SceneState(val state: Int) {
+        Play(0),
+        Edit(1),
+        Stop(2),
+        Simulate(3),
+    }
+
+    private val texture: Texture2D = Texture2D.create("assets/textures/checkerboard.png")
+
+    // editor resources
+    private val iconPlay = Texture2D.create("resources/Icons/PlayButton.png", filter = GL_LINEAR)
+    private val iconStop = Texture2D.create("resources/Icons/StopButton.png", filter = GL_LINEAR)
+    private var icon: Texture2D = iconPlay
 
     private lateinit var framebuffer: Framebuffer
     private var viewportSize: Vec2 = Vec2(0f)
@@ -37,8 +54,10 @@ class EditorLayer: Layer("Sandbox2D") {
     private var viewportHovered = false
 
     private lateinit var sceneHierarchyPanel: SceneHierarchyPanel
+    private lateinit var contentBrowserPanel: ContentBrowserPanel
 
     private var activeScene = Scene()
+    private var sceneState = SceneState.Edit
 
     private var gizmoType = -1
     val editorCamera = EditorCamera(30f, 1778f, 0.1f, 1000f)
@@ -47,9 +66,10 @@ class EditorLayer: Layer("Sandbox2D") {
 
     private val viewportBounds: Array<Vec2> = Array(2) { Vec2() }
 
-    override fun onAttach() {
-        texture = Texture2D.create("assets/textures/checkerboard.png")
+    // TODO: remove this lmao -> see ContentBrowserPanel.kt
+    private val assetsDirectory: String = "assets"
 
+    override fun onAttach() {
         val spec = framebuffer {
             width = 1280
             height = 720
@@ -100,8 +120,9 @@ class EditorLayer: Layer("Sandbox2D") {
 //        }
 //
         sceneHierarchyPanel = SceneHierarchyPanel(activeScene)
+        contentBrowserPanel = ContentBrowserPanel()
 
-        SceneSerializer(activeScene).deserialize("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\assets\\scenes\\3D.rune")
+        SceneSerializer(activeScene).deserialize("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\assets\\scenes\\Cameras.rune")
     }
 
     override fun onUpdate(dt: Float) {
@@ -116,8 +137,6 @@ class EditorLayer: Layer("Sandbox2D") {
             activeScene.onViewportResize(viewportSize.x.toInt(), viewportSize.y.toInt())
         }
 
-        editorCamera.onUpdate(dt)
-
         // Render
         Renderer2D.resetStats()
         framebuffer.bind()
@@ -127,7 +146,19 @@ class EditorLayer: Layer("Sandbox2D") {
         // clear entity ID attachment to -1
         framebuffer.clearAttachment(1, -1)
 
-        activeScene.onUpdateEditor(dt, editorCamera)
+        when (sceneState) {
+            SceneState.Play -> {
+                activeScene.onUpdateRuntime(dt)
+            }
+            SceneState.Edit -> {
+                editorCamera.onUpdate(dt)
+
+                activeScene.onUpdateEditor(dt, editorCamera)
+            }
+            else -> {}
+        }
+
+        //activeScene.onUpdateEditor(dt, editorCamera)
         //activeScene.onUpdateRuntime(dt)
 
         val mp = ImGui.getMousePos()
@@ -162,14 +193,17 @@ class EditorLayer: Layer("Sandbox2D") {
         val filePath = nfd.openFile()
 
         if (filePath.isNotEmpty()) {
-            activeScene = Scene()
-            activeScene.onViewportResize(viewportSize.x.toInt(), viewportSize.y.toInt())
-            sceneHierarchyPanel.setContext(activeScene)
-
-            // deserializing the scene
-            val sceneSerializer = SceneSerializer(activeScene)
-            sceneSerializer.deserialize(filePath)
+            openScene(Paths.get(filePath))
         }
+    }
+
+    private fun openScene(path: Path) {
+        activeScene = Scene()
+        activeScene.onViewportResize(viewportSize.x.toInt(), viewportSize.y.toInt())
+        sceneHierarchyPanel.setContext(activeScene)
+
+        // deserializing the scene
+        SceneSerializer(activeScene).deserialize(path.toString())
     }
 
     private fun saveSceneAs() {
@@ -225,7 +259,14 @@ class EditorLayer: Layer("Sandbox2D") {
         val dispatcher = EventDispatcher(e)
         dispatcher.dispatch<KeyPressedEvent>(::onKeyPressed)
         dispatcher.dispatch<MouseButtonPressedEvent>(::onMousePressed)
+    }
 
+    private fun onScenePlay() {
+        sceneState = SceneState.Play
+    }
+
+    private fun onSceneStop() {
+        sceneState = SceneState.Edit
     }
 
     override fun onImGuiRender() {
@@ -308,7 +349,7 @@ class EditorLayer: Layer("Sandbox2D") {
 
 
         sceneHierarchyPanel.onImGuiRender()
-
+        contentBrowserPanel.onImGuiRender()
 
         ImGui.begin("Stats")
 
@@ -355,6 +396,15 @@ class EditorLayer: Layer("Sandbox2D") {
             ImVec2(0f, 1f),
             ImVec2(1f, 0f)
         )
+
+        // drag n drop target
+        if (ImGui.beginDragDropTarget()) {
+            val payload: String? = ImGui.acceptDragDropPayload("CONTENT_BROWSER_ITEM")
+            payload?.let {
+                openScene(Paths.get("$assetsDirectory/$it"))
+            }
+            ImGui.endDragDropTarget()
+        }
 
         // gizmos
         if (gizmoType != -1) {
@@ -418,6 +468,43 @@ class EditorLayer: Layer("Sandbox2D") {
         ImGui.end()
         ImGui.popStyleVar()
 
+        UI_Toolbar()
+
+        ImGui.end()
+    }
+
+    private fun UI_Toolbar() {
+
+        ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, ImVec2(0f, 2f))
+        ImGui.pushStyleVar(ImGuiStyleVar.ItemInnerSpacing, ImVec2(0f, 0f))
+
+        ImGui.pushStyleColor(ImGuiCol.Button, ImVec4(0f, 0f, 0f, 0f))
+
+        val colors = ImGui.getStyle().colors
+        val buttonHovered = colors[ImGuiCol.ButtonHovered]
+        ImGui.pushStyleColor(ImGuiCol.ButtonHovered, ImVec4(buttonHovered.x, buttonHovered.y, buttonHovered.z, 0.5f))     // TODO: move this to extern file
+
+        val buttonActive = colors[ImGuiCol.ButtonActive]
+        ImGui.pushStyleColor(ImGuiCol.ButtonActive, ImVec4(buttonActive.x, buttonActive.y, buttonActive.z, 0.5f))     // TODO: move this to extern file
+
+        val flags = ImGuiWindowFlags.NoDecoration or ImGuiWindowFlags.NoScrollbar or ImGuiWindowFlags.NoScrollWithMouse
+        ImGui.begin("##toolbar", null, flags)
+
+        val size = ImGui.getWindowHeight() - 4
+        icon = if (sceneState == SceneState.Edit) iconPlay else iconStop
+
+        ImGui.pushStyleVar(ImGuiStyleVar.FramePadding, ImVec2(0f, 0f))
+        ImGui.setCursorPosX((ImGui.getWindowContentRegionMax().x * 0.5f) - (size * 0.5f))
+        if (ImGui.imageButton("##button", icon.rendererID.toLong(), ImVec2(size, size))) {
+            if (sceneState == SceneState.Edit) {
+                onScenePlay()
+            } else if (sceneState == SceneState.Play) {
+                onSceneStop()
+            }
+        }
+
+        ImGui.popStyleVar(3)
+        ImGui.popStyleColor(3)
         ImGui.end()
     }
 }

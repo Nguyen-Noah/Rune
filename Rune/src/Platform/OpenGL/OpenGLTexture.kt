@@ -15,7 +15,7 @@ class OpenGLTexture : Texture2D {
     private val internalFormat: Int
     private val dataFormat: Int
 
-    constructor(width: Int, height: Int) {
+    constructor(width: Int, height: Int, filter: Int) {
         this.width = width
         this.height = height
         internalFormat = GL_RGBA8
@@ -25,13 +25,14 @@ class OpenGLTexture : Texture2D {
         glTextureStorage2D(rendererID, 1, internalFormat, width, height)
 
         glTextureParameteri(rendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        glTextureParameteri(rendererID, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+        glTextureParameteri(rendererID, GL_TEXTURE_MAG_FILTER, filter)
+        //glTextureParameteri(rendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 
         glTextureParameteri(rendererID, GL_TEXTURE_WRAP_S, GL_REPEAT)
         glTextureParameteri(rendererID, GL_TEXTURE_WRAP_T, GL_REPEAT)
     }
 
-    constructor(path: String) {
+    constructor(path: String, filter: Int) {
         MemoryStack.stackPush().use { stack ->
             // allocate buffers for image dimensions and channels
             val w: IntBuffer = stack.mallocInt(1)
@@ -61,7 +62,8 @@ class OpenGLTexture : Texture2D {
             glTextureStorage2D(rendererID, 1, internalFormat, width, height)
 
             glTextureParameteri(rendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-            glTextureParameteri(rendererID, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+            glTextureParameteri(rendererID, GL_TEXTURE_MAG_FILTER, filter)
+            //glTextureParameteri(rendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 
             glTextureParameteri(rendererID, GL_TEXTURE_WRAP_S, GL_REPEAT)
             glTextureParameteri(rendererID, GL_TEXTURE_WRAP_T, GL_REPEAT)

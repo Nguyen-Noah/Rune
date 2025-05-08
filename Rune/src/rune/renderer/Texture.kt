@@ -1,5 +1,6 @@
 package rune.renderer
 
+import org.lwjgl.opengl.GL11.GL_LINEAR
 import rune.platforms.opengl.OpenGLTexture
 import rune.renderer.Renderer
 import rune.renderer.RendererPlatform
@@ -15,15 +16,15 @@ interface Texture {
 
 interface Texture2D : Texture {
     companion object {
-        fun create(path: String): Texture2D {
+        fun create(path: String, filter: Int = GL_LINEAR): Texture2D {
             return when (Renderer.getAPI()) {
-                RendererPlatform.OpenGL -> OpenGLTexture(path)
+                RendererPlatform.OpenGL -> OpenGLTexture(path, filter)
                 RendererPlatform.None   -> TODO()
             }
         }
-        fun create(width: Int, height: Int): Texture2D {
+        fun create(width: Int, height: Int, filter: Int = GL_LINEAR): Texture2D {
             return when (Renderer.getAPI()) {
-                RendererPlatform.OpenGL -> OpenGLTexture(width, height)
+                RendererPlatform.OpenGL -> OpenGLTexture(width, height, filter)
                 RendererPlatform.None   -> TODO()
             }
         }

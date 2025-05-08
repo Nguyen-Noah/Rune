@@ -137,7 +137,18 @@ class Renderer2D {
             startBatch()
         }
 
-        // TODO: remove
+        fun beginScene(camera: RuneCamera, transform: Mat4) {
+            data.cameraBuffer.viewProjection = camera.projection * glm.inverse(transform)
+            MemoryUtil.memAlloc(FLOAT_MAT4_SIZE).apply {
+                data.cameraBuffer.viewProjection to this
+                data.cameraUniformBuffer.setData(this)
+                MemoryUtil.memFree(this)
+            }
+
+            startBatch()
+        }
+
+        // TODO: remove -> this only breaks sandbox and particle thing
         fun beginScene(camera: OrthographicCamera) {
             // initializes an array with [0, 1, 2, ... data.maxTextureSlots - 1]
             val samplers = IntArray(data.maxTextureSlots) { it }
@@ -146,18 +157,6 @@ class Renderer2D {
             data.texShader?.uploadUniform {
                 uniform("u_ViewProjection", camera.getViewProjectionMatrix())
                 uniform("u_Textures", samplers)
-            }
-
-            startBatch()
-        }
-
-        fun beginScene(camera: RuneCamera, transform: Mat4) {
-            data.cameraBuffer.viewProjection = camera.projection * glm.inverse(transform)
-            MemoryUtil.memAlloc(FLOAT_MAT4_SIZE).apply {
-                data.cameraBuffer.viewProjection to this
-                flip()
-                data.cameraUniformBuffer.setData(this)
-                MemoryUtil.memFree(this)
             }
 
             startBatch()
@@ -353,7 +352,8 @@ class Renderer2D {
                     color = tintColor,
                     uv = texCoords[i],
                     texId = textureIndex,
-                    tilingFactor = tilingFactor
+                    tilingFactor = tilingFactor,
+                    entityId = entityId
                 )
             }
 
@@ -400,7 +400,9 @@ class Renderer2D {
         }
 
         fun drawSprite(transform: Mat4, src: SpriteRendererComponent, entityId: Int) {
-            drawQuad(transform, src.color, entityId)
+            src.texture?.let {
+                drawQuad(transform, src.texture!!, src.tilingFactor, src.color, entityId)
+            } ?: drawQuad(transform, src.color, entityId)
         }
 
 

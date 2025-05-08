@@ -98,6 +98,8 @@ class SceneSerializer(private val scene: Scene) {
                 }
             }
         }
+
+        Logger.info("Loaded scene: ${filepath.split("\\").last()}")
         return true
     }
     fun deserializeRuntime(filepath: String): Boolean {
