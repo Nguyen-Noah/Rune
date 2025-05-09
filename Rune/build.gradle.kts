@@ -18,6 +18,7 @@ val fleksVersion = "2.11"
 val kamlVersion = "0.77.0"
 val lwjglNatives = "natives-windows"
 val ktxVersion = "1.13.1-rc1"
+val gdxVersion = "1.13.1"
 
 dependencies {
     // Kotlin stdlib
@@ -70,6 +71,7 @@ dependencies {
     runtimeOnly("org.lwjgl:lwjgl-shaderc::$lwjglNatives")
     runtimeOnly("org.lwjgl:lwjgl-spvc::$lwjglNatives")
     runtimeOnly("org.lwjgl:lwjgl-stb::$lwjglNatives")
+    runtimeOnly("com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop")
 
     // JOML
     implementation("org.joml:joml:$jomlVersion")
@@ -88,6 +90,7 @@ dependencies {
 
     // Physics
     implementation("io.github.libktx:ktx-box2d:$ktxVersion")
+    implementation("com.badlogicgames.gdx:gdx-box2d:$gdxVersion")
 }
 
 // (Optional) If you’re using a non-standard src folder:

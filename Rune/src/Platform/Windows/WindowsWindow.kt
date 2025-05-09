@@ -153,6 +153,7 @@ class WindowsWindow(props: WindowProps) : Window {
     override fun setVSync(enabled: Boolean) {
         if (enabled) glfwSwapInterval(1)
         else glfwSwapInterval(0)
+        Logger.warn("V-Sync enabled: $enabled")
     }
 
     override fun isVSync(): Boolean {

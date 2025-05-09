@@ -1,15 +1,24 @@
 package rune.scene
 
+import com.badlogic.gdx.math.Vector2
+import com.badlogic.gdx.physics.box2d.FixtureDef
 import com.github.quillraven.fleks.Entity
 import com.github.quillraven.fleks.World
 import com.github.quillraven.fleks.configureWorld
 import glm_.mat4x4.Mat4
+import ktx.box2d.createWorld
 import rune.components.*
 import rune.core.UUID
 import rune.renderer.EditorCamera
 import rune.renderer.Renderer2D
 import rune.renderer.RuneCamera
 import rune.scene.systems.ScriptSystem
+
+import ktx.box2d.BodyDefinition
+import ktx.box2d.body
+import ktx.box2d.box
+
+typealias PhysicsWorld = com.badlogic.gdx.physics.box2d.World
 
 class Scene {
     private val entityMap = hashMapOf<UUID, Entity>()
@@ -31,6 +40,8 @@ class Scene {
             add(ScriptSystem())
         }
     }
+
+    var physicsWorld: PhysicsWorld? = null
 
     fun destroyEntity(entity: Entity) {
         with(world) {
@@ -73,12 +84,69 @@ class Scene {
         }
     }
 
+    fun onRuntimeStart() {
+        physicsWorld = createWorld(Vector2(0f, -9.8f))
+
+        // creating physics bodies
+        with (world) {
+            family { all(RigidBody2DComponent) }.forEach {
+                val transform = it[TransformComponent]
+                val rb2d = it[RigidBody2DComponent]
+
+                val body = physicsWorld!!.body(type = rb2d.type.toBox2d()) {
+                    position.set(transform.translation.x, transform.translation.y)
+                    angle = transform.rotation.z
+                    fixedRotation = rb2d.fixedRotation
+
+                    if (it.has(BoxCollider2DComponent)) {
+                        val bc2d = it[BoxCollider2DComponent]
+
+                        box(
+                            width = bc2d.size.x * transform.scale.x,
+                            height = bc2d.size.y * transform.scale.y
+                        ) {
+                            density = bc2d.density
+                            friction = bc2d.friction
+                            restitution = bc2d.restitution
+                            // TODO: figure out how to set restitutionThreshold (not avail in ktx-box2d:1.13.3-rc1
+                        }
+                    }
+                }
+
+                rb2d.runtimeBody = body
+            }
+        }
+    }
+
+    fun onRuntimeStop() {
+        physicsWorld = null
+    }
+
     fun onUpdateRuntime(dt: Float) {
         // camera
         var mainCamera: RuneCamera? = null
         var transform: Mat4? = null
 
         world.update(dt)
+
+        // physics
+        val velocityIterations = 6      // how often is it doing calculations
+        val positionIterations = 2      // TODO: expose these to the editor
+        physicsWorld!!.step(dt, velocityIterations, positionIterations)
+
+        // retrieve transform from box2d
+        world.family { all(RigidBody2DComponent) }.forEach {
+            val physicsTransform = it[TransformComponent]
+            val rb2d = it[RigidBody2DComponent]
+
+            rb2d.runtimeBody?.let { body ->
+                val position = body.position
+                physicsTransform.translation.x = position.x
+                physicsTransform.translation.y = position.y
+                physicsTransform.rotation.z = body.angle
+            }
+
+        }
 
         val family = world.family { all(TransformComponent, CameraComponent) }
         family.forEach {

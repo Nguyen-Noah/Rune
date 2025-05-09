@@ -6,7 +6,7 @@ import rune.renderer.renderer3d.mesh.Vertex
 
 object MeshFactory {
 
-    fun createBox(size: Vec3) {
+    fun Box(size: Vec3) {
         val vertices: Array<Vertex> = Array(8) { Vertex() }
 
         // positions

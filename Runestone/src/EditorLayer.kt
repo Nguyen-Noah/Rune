@@ -262,10 +262,12 @@ class EditorLayer: Layer("Sandbox2D") {
     }
 
     private fun onScenePlay() {
+        activeScene.onRuntimeStart()
         sceneState = SceneState.Play
     }
 
     private fun onSceneStop() {
+        activeScene.onRuntimeStop()
         sceneState = SceneState.Edit
     }
 

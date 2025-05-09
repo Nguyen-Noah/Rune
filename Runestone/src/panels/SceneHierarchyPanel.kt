@@ -5,6 +5,7 @@ import com.github.quillraven.fleks.ComponentType
 import com.github.quillraven.fleks.Entity
 import com.github.quillraven.fleks.World
 import glm_.glm
+import glm_.vec2.Vec2
 import glm_.vec3.Vec3
 import imgui.ImGui
 import imgui.ImVec2
@@ -14,15 +15,16 @@ import imgui.flag.ImGuiStyleVar
 import imgui.flag.ImGuiTreeNodeFlags
 import imgui.type.ImString
 import rune.components.*
+import rune.core.Logger
 import rune.imgui.RuneFonts
 import rune.renderer.Texture2D
 import rune.scene.*
-import java.nio.file.Paths
 
 class SceneHierarchyPanel(private var scene: Scene) {
     // ─── reusable scratch buffers ────────────────────────────────────────────────
-    private var tmpFloat = FloatArray(1)
-    private val tmpColor = FloatArray(4)
+    private var tmpFloat  = FloatArray(1)
+    private val tmpColor  = FloatArray(4)
+    private var tmpFloat2 = FloatArray(2)
 
     // TODO: make this a callback in a different file and just send out onSelectedEntityChangeEvent or something
     var selectedEntity: Entity? = null
@@ -156,13 +158,33 @@ class SceneHierarchyPanel(private var scene: Scene) {
 
         if (ImGui.beginPopup("AddComponent")) {
             selectedEntity?.configure {
-                if (ImGui.menuItem("Camera")) {
-                    it += CameraComponent()
-                    ImGui.closeCurrentPopup()
+                if (!it.has(CameraComponent)) {
+                    if (ImGui.menuItem("Camera")) {
+                        it += CameraComponent()
+                        ImGui.closeCurrentPopup()
+                    }
                 }
-                if (ImGui.menuItem("Sprite Renderer")) {
-                    it += SpriteRendererComponent()
-                    ImGui.closeCurrentPopup()
+
+                if (!it.has(SpriteRendererComponent)) {
+                    if (ImGui.menuItem("Sprite Renderer")) {
+                        it += SpriteRendererComponent()
+                        ImGui.closeCurrentPopup()
+                    }
+                }
+
+                // physics
+                if (!it.has(RigidBody2DComponent)) {
+                    if (ImGui.menuItem("Rigidbody 2D")) {
+                        it += RigidBody2DComponent()
+                        ImGui.closeCurrentPopup()
+                    }
+                }
+
+                if (!it.has(BoxCollider2DComponent)) {
+                    if (ImGui.menuItem("Box Collider 2D")) {
+                        it += BoxCollider2DComponent()
+                        ImGui.closeCurrentPopup()
+                    }
                 }
             }
             ImGui.endPopup()
@@ -270,6 +292,54 @@ class SceneHierarchyPanel(private var scene: Scene) {
             tmpFloat = floatArrayOf(1f)
             ImGui.dragFloat("Tiling Factor", tmpFloat, 0.1f, 0f, 100f)
             src.tilingFactor = tmpFloat.first()
+        }
+
+        drawComponent<RigidBody2DComponent>(entity, RigidBody2DComponent, "Rigidbody 2D") { src ->
+            val types = arrayOf("Static", "Dynamic", "Kinematic")
+            var curr  = types[src.type.ordinal]
+            if (ImGui.beginCombo("Body Type", curr)) {
+                types.forEachIndexed { i, s ->
+                    val sel = curr == s
+                    if (ImGui.selectable(s, sel)) {
+                        curr = s
+                        src.type = RigidBody2DComponent.Companion.BodyType.fromInt(i)
+                    }
+                    if (sel) ImGui.setItemDefaultFocus()
+                }
+                ImGui.endCombo()
+            }
+
+            // fixed rotation
+            val oldFR = src.fixedRotation
+            if (ImGui.checkbox("Fixed Rotation", src.fixedRotation))
+                src.fixedRotation = !oldFR
+        }
+
+        drawComponent<BoxCollider2DComponent>(entity, BoxCollider2DComponent, "Rigidbody 2D") { src ->
+            tmpFloat2 = floatArrayOf(src.offset.x, src.offset.y)
+            if (ImGui.dragFloat2("Offset", tmpFloat2)) {
+                src.offset = Vec2(tmpFloat2[0], tmpFloat2[1])
+            }
+
+            tmpFloat2 = floatArrayOf(src.size.x, src.size.y)
+            if (ImGui.dragFloat2("Size", tmpFloat2)) {
+                src.size = Vec2(tmpFloat2[0], tmpFloat2[1])
+            }
+
+            tmpFloat[0] = src.density
+            if (ImGui.dragFloat("Density", tmpFloat, 0.01f, 0f, 1f)) {
+                src.density = tmpFloat[0]
+            }
+
+            tmpFloat[0] = src.friction
+            if (ImGui.dragFloat("Friction", tmpFloat, 0.01f, 0f, 1f)) {
+                src.friction = tmpFloat[0]
+            }
+
+            tmpFloat[0] = src.restitution
+            if (ImGui.dragFloat("Restitution", tmpFloat, 0.01f, 0f, 1f)) {
+                src.restitution = tmpFloat[0]
+            }
         }
     }
 
