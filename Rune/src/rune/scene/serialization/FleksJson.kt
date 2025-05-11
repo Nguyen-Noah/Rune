@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
+import kotlinx.serialization.modules.subclass
 import rune.components.*
 
 const val FORMAT_VERSION = 1
@@ -17,8 +18,9 @@ private val componentModule = SerializersModule {
         subclass(CameraComponent::class, CameraComponent.serializer())
         subclass(IDComponent::class, IDComponent.serializer())
         subclass(RigidBody2DComponent::class, RigidBody2DComponent.serializer())
-        // TODO: Put Script Component
+        // TODO: Script Component
         subclass(SpriteRendererComponent::class, SpriteRendererComponent.serializer())
+        subclass(CircleRendererComponent::class, CircleRendererComponent.serializer())
         subclass(TagComponent::class, TagComponent.serializer())
         subclass(TransformComponent::class, TransformComponent.serializer())
     }

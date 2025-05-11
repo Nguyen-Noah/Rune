@@ -8,7 +8,7 @@ import glm_.vec4.Vec4
 import org.lwjgl.system.MemoryUtil
 import rune.components.SpriteRendererComponent
 
-val FLOAT_MAT4_SIZE = 16 * 4
+const val FLOAT_MAT4_SIZE = 16 * 4
 
 class Renderer2D {
     companion object {
@@ -17,25 +17,34 @@ class Renderer2D {
         data class CameraData(var viewProjection: Mat4 = Mat4(1f))
 
         data class Renderer2DData(
-            var vao: VertexArray? = null,
-            var vbo: VertexBuffer? = null,
-            var texShader: Shader? = null,
+            // * quads
+            var quadVao: VertexArray? = null,
+            var quadVbo: VertexBuffer? = null,
+            var quadShader: Shader = Shader.create("assets/shaders/Renderer2D_Quad.glsl"),
             var whiteTex: Texture2D? = null,
+
+            var quadIndexCount: Int = 0,
+            var quadLayout: VertexLayout? = null,
+            var quadVertexWriter: VertexBufferWriter? = null,
+            val quadVertexPositions: Array<Vec4?> = arrayOfNulls(4),
+
+            // * circles
+            var circleVao: VertexArray? = null,
+            var circleVbo: VertexBuffer? = null,
+            var circleShader: Shader = Shader.create("assets/shaders/Renderer2D_Circle.glsl"),
+
+            var circleIndexCount: Int = 0,
+            var circleLayout: VertexLayout? = null,
+            var circleVertexWriter: VertexBufferWriter? = null,
+            val circleVertexPositions: Array<Vec4?> = arrayOfNulls(4),
 
             val maxQuads: Int = 10000,
             val maxVertices: Int = maxQuads * 4,
             val maxIndices: Int = maxQuads * 6,
-            val maxTextureSlots: Int = 32,      // TODO: RenderCaps
 
-            var quadIndexCount: Int = 0,
-
-            var quadLayout: VertexLayout? = null,
-            var quadVertexWriter: VertexBufferWriter? = null,
-
-            val textureSlots: Array<Texture2D?> = arrayOfNulls(maxTextureSlots),
             var textureSlotIndex: Int = 1,  // 0 = white texture
-
-            val quadVertexPositions: Array<Vec4?> = arrayOfNulls(4),
+            val maxTextureSlots: Int = 32,      // TODO: RenderCaps
+            val textureSlots: Array<Texture2D?> = arrayOfNulls(maxTextureSlots),
         ) {
             val stats: Statistics = Statistics()
             val cameraBuffer: CameraData = CameraData()
@@ -47,8 +56,8 @@ class Renderer2D {
 
                 other as Renderer2DData
 
-                if (vao != other.vao) return false
-                if (texShader != other.texShader) return false
+                if (quadVao != other.quadVao) return false
+                if (quadShader != other.quadShader) return false
                 if (whiteTex != other.whiteTex) return false
                 if (maxQuads != other.maxQuads) return false
                 if (maxVertices != other.maxVertices) return false
@@ -59,8 +68,8 @@ class Renderer2D {
             }
 
             override fun hashCode(): Int {
-                var result = vao?.hashCode() ?: 0
-                result = 31 * result + (texShader?.hashCode() ?: 0)
+                var result = quadVao?.hashCode() ?: 0
+                result = 31 * result + (quadShader.hashCode() ?: 0)
                 result = 31 * result + (whiteTex?.hashCode() ?: 0)
                 result = 31 * result + maxQuads
                 result = 31 * result + maxVertices
@@ -71,7 +80,7 @@ class Renderer2D {
         }
 
         fun init() {
-            // describing the vertex
+            // describing the quad vertex
             data.quadLayout = VertexLayout.build {
                 attr(0, BufferType.Float3)  // position
                 attr(1, BufferType.Float4)  // color
@@ -81,8 +90,18 @@ class Renderer2D {
                 attr(5, BufferType.Int1)    // entityID
             }
             data.quadVertexWriter = VertexBufferWriter(data.maxVertices, data.quadLayout!!)
+            data.quadVbo = VertexBuffer.create(data.maxVertices * data.quadLayout!!.stride)
 
-            data.vbo = VertexBuffer.create(data.maxVertices * data.quadLayout!!.stride)
+            data.circleLayout = VertexLayout.build {
+                attr(0, BufferType.Float3)  // worldPosition
+                attr(1, BufferType.Float3)  // localPosition
+                attr(2, BufferType.Float4)  // color
+                attr(3, BufferType.Float1)  // thickness
+                attr(4, BufferType.Float1)  // fade
+                attr(5, BufferType.Int1)    // entityID
+            }
+            data.circleVertexWriter = VertexBufferWriter(data.maxVertices, data.circleLayout!!)
+            data.circleVbo = VertexBuffer.create(data.maxVertices * data.circleLayout!!.stride)
 
             // index buffer
             val indices = IntArray(data.maxIndices)
@@ -101,7 +120,7 @@ class Renderer2D {
             val ibo = IndexBuffer.create(indices, data.maxIndices)
 
             // TODO: maybe mix this bufferLayout stuff into the VertexBufferWriter
-            data.vao = VertexArray.create(data.vbo!!, bufferLayout {
+            data.quadVao = VertexArray.create(data.quadVbo!!, bufferLayout {
                 attribute("a_Position", 3)
                 attribute("a_Color", 4)
                 attribute("a_TexCoord", 2)
@@ -110,13 +129,20 @@ class Renderer2D {
                 attribute("a_EntityID", 1)
             }).apply { setIndexBuffer(ibo) }
 
+            data.circleVao = VertexArray.create(data.circleVbo!!, bufferLayout {
+                attribute("a_WorldPosition", 3)
+                attribute("a_LocalPosition", 3)
+                attribute("a_Color", 4)
+                attribute("a_Thickness", 1)
+                attribute("a_Fade", 1)
+                attribute("a_EntityID", 1)
+            }).apply { setIndexBuffer(ibo) }
+
             // creating and binding the default white texture
             data.whiteTex = Texture2D.create(1, 1).also {
                 it.setData(0xffffffff.toInt(), 4)
                 data.textureSlots[0] = it
             }
-
-            data.texShader = Shader.create("assets/shaders/Texture.glsl")
 
             data.quadVertexPositions[0] = Vec4(-0.5f, -0.5f, 0f, 1f)
             data.quadVertexPositions[1] = Vec4( 0.5f, -0.5f, 0f, 1f)
@@ -148,51 +174,49 @@ class Renderer2D {
             startBatch()
         }
 
-        // TODO: remove -> this only breaks sandbox and particle thing
-        fun beginScene(camera: OrthographicCamera) {
-            // initializes an array with [0, 1, 2, ... data.maxTextureSlots - 1]
-            val samplers = IntArray(data.maxTextureSlots) { it }
-
-            data.texShader?.bind()
-            data.texShader?.uploadUniform {
-                uniform("u_ViewProjection", camera.getViewProjectionMatrix())
-                uniform("u_Textures", samplers)
-            }
-
-            startBatch()
-        }
-
         fun endScene() {
-            // drawing the data
-            data.vbo?.setData(data.quadVertexWriter!!.slice())
             flush()
         }
 
         private fun flush() {
-            if (data.quadIndexCount == 0) return
-            data.texShader!!.bind()
+            if (data.quadIndexCount != 0) {
+                data.quadVbo?.setData(data.quadVertexWriter!!.slice())
 
-            for ((i, texture) in data.textureSlots.withIndex()) {
-                texture?.bind(i)
+                for ((i, texture) in data.textureSlots.withIndex())
+                    texture?.bind(i)
+
+                data.quadShader.bind()
+                RenderCommand.drawIndexed(data.quadVao!!, data.quadIndexCount)
+                data.stats.drawCalls++
             }
 
-            RenderCommand.drawIndexed(data.vao!!, data.quadIndexCount)
-            data.stats.drawCalls++
+            if (data.circleIndexCount != 0) {
+                data.circleVbo?.setData(data.circleVertexWriter!!.slice())
+
+                data.circleShader.bind()
+                RenderCommand.drawIndexed(data.circleVao!!, data.circleIndexCount)
+                data.stats.drawCalls++
+            }
+
         }
 
         private fun startBatch() {
             data.quadVertexWriter?.reset()
             data.quadIndexCount = 0
 
+            data.circleVertexWriter?.reset()
+            data.circleIndexCount = 0
+
             data.textureSlotIndex = 1
         }
+
 
         private fun nextBatch() {
             endScene()
             startBatch()
         }
 
-        // primitives
+        // * primitives
         private fun drawQuadInternal(position: Vec3, size: Vec2, rotation: Float = 0f, color: Vec4 = Vec4(1f), texture: Texture2D? = null, tilingFactor: Float = 1f) {
             // 1. if we are out of space, flush
             if (data.quadIndexCount >= data.maxIndices) {
@@ -232,7 +256,7 @@ class Renderer2D {
 
             // 4. write out 4 vertices
             for (i in 0 until 4) {
-                pushVertex(
+                pushQuadVertex(
                     position = (transform * data.quadVertexPositions[i]!!).toVec3(),
                     color = color,
                     uv = texCoords[i],
@@ -303,7 +327,7 @@ class Renderer2D {
             val tilingFactor = 1f
 
             for (i in 0 until 4) {
-                pushVertex(
+                pushQuadVertex(
                     position = (transform * data.quadVertexPositions[i]!!).toVec3(),
                     color = color,
                     uv = texCoords[i],
@@ -337,9 +361,8 @@ class Renderer2D {
             }
 
             if (textureIndex == 0f) {
-                if (data.textureSlotIndex >= data.maxTextureSlots) {
+                if (data.textureSlotIndex >= data.maxTextureSlots)
                     nextBatch()
-                }
 
                 textureIndex = data.textureSlotIndex.toFloat()
                 data.textureSlots[data.textureSlotIndex] = texture
@@ -347,7 +370,7 @@ class Renderer2D {
             }
 
             for (i in 0 until 4) {
-                pushVertex(
+                pushQuadVertex(
                     position = (transform * data.quadVertexPositions[i]!!).toVec3(),
                     color = tintColor,
                     uv = texCoords[i],
@@ -405,6 +428,26 @@ class Renderer2D {
             } ?: drawQuad(transform, src.color, entityId)
         }
 
+        fun drawCircle(transform: Mat4, color: Vec4, thickness: Float = 1f, fade: Float = 0.005f, entityId: Int = -1) {
+            if (data.quadIndexCount >= data.maxIndices) {
+                nextBatch()
+            }
+
+            for (i in 0 until 4) {
+                pushCircleVertex(
+                    worldPosition = (transform * data.quadVertexPositions[i]!!).toVec3(),
+                    localPosition = (data.quadVertexPositions[i]!! * 2f).toVec3(),
+                    color = color,
+                    thickness = thickness,
+                    fade = fade,
+                    entityId = entityId
+                )
+            }
+
+            data.circleIndexCount += 6
+            data.stats.quadCount++
+        }
+
 
         // STATISTICS
         data class Statistics(var drawCalls: Int = 0, var quadCount: Int = 0) {
@@ -418,7 +461,7 @@ class Renderer2D {
         }
         fun getStats(): Statistics = data.stats
 
-        private inline fun pushVertex(
+        private fun pushQuadVertex(
             position: Vec3, color: Vec4, uv: Vec2,
             texId: Float, tilingFactor: Float, entityId: Int = -1
         ) = data.quadVertexWriter?.write {
@@ -427,6 +470,19 @@ class Renderer2D {
             putFloat(uv.x);  putFloat(uv.y)
             putFloat(texId)
             putFloat(tilingFactor)
+            putInt(entityId)
+        }
+
+        private fun pushCircleVertex(
+            worldPosition: Vec3, localPosition: Vec3,
+            color: Vec4, thickness: Float,
+            fade: Float, entityId: Int = -1
+        ) = data.circleVertexWriter?.write {
+            putFloat(worldPosition.x); putFloat(worldPosition.y); putFloat(worldPosition.z)
+            putFloat(localPosition.x); putFloat(localPosition.y); putFloat(localPosition.z)
+            putFloat(color.r); putFloat(color.g); putFloat(color.b); putFloat(color.a)
+            putFloat(thickness)
+            putFloat(fade)
             putInt(entityId)
         }
     }

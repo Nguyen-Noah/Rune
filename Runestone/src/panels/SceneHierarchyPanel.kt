@@ -176,6 +176,13 @@ class SceneHierarchyPanel(private var scene: Scene) {
                     }
                 }
 
+                if (!it.has(CircleRendererComponent)) {
+                    if (ImGui.menuItem("Circle Renderer")) {
+                        it += CircleRendererComponent()
+                        ImGui.closeCurrentPopup()
+                    }
+                }
+
                 // physics
                 if (!it.has(RigidBody2DComponent)) {
                     if (ImGui.menuItem("Rigidbody 2D")) {
@@ -296,6 +303,29 @@ class SceneHierarchyPanel(private var scene: Scene) {
             tmpFloat = floatArrayOf(1f)
             ImGui.dragFloat("Tiling Factor", tmpFloat, 0.1f, 0f, 100f)
             src.tilingFactor = tmpFloat.first()
+        }
+
+        drawComponent<CircleRendererComponent>(entity, CircleRendererComponent, "Circle Renderer") { src ->
+            tmpColor[0] = src.color.r
+            tmpColor[1] = src.color.g
+            tmpColor[2] = src.color.b
+            tmpColor[3] = src.color.a
+            if (ImGui.colorEdit4("Color", tmpColor)) {
+                src.color.r = tmpColor[0]
+                src.color.g = tmpColor[1]
+                src.color.b = tmpColor[2]
+                src.color.a = tmpColor[3]
+            }
+
+            tmpFloat[0] = src.thickness
+            if (ImGui.dragFloat("Thickness", tmpFloat, 0.025f, 0f, 1f)) {
+                src.thickness = tmpFloat[0]
+            }
+
+            tmpFloat[0] = src.fade
+            if (ImGui.dragFloat("Fade", tmpFloat, 0.00025f, 0f, 1f)) {
+                src.fade = tmpFloat[0]
+            }
         }
 
         drawComponent<RigidBody2DComponent>(entity, RigidBody2DComponent, "Rigidbody 2D") { src ->

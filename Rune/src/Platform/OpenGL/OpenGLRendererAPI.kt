@@ -22,8 +22,8 @@ class OpenGLRendererAPI : RendererAPI {
     }
 
     override fun drawIndexed(vao: VertexArray, indexCount: Int) {
+        vao.bind()
         glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0L)
-        glBindTexture(GL_TEXTURE_2D, 0)
     }
 
     override fun setViewport(x: Int, y: Int, width: Int, height: Int) {

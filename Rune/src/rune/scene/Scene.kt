@@ -17,6 +17,7 @@ import ktx.box2d.BodyDefinition
 import ktx.box2d.body
 import ktx.box2d.box
 import rune.core.Logger
+import rune.scene.copyComponentsToEntity
 import kotlin.reflect.KClass
 
 typealias PhysicsWorld = com.badlogic.gdx.physics.box2d.World
@@ -65,23 +66,13 @@ class Scene {
         return entity
     }
 
-    // TODO maybe find cleaner way
     fun duplicateEntity(src: Entity): Entity = with(world) {
         val name = src[TagComponent].tag
         val newEntity = createEntity("$name (copy)")
 
-        world.snapshotOf(src).components.forEach { comp ->
-            newEntity.configure {
-                when (comp) {
-                    is TransformComponent       -> newEntity += comp.copy()
-                    is SpriteRendererComponent  -> newEntity += comp.copy()
-                    is RigidBody2DComponent     -> newEntity += comp.copy()
-                    is BoxCollider2DComponent   -> newEntity += comp.copy()
-                    is CameraComponent          -> newEntity += comp.copy()
-                    // TODO: add ScriptComponent
-                }
-            }
-        }
+        val components = world.snapshotOf(src).components
+
+        world.copyComponentsToEntity(newEntity, components)
         newEntity
     }
 
@@ -159,7 +150,6 @@ class Scene {
                 physicsTransform.translation.y = position.y
                 physicsTransform.rotation.z = body.angle
             }
-
         }
 
         val family = world.family { all(TransformComponent, CameraComponent) }
@@ -175,11 +165,12 @@ class Scene {
         if (mainCamera != null) {
             Renderer2D.beginScene(mainCamera!!, transform!!)
 
-            val renderers = world.family { all(SpriteRendererComponent, TransformComponent) }
-
-            renderers.forEach {
-                //Renderer2D.drawQuad(it[TransformComponent].getTransform(), it[SpriteRendererComponent].color)
+            world.family { all(SpriteRendererComponent, TransformComponent) }.forEach {
                 Renderer2D.drawSprite(it[TransformComponent].getTransform(), it[SpriteRendererComponent], it.id)
+            }
+            world.family { all(CircleRendererComponent, TransformComponent) }.forEach {
+                val circle = it[CircleRendererComponent]
+                Renderer2D.drawCircle(it[TransformComponent].getTransform(), circle.color, circle.thickness, circle.fade, it.id)
             }
 
             Renderer2D.endScene()
@@ -193,6 +184,10 @@ class Scene {
 
         renderers.forEach {
             Renderer2D.drawSprite(it[TransformComponent].getTransform(), it[SpriteRendererComponent], it.id)
+        }
+        world.family { all(CircleRendererComponent, TransformComponent) }.forEach {
+            val circle = it[CircleRendererComponent]
+            Renderer2D.drawCircle(it[TransformComponent].getTransform(), circle.color, circle.thickness, circle.fade, it.id)
         }
 
         Renderer2D.endScene()
@@ -240,25 +235,30 @@ class Scene {
                 val components = other.world.snapshotOf(src).components
                 Logger.warn("Copying entity $id with components ${components.map { it::class.simpleName }}")
 
-                with(newWorld) {
-                    newEntity.configure {
-                        components.forEach { comp ->
-                            when (comp) {
-                                is TransformComponent       -> newEntity += comp.copy()
-                                is SpriteRendererComponent  -> newEntity += comp.copy()
-                                is RigidBody2DComponent     -> newEntity += comp.copy()
-                                is BoxCollider2DComponent   -> newEntity += comp.copy()
-                                is CameraComponent          -> newEntity += comp.copy()
-                                else -> Logger.warn("Unmatched component: ${comp::class.simpleName}")
-                                // TODO: add ScriptComponent
-                            }
-                        }
-                    }
-                }
+                newWorld.copyComponentsToEntity(newEntity, components)
             }
 
             Logger.warn("Scene copied")
             return newScene
+        }
+    }
+}
+
+fun World.copyComponentsToEntity(entity: Entity, components: List<Component<*>>) {
+    with(this) {
+        entity.configure {
+            components.forEach { comp ->
+                when (comp) {
+                    is TransformComponent       -> entity += comp.copy()
+                    is SpriteRendererComponent  -> entity += comp.copy()
+                    is CircleRendererComponent  -> entity += comp.copy()
+                    is RigidBody2DComponent     -> entity += comp.copy()
+                    is BoxCollider2DComponent   -> entity += comp.copy()
+                    is CameraComponent          -> entity += comp.copy()
+                    else -> Logger.warn("Unmatched component: ${comp::class.simpleName}")
+                    // TODO: add ScriptComponent
+                }
+            }
         }
     }
 }
