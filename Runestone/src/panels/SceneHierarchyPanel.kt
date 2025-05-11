@@ -61,6 +61,8 @@ class SceneHierarchyPanel(private var scene: Scene) {
     }
 
     private fun World.drawEntityNode(entity: Entity) {
+        ImGui.pushID(entity.id)
+
         ImGui.pushStyleVar(ImGuiStyleVar.FramePadding, 0f, 0f)
         ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, 0f, 0f)
 
@@ -91,6 +93,8 @@ class SceneHierarchyPanel(private var scene: Scene) {
                 selectedEntity = null
             }
         }
+
+        ImGui.popID()
     }
 
     private inline fun <reified C : Component<C>> World.drawComponent(
@@ -315,7 +319,7 @@ class SceneHierarchyPanel(private var scene: Scene) {
                 src.fixedRotation = !oldFR
         }
 
-        drawComponent<BoxCollider2DComponent>(entity, BoxCollider2DComponent, "Rigidbody 2D") { src ->
+        drawComponent<BoxCollider2DComponent>(entity, BoxCollider2DComponent, "Box Collider 2D") { src ->
             tmpFloat2 = floatArrayOf(src.offset.x, src.offset.y)
             if (ImGui.dragFloat2("Offset", tmpFloat2)) {
                 src.offset = Vec2(tmpFloat2[0], tmpFloat2[1])

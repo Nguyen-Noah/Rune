@@ -11,6 +11,7 @@ class OpenGLTexture : Texture2D {
     override val width: Int
     override val height: Int
     override val rendererID: Int
+    override var assetPath: String?
 
     private val internalFormat: Int
     private val dataFormat: Int
@@ -18,6 +19,7 @@ class OpenGLTexture : Texture2D {
     constructor(width: Int, height: Int, filter: Int) {
         this.width = width
         this.height = height
+        this.assetPath = null
         internalFormat = GL_RGBA8
         dataFormat = GL_RGBA
 
@@ -33,6 +35,7 @@ class OpenGLTexture : Texture2D {
     }
 
     constructor(path: String, filter: Int) {
+        this.assetPath = path
         MemoryStack.stackPush().use { stack ->
             // allocate buffers for image dimensions and channels
             val w: IntBuffer = stack.mallocInt(1)

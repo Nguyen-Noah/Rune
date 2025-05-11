@@ -29,6 +29,7 @@ import runestone.panels.ContentBrowserPanel
 import runestone.panels.SceneHierarchyPanel
 import java.nio.file.Path
 import java.nio.file.Paths
+import kotlin.io.path.extension
 
 // TODO: create a scene renderer ref: https://youtu.be/U16wc8w8IA4?si=KzL82TfupQIPOq5z&t=2419
 
@@ -39,8 +40,6 @@ class EditorLayer: Layer("Sandbox2D") {
         Stop(2),
         Simulate(3),
     }
-
-    private val texture: Texture2D = Texture2D.create("assets/textures/checkerboard.png")
 
     // editor resources
     private val iconPlay = Texture2D.create("resources/Icons/PlayButton.png", filter = GL_LINEAR)
@@ -53,11 +52,15 @@ class EditorLayer: Layer("Sandbox2D") {
     private var viewportFocused = false
     private var viewportHovered = false
 
+    // ui
     private lateinit var sceneHierarchyPanel: SceneHierarchyPanel
     private lateinit var contentBrowserPanel: ContentBrowserPanel
 
+    // scene
     private var activeScene = Scene()
     private var sceneState = SceneState.Edit
+    private var editorScenePath: Path = Paths.get("")
+    private lateinit var editorScene: Scene
 
     private var gizmoType = -1
     val editorCamera = EditorCamera(30f, 1778f, 0.1f, 1000f)
@@ -122,7 +125,7 @@ class EditorLayer: Layer("Sandbox2D") {
         sceneHierarchyPanel = SceneHierarchyPanel(activeScene)
         contentBrowserPanel = ContentBrowserPanel()
 
-        SceneSerializer(activeScene).deserialize("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\assets\\scenes\\Cameras.rune")
+        //SceneSerializer(activeScene).deserialize("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\assets\\scenes\\Cameras.rune")
     }
 
     override fun onUpdate(dt: Float) {
@@ -186,6 +189,8 @@ class EditorLayer: Layer("Sandbox2D") {
         activeScene = Scene()
         activeScene.onViewportResize(viewportSize.x.toInt(), viewportSize.y.toInt())
         sceneHierarchyPanel.setContext(activeScene)
+
+        editorScenePath = Paths.get("")
     }
 
     private fun openScene() {
@@ -198,12 +203,37 @@ class EditorLayer: Layer("Sandbox2D") {
     }
 
     private fun openScene(path: Path) {
+        if (sceneState != SceneState.Edit)
+            onSceneStop()
+
+        if (path.extension != "rune") {
+            Logger.warn("Could not load ${path.fileName} - not a scene file")
+            return
+        }
+
         activeScene = Scene()
+        SceneSerializer(activeScene).deserialize(path.toString())
+
+        // swap scenes and bookkeeping
+        editorScene = Scene.copy(activeScene)
+        editorScenePath = path
+
+        // sync viewport and panels
         activeScene.onViewportResize(viewportSize.x.toInt(), viewportSize.y.toInt())
         sceneHierarchyPanel.setContext(activeScene)
 
-        // deserializing the scene
-        SceneSerializer(activeScene).deserialize(path.toString())
+        // clear stale attribs
+        sceneHierarchyPanel.selectedEntity = null
+        hoveredEntity = null
+    }
+
+    private fun saveScene() {
+        if (editorScenePath.toString().isNotEmpty()) {
+            serializeScene(activeScene, editorScenePath)
+            Logger.info("Saved $activeScene to $editorScenePath")
+        } else {
+            saveSceneAs()
+        }
     }
 
     private fun saveSceneAs() {
@@ -211,9 +241,13 @@ class EditorLayer: Layer("Sandbox2D") {
         val filepath = nfd.saveAs("Untitled")
 
         if (filepath.isNotEmpty()) {
-            val sceneSerializer = SceneSerializer(activeScene)
-            sceneSerializer.serialize(filepath)
+            SceneSerializer(activeScene).serialize(filepath)
+            Logger.info("Saved new scene to $filepath")
         }
+    }
+
+    private fun serializeScene(scene: Scene, path: Path) {
+        SceneSerializer(scene).serialize(path.toString())
     }
 
     private fun onKeyPressed(e: KeyPressedEvent): Boolean {
@@ -225,16 +259,31 @@ class EditorLayer: Layer("Sandbox2D") {
         when (e.keyCode) {
             Key.N -> if (control) newScene()
             Key.O -> if (control) openScene()
-            Key.S -> if (control && shift) saveSceneAs()
+            Key.S -> if (control) {
+                if (shift) {
+                    saveSceneAs()
+                } else {
+                    saveScene()
+                }
+            }
             else -> {}
         }
 
         // gizmos
+        gizmoType = when (e.keyCode) {
+            Key.Q ->  -1
+            Key.T ->  Operation.TRANSLATE
+            Key.S ->  Operation.SCALE
+            Key.R ->  Operation.ROTATE
+            else -> gizmoType
+        }
+
+        // scene commands
         when (e.keyCode) {
-            Key.Q -> gizmoType = -1
-            Key.T -> gizmoType = Operation.TRANSLATE
-            Key.S -> gizmoType = Operation.SCALE
-            Key.R -> gizmoType = Operation.ROTATE
+            Key.D -> {
+                if (control)
+                    onDuplicateEntity()
+            }
             else -> {}
         }
 
@@ -262,13 +311,31 @@ class EditorLayer: Layer("Sandbox2D") {
     }
 
     private fun onScenePlay() {
-        activeScene.onRuntimeStart()
         sceneState = SceneState.Play
+
+        editorScene = Scene.copy(activeScene)
+        activeScene.onRuntimeStart()
+
+        sceneHierarchyPanel.setContext(activeScene)
     }
 
     private fun onSceneStop() {
-        activeScene.onRuntimeStop()
         sceneState = SceneState.Edit
+
+        activeScene.onRuntimeStop()
+        activeScene = editorScene
+
+        sceneHierarchyPanel.setContext(activeScene)
+    }
+
+    private fun onDuplicateEntity() {
+        if (sceneState != SceneState.Edit)
+            return
+
+        val selectedEntity = sceneHierarchyPanel.selectedEntity
+        println(selectedEntity)
+        if (selectedEntity != null)
+            activeScene.duplicateEntity(selectedEntity)
     }
 
     override fun onImGuiRender() {

@@ -2,8 +2,10 @@ package rune.components
 
 import com.github.quillraven.fleks.Component
 import com.github.quillraven.fleks.ComponentType
+import kotlinx.serialization.Serializable
 import rune.scene.ScriptableEntity
 
+// TODO: serialize this (redo it)
 class ScriptComponent : Component<ScriptComponent> {
     lateinit var instance: ScriptableEntity
     val isBound: Boolean

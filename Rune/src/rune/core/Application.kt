@@ -15,10 +15,15 @@ abstract class Application {
     private val window = Window.create()
     private var running = true
     private var minimized = false
-    private var lastFrameTime = 0.0f
     private val layerStack = LayerStack()
     private val imGuiLayer = ImguiLayer()
+
+    // fps and timing
+    private var lastFrameTime = 0.0f
     private var dt = 0f
+    private var smoothedDt = 1f / 60f
+    private var smoothingFactor = 0.1f
+    private var fps: Int = 0
 
     init {
         // setting global instance for Appliation
@@ -77,6 +82,7 @@ abstract class Application {
             val time: Float = glfwGetTime().toFloat()       // TODO: Platform.getTime() instead of hard coding glfw
             dt = time - lastFrameTime
             lastFrameTime = time
+            updateFPS()
 
             if (!minimized) {
                 for (layer in layerStack) {
@@ -95,8 +101,10 @@ abstract class Application {
         exitProcess(0)
     }
 
+    private fun updateFPS() { smoothedDt += (dt - smoothedDt) * smoothingFactor }
+
     fun getWindow(): Window = window
-    fun getFPS(): Int = (1f / dt).toInt()
+    fun getFPS(): Int = (1f / smoothedDt).toInt()
     fun getImGuiLayer(): ImguiLayer = imGuiLayer
 
     // TODO: TEMP

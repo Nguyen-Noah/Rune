@@ -19,6 +19,7 @@ val kamlVersion = "0.77.0"
 val lwjglNatives = "natives-windows"
 val ktxVersion = "1.13.1-rc1"
 val gdxVersion = "1.13.1"
+val jsonVersion = "1.6.3"
 
 dependencies {
     // Kotlin stdlib
@@ -86,7 +87,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
 
     // Serialization
-    implementation("com.charleskorn.kaml:kaml:$kamlVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$jsonVersion")
 
     // Physics
     implementation("io.github.libktx:ktx-box2d:$ktxVersion")

@@ -10,6 +10,7 @@ interface Texture {
     val width: Int
     val height: Int
     val rendererID: Int
+    var assetPath: String?
     fun bind(slot: Int = 0)
     fun setData(color: Int, size: Int)
 }
