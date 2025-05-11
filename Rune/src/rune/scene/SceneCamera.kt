@@ -11,7 +11,24 @@ enum class ProjectionType(private val type: Int) {
     }
 }
 
-class SceneCamera : RuneCamera() {
+class SceneCamera() : RuneCamera() {
+    // copy constructor
+    constructor(other: SceneCamera) : this() {
+        orthographicSize = other.orthographicSize
+        orthographicNear = other.orthographicNear
+        orthographicFar = other.orthographicFar
+
+        perspectiveFOV = other.perspectiveFOV
+        perspectiveNear = other.perspectiveNear
+        perspectiveFar = other.perspectiveFar
+
+        projectionType = other.projectionType
+        aspectRatio = other.aspectRatio
+
+        // optionally copy the matrix if RuneCamera or projection is mutable
+        projection = other.projection
+    }
+
     var orthographicSize = 10f
         set(size) {
             field = size

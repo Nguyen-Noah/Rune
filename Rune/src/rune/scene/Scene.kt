@@ -2,10 +2,9 @@ package rune.scene
 
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.physics.box2d.FixtureDef
-import com.github.quillraven.fleks.Entity
-import com.github.quillraven.fleks.World
-import com.github.quillraven.fleks.configureWorld
+import com.github.quillraven.fleks.*
 import glm_.mat4x4.Mat4
+import kotlinx.serialization.json.Json
 import ktx.box2d.createWorld
 import rune.components.*
 import rune.core.UUID
@@ -17,14 +16,15 @@ import rune.scene.systems.ScriptSystem
 import ktx.box2d.BodyDefinition
 import ktx.box2d.body
 import ktx.box2d.box
+import rune.core.Logger
+import kotlin.reflect.KClass
 
 typealias PhysicsWorld = com.badlogic.gdx.physics.box2d.World
 
 class Scene {
-    private val entityMap = hashMapOf<UUID, Entity>()
     var viewportWidth = 0
     var viewportHeight = 0
-    val world: World = configureWorld {
+    var world: World = configureWorld {
         injectables {
             add(this@Scene)
         }
@@ -45,7 +45,6 @@ class Scene {
 
     fun destroyEntity(entity: Entity) {
         with(world) {
-            entityMap.remove(entity[IDComponent].id)
             entity.remove()
         }
     }
@@ -62,13 +61,28 @@ class Scene {
                 it += TagComponent(name)
             }
         }
-        entityMap[uuid] = entity
 
         return entity
     }
 
-    fun getEntityByUUID(uuid: UUID): Entity? {
-        return entityMap[uuid]
+    // TODO maybe find cleaner way
+    fun duplicateEntity(src: Entity): Entity = with(world) {
+        val name = src[TagComponent].tag
+        val newEntity = createEntity("$name (copy)")
+
+        world.snapshotOf(src).components.forEach { comp ->
+            newEntity.configure {
+                when (comp) {
+                    is TransformComponent       -> newEntity += comp.copy()
+                    is SpriteRendererComponent  -> newEntity += comp.copy()
+                    is RigidBody2DComponent     -> newEntity += comp.copy()
+                    is BoxCollider2DComponent   -> newEntity += comp.copy()
+                    is CameraComponent          -> newEntity += comp.copy()
+                    // TODO: add ScriptComponent
+                }
+            }
+        }
+        newEntity
     }
 
     fun onViewportResize(width: Int, height: Int) {
@@ -195,5 +209,56 @@ class Scene {
             }
         }
         return primaryCamera
+    }
+
+    companion object {
+        fun copy(other: Scene): Scene {
+            val newScene = Scene()
+
+            newScene.viewportWidth = other.viewportWidth
+            newScene.viewportHeight = other.viewportHeight
+
+            // TODO: figure out a way to make this dynamic
+            val newWorld = configureWorld {
+                injectables {
+                    add(newScene)
+                }
+
+                systems {
+                    add(ScriptSystem())
+                }
+            }
+
+            newScene.world = newWorld
+
+            // a whole lot of code duplication here -> probably find a better way in the future
+            other.world.family { all(TagComponent) }.forEach { src ->
+                val id = src[IDComponent].id
+                val tag = src[TagComponent].tag
+                val newEntity = newScene.createEntityWithUUID(id, tag)
+
+                val components = other.world.snapshotOf(src).components
+                Logger.warn("Copying entity $id with components ${components.map { it::class.simpleName }}")
+
+                with(newWorld) {
+                    newEntity.configure {
+                        components.forEach { comp ->
+                            when (comp) {
+                                is TransformComponent       -> newEntity += comp.copy()
+                                is SpriteRendererComponent  -> newEntity += comp.copy()
+                                is RigidBody2DComponent     -> newEntity += comp.copy()
+                                is BoxCollider2DComponent   -> newEntity += comp.copy()
+                                is CameraComponent          -> newEntity += comp.copy()
+                                else -> Logger.warn("Unmatched component: ${comp::class.simpleName}")
+                                // TODO: add ScriptComponent
+                            }
+                        }
+                    }
+                }
+            }
+
+            Logger.warn("Scene copied")
+            return newScene
+        }
     }
 }

@@ -65,7 +65,6 @@ class FileDialog {
             when (result) {
                 NFD_OKAY -> {
                     val path = outPath.getStringUTF8(0)
-                    println(path)
                     NFD_FreePath(outPath.get(0))
                     return File(path).absolutePath
 
