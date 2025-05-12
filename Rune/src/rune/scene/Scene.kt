@@ -8,7 +8,7 @@ import glm_.vec2.Vec2
 import glm_.vec3.Vec3
 import glm_.vec4.Vec4
 import kotlinx.serialization.json.Json
-import ktx.box2d.createWorld
+import ktx.box2d.*
 import rune.components.*
 import rune.core.UUID
 import rune.renderer.EditorCamera
@@ -16,9 +16,6 @@ import rune.renderer.Renderer2D
 import rune.renderer.RuneCamera
 import rune.scene.systems.ScriptSystem
 
-import ktx.box2d.BodyDefinition
-import ktx.box2d.body
-import ktx.box2d.box
 import rune.core.Logger
 import rune.scene.copyComponentsToEntity
 import kotlin.reflect.KClass
@@ -117,6 +114,18 @@ class Scene {
                             friction = bc2d.friction
                             restitution = bc2d.restitution
                             // TODO: figure out how to set restitutionThreshold (not avail in ktx-box2d:1.13.3-rc1
+                        }
+                    }
+                    if (it.has(CircleCollider2DComponent)) {
+                        val cc2d = it[CircleCollider2DComponent]
+
+                        circle(
+                            radius = transform.scale.x * cc2d.radius,
+                            position = Vector2(cc2d.offset.x, cc2d.offset.y)
+                        ) {
+                            density = cc2d.density
+                            friction = cc2d.friction
+                            restitution = cc2d.restitution
                         }
                     }
                 }
@@ -260,6 +269,7 @@ fun World.copyComponentsToEntity(entity: Entity, components: List<Component<*>>)
                     is CircleRendererComponent  -> entity += comp.copy()
                     is RigidBody2DComponent     -> entity += comp.copy()
                     is BoxCollider2DComponent   -> entity += comp.copy()
+                    is CircleCollider2DComponent   -> entity += comp.copy()
                     is CameraComponent          -> entity += comp.copy()
                     else -> Logger.warn("Unmatched component: ${comp::class.simpleName}")
                     // TODO: add ScriptComponent

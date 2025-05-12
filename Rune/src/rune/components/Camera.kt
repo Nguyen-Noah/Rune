@@ -36,5 +36,6 @@ class CameraComponent(
         if ((!cameraComp.fixedAspectRatio) || (scene.viewportWidth != 0 && scene.viewportHeight != 0)) {
             cameraComp.camera.setViewportSize(scene.viewportWidth, scene.viewportHeight)
         }
+        // TODO: make this camera primary if there isnt any other primary
     }
 }

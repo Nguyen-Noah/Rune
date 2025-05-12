@@ -15,6 +15,7 @@ const val FORMAT_VERSION = 1
 private val componentModule = SerializersModule {
     polymorphic(Component::class) {
         subclass(BoxCollider2DComponent::class, BoxCollider2DComponent.serializer())
+        subclass(CircleCollider2DComponent::class, CircleCollider2DComponent.serializer())
         subclass(CameraComponent::class, CameraComponent.serializer())
         subclass(IDComponent::class, IDComponent.serializer())
         subclass(RigidBody2DComponent::class, RigidBody2DComponent.serializer())

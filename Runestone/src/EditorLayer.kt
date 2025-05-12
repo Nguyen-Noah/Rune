@@ -1,8 +1,10 @@
 package runestone
 
 import com.github.quillraven.fleks.Entity
+import glm_.glm
 import glm_.mat4x4.Mat4
 import glm_.vec2.Vec2
+import glm_.vec3.Vec3
 import glm_.vec4.Vec4
 import imgui.ImGui
 import imgui.ImVec2
@@ -14,8 +16,7 @@ import imgui.flag.*
 import imgui.internal.ImGuiWindow
 import imgui.type.ImBoolean
 import org.lwjgl.opengl.GL11.GL_LINEAR
-import rune.components.TagComponent
-import rune.components.TransformComponent
+import rune.components.*
 import rune.core.*
 import rune.events.Event
 import rune.events.EventDispatcher
@@ -69,8 +70,10 @@ class EditorLayer: Layer("Sandbox2D") {
 
     private val viewportBounds: Array<Vec2> = Array(2) { Vec2() }
 
-    // TODO: remove this lmao -> see ContentBrowserPanel.kt
+    // TODO: remove this lmao -> see [[ContentBrowserPanel.kt]]
     private val assetsDirectory: String = "assets"
+
+    private var showColliders: Boolean = false
 
     override fun onAttach() {
         val spec = framebuffer {
@@ -181,6 +184,8 @@ class EditorLayer: Layer("Sandbox2D") {
                 }
             }
         }
+
+        onOverlayRender()
 
         framebuffer.unbind()
     }
@@ -338,6 +343,45 @@ class EditorLayer: Layer("Sandbox2D") {
             activeScene.duplicateEntity(selectedEntity)
     }
 
+    private fun onOverlayRender() {
+        if (sceneState == SceneState.Play) {
+            val camera = activeScene.getPrimaryCameraEntity()
+            with(activeScene.world) { Renderer2D.beginScene(camera[CameraComponent].camera, camera[TransformComponent].getTransform()) }
+        } else {
+            Renderer2D.beginScene(editorCamera)
+        }
+
+        // TODO: disable depth testing and render physics colliders after the rest of scene -> lets lines go through walls
+        if (showColliders) {
+            activeScene.world.family { all(TransformComponent, BoxCollider2DComponent) }.forEach { src ->
+                val transformComp = src[TransformComponent]
+                val bc2d = src[BoxCollider2DComponent]
+
+                val translation = transformComp.translation + Vec3(bc2d.offset, 0.001f)
+                val scale = transformComp.scale * Vec3(bc2d.size, 1f)
+
+                val transform = glm.translate(Mat4(1f), translation) *
+                        glm.rotate(Mat4(1f), transformComp.rotation.z, Vec3(0f, 0f, 1f)) *
+                        glm.scale(Mat4(1f), scale)
+
+                Renderer2D.drawRect(transform, Vec4(0f, 0.3f, 1f, 1f))
+            }
+
+            activeScene.world.family { all(TransformComponent, CircleCollider2DComponent) }.forEach { src ->
+                val transformComp = src[TransformComponent]
+                val cc2d = src[CircleCollider2DComponent]
+
+                val translation = transformComp.translation + Vec3(cc2d.offset, 0.001f)
+                val scale = transformComp.scale * Vec3(cc2d.radius * 2f)    // diameter
+
+                val transform = glm.translate(Mat4(1f), translation) * glm.scale(Mat4(1f), scale)
+
+                Renderer2D.drawCircle(transform, Vec4(0f, 0.3f, 1f, 1f), 0.05f)
+            }
+        }
+        Renderer2D.endScene()
+    }
+
     override fun onImGuiRender() {
         // dockspace
         val dockSpaceOpen = ImBoolean(true)
@@ -436,6 +480,14 @@ class EditorLayer: Layer("Sandbox2D") {
         ImGui.text("Vertices: ${stats.getTotalVertexCount()}")
         ImGui.text("Indices: ${stats.getTotalIndexCount()}")
         ImGui.text("FPS ${Application.get().getFPS()}")
+
+        ImGui.end()
+
+        ImGui.begin("Settings")
+
+        val oldC = showColliders
+        if (ImGui.checkbox("Show physics colliders", oldC))
+            showColliders = !oldC
 
         ImGui.end()
 

@@ -506,7 +506,15 @@ class Renderer2D {
         }
 
         fun drawRect(transform: Mat4, color: Vec4, entityId: Int = -1) {
+            val lineVertices: Array<Vec3> = Array(4) { Vec3(0f) }
+            repeat(4) { i ->
+                lineVertices[i] = (transform * data.quadVertexPositions[i]!!).toVec3()
+            }
 
+            drawLine(lineVertices[0], lineVertices[1], color, entityId)
+            drawLine(lineVertices[1], lineVertices[2], color, entityId)
+            drawLine(lineVertices[2], lineVertices[3], color, entityId)
+            drawLine(lineVertices[3], lineVertices[0], color, entityId)
         }
 
         // STATISTICS

@@ -197,6 +197,13 @@ class SceneHierarchyPanel(private var scene: Scene) {
                         ImGui.closeCurrentPopup()
                     }
                 }
+
+                if (!it.has(CircleCollider2DComponent)) {
+                    if (ImGui.menuItem("Circle Collider 2D")) {
+                        it += CircleCollider2DComponent()
+                        ImGui.closeCurrentPopup()
+                    }
+                }
             }
             ImGui.endPopup()
         }
@@ -358,6 +365,33 @@ class SceneHierarchyPanel(private var scene: Scene) {
             tmpFloat2 = floatArrayOf(src.size.x, src.size.y)
             if (ImGui.dragFloat2("Size", tmpFloat2)) {
                 src.size = Vec2(tmpFloat2[0], tmpFloat2[1])
+            }
+
+            tmpFloat[0] = src.density
+            if (ImGui.dragFloat("Density", tmpFloat, 0.01f, 0f, 1f)) {
+                src.density = tmpFloat[0]
+            }
+
+            tmpFloat[0] = src.friction
+            if (ImGui.dragFloat("Friction", tmpFloat, 0.01f, 0f, 1f)) {
+                src.friction = tmpFloat[0]
+            }
+
+            tmpFloat[0] = src.restitution
+            if (ImGui.dragFloat("Restitution", tmpFloat, 0.01f, 0f, 1f)) {
+                src.restitution = tmpFloat[0]
+            }
+        }
+
+        drawComponent<CircleCollider2DComponent>(entity, CircleCollider2DComponent, "Circle Collider 2D") { src ->
+            tmpFloat[0] = src.radius
+            if (ImGui.dragFloat("Radius", tmpFloat)) {
+                src.radius = tmpFloat[0]
+            }
+
+            tmpFloat2 = floatArrayOf(src.offset.x, src.offset.y)
+            if (ImGui.dragFloat2("Offset", tmpFloat2)) {
+                src.offset = Vec2(tmpFloat2[0], tmpFloat2[1])
             }
 
             tmpFloat[0] = src.density
