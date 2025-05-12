@@ -36,7 +36,18 @@ class Renderer2D {
             var circleIndexCount: Int = 0,
             var circleLayout: VertexLayout? = null,
             var circleVertexWriter: VertexBufferWriter? = null,
-            val circleVertexPositions: Array<Vec4?> = arrayOfNulls(4),
+
+            // * lines
+            var lineVao: VertexArray? = null,
+            var lineVbo: VertexBuffer? = null,
+            var lineShader: Shader = Shader.create("assets/shaders/Renderer2D_Line.glsl"),
+
+            var lineVertexCount: Int = 0,
+            var lineLayout: VertexLayout? = null,
+            var lineVertexWriter: VertexBufferWriter? = null,
+
+            var lineWidth: Float = 1f,      // TODO: not working
+
 
             val maxQuads: Int = 10000,
             val maxVertices: Int = maxQuads * 4,
@@ -103,6 +114,14 @@ class Renderer2D {
             data.circleVertexWriter = VertexBufferWriter(data.maxVertices, data.circleLayout!!)
             data.circleVbo = VertexBuffer.create(data.maxVertices * data.circleLayout!!.stride)
 
+            data.lineLayout = VertexLayout.build {
+                attr(0, BufferType.Float3)  // position
+                attr(1, BufferType.Float4)  // color
+                attr(2, BufferType.Int1)    // entityID
+            }
+            data.lineVertexWriter = VertexBufferWriter(data.maxVertices, data.lineLayout!!)
+            data.lineVbo = VertexBuffer.create(data.maxVertices * data.lineLayout!!.stride)
+
             // index buffer
             val indices = IntArray(data.maxIndices)
             var offset = 0
@@ -137,6 +156,12 @@ class Renderer2D {
                 attribute("a_Fade", 1)
                 attribute("a_EntityID", 1)
             }).apply { setIndexBuffer(ibo) }
+
+            data.lineVao = VertexArray.create(data.lineVbo!!, bufferLayout {
+                attribute("a_Position", 3)
+                attribute("a_Color", 4)
+                attribute("a_EntityID", 1)
+            })
 
             // creating and binding the default white texture
             data.whiteTex = Texture2D.create(1, 1).also {
@@ -198,6 +223,14 @@ class Renderer2D {
                 data.stats.drawCalls++
             }
 
+            if (data.lineVertexCount != 0) {
+                data.lineVbo?.setData(data.lineVertexWriter!!.slice())
+
+                data.lineShader.bind()
+                RenderCommand.setLineThickness(data.lineWidth)
+                RenderCommand.drawLines(data.lineVao!!, data.lineVertexCount)
+                data.stats.drawCalls++
+            }
         }
 
         private fun startBatch() {
@@ -206,6 +239,9 @@ class Renderer2D {
 
             data.circleVertexWriter?.reset()
             data.circleIndexCount = 0
+
+            data.lineVertexWriter?.reset()
+            data.lineVertexCount = 0
 
             data.textureSlotIndex = 1
         }
@@ -429,9 +465,8 @@ class Renderer2D {
         }
 
         fun drawCircle(transform: Mat4, color: Vec4, thickness: Float = 1f, fade: Float = 0.005f, entityId: Int = -1) {
-            if (data.quadIndexCount >= data.maxIndices) {
+            if (data.circleIndexCount >= data.maxIndices)
                 nextBatch()
-            }
 
             for (i in 0 until 4) {
                 pushCircleVertex(
@@ -448,6 +483,31 @@ class Renderer2D {
             data.stats.quadCount++
         }
 
+        fun drawLine(p0: Vec3, p1: Vec3, color: Vec4, entityId: Int = -1) {
+            if (data.lineVertexCount >= data.maxIndices)
+                nextBatch()
+
+            pushLineVertex(p0, color, entityId)
+            pushLineVertex(p1, color, entityId)
+
+            data.lineVertexCount += 2
+        }
+
+        fun drawRect(position: Vec3, size: Vec2, color: Vec4, entityId: Int = -1) {
+            val p0 = Vec3(position.x - size.x * 0.5f, position.y - size.y * 0.5f, position.z)
+            val p1 = Vec3(position.x + size.x * 0.5f, position.y - size.y * 0.5f, position.z)
+            val p2 = Vec3(position.x + size.x * 0.5f, position.y + size.y * 0.5f, position.z)
+            val p3 = Vec3(position.x - size.x * 0.5f, position.y + size.y * 0.5f, position.z)
+
+            drawLine(p0, p1, color)
+            drawLine(p1, p2, color)
+            drawLine(p2, p3, color)
+            drawLine(p3, p0, color)
+        }
+
+        fun drawRect(transform: Mat4, color: Vec4, entityId: Int = -1) {
+
+        }
 
         // STATISTICS
         data class Statistics(var drawCalls: Int = 0, var quadCount: Int = 0) {
@@ -483,6 +543,14 @@ class Renderer2D {
             putFloat(color.r); putFloat(color.g); putFloat(color.b); putFloat(color.a)
             putFloat(thickness)
             putFloat(fade)
+            putInt(entityId)
+        }
+
+        private fun pushLineVertex(
+            point: Vec3, color: Vec4, entityId: Int
+        ) = data.lineVertexWriter?.write {
+            putFloat(point.x); putFloat(point.y); putFloat(point.z)
+            putFloat(color.r); putFloat(color.g); putFloat(color.b); putFloat(color.a)
             putInt(entityId)
         }
     }

@@ -1,6 +1,7 @@
 package rune.scene
 
 import glm_.glm
+import rune.core.Logger
 import rune.renderer.RuneCamera
 
 enum class ProjectionType(private val type: Int) {

@@ -29,4 +29,13 @@ class OpenGLRendererAPI : RendererAPI {
     override fun setViewport(x: Int, y: Int, width: Int, height: Int) {
         glViewport(x, y, width, height)
     }
+
+    override fun drawLines(vao: VertexArray, vertexCount: Int) {
+        vao.bind()
+        glDrawArrays(GL_LINES, 0, vertexCount)
+    }
+
+    override fun setLineWidth(width: Float) {
+        glLineWidth(width)
+    }
 }

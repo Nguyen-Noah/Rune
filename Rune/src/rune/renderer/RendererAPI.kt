@@ -13,6 +13,8 @@ interface RendererAPI {
     fun clear()
     fun drawIndexed(vao: VertexArray, indexCount: Int = 0)
     fun setViewport(x: Int, y: Int, width: Int, height: Int)
+    fun drawLines(vao: VertexArray, vertexCount: Int)
+    fun setLineWidth(width: Float)
 
     companion object {
         private val rendererAPI = RendererPlatform.OpenGL

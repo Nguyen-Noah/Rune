@@ -4,6 +4,9 @@ import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.physics.box2d.FixtureDef
 import com.github.quillraven.fleks.*
 import glm_.mat4x4.Mat4
+import glm_.vec2.Vec2
+import glm_.vec3.Vec3
+import glm_.vec4.Vec4
 import kotlinx.serialization.json.Json
 import ktx.box2d.createWorld
 import rune.components.*
@@ -189,6 +192,9 @@ class Scene {
             val circle = it[CircleRendererComponent]
             Renderer2D.drawCircle(it[TransformComponent].getTransform(), circle.color, circle.thickness, circle.fade, it.id)
         }
+
+        Renderer2D.drawRect(Vec3(0f), Vec2(1f), Vec4(1f, 1f, 1f, 1f))
+        Renderer2D.drawLine(Vec3(0f), Vec3(5f), Vec4(1f, 0f, 1f, 1f), -1)
 
         Renderer2D.endScene()
     }
