@@ -473,7 +473,7 @@ class EditorLayer: Layer("Sandbox2D") {
         ImGui.text("Hovered Entity: $name")
 
         // stats
-        val stats = Renderer2D.getStats()
+        val stats = Renderer2D.stats
         ImGui.text("Renderer2D Stats:")
         ImGui.text("Draw Calls: ${stats.drawCalls}")
         ImGui.text("Quads: ${stats.quadCount}")
