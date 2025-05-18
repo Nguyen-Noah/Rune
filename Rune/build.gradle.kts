@@ -95,15 +95,3 @@ dependencies {
     implementation("io.github.libktx:ktx-box2d:$ktxVersion")
     implementation("com.badlogicgames.gdx:gdx-box2d:$gdxVersion")
 }
-
-// (Optional) If you’re using a non-standard src folder:
-sourceSets {
-    main {
-        kotlin {
-            srcDirs("src")
-        }
-        resources {
-            srcDir("resources")
-        }
-    }
-}

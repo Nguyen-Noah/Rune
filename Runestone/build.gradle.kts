@@ -39,16 +39,6 @@ dependencies {
     implementation(project(":Rune"))
 }
 
-sourceSets {
-    main {
-        kotlin {
-            setSrcDirs(listOf("src"))
-        }
-
-        resources.srcDir("scripts")
-    }
-}
-
 application {
     mainClass.set("MainKt")
 }

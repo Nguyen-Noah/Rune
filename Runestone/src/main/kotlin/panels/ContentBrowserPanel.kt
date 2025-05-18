@@ -20,8 +20,8 @@ class ContentBrowserPanel {
 
     private val assetPath: Path = Paths.get(assetsDirectory)
     private var currentDirectory: Path = assetPath
-    private val directoryIcon = Texture2D.create("resources/Icons/ContentBrowser/DirectoryIcon.png", filter = GL_LINEAR)
-    private val fileIcon =      Texture2D.create("resources/Icons/ContentBrowser/FileIcon.png", filter = GL_LINEAR)
+    private val directoryIcon = Texture2D.create("src/main/resources/Icons/ContentBrowser/DirectoryIcon.png", filter = GL_LINEAR)
+    private val fileIcon =      Texture2D.create("src/main/resources/Icons/ContentBrowser/FileIcon.png", filter = GL_LINEAR)
 
     private var padding = 16f
     private var thumbnailSize = 128f

@@ -43,9 +43,9 @@ class EditorLayer: Layer("Sandbox2D") {
     }
 
     // editor resources
-    private val iconPlay     = Texture2D.create("resources/Icons/PlayButton.png",     filter = GL_LINEAR)
-    private val iconStop     = Texture2D.create("resources/Icons/StopButton.png",     filter = GL_LINEAR)
-    private val iconSimulate = Texture2D.create("resources/Icons/SimulateButton.png", filter = GL_LINEAR)
+    private val iconPlay     = Texture2D.create("src/main/resources/Icons/PlayButton.png",     filter = GL_LINEAR)
+    private val iconStop     = Texture2D.create("src/main/resources/Icons/StopButton.png",     filter = GL_LINEAR)
+    private val iconSimulate = Texture2D.create("src/main/resources/Icons/SimulateButton.png", filter = GL_LINEAR)
     private var icon: Texture2D = iconPlay
 
     private lateinit var framebuffer: Framebuffer
@@ -62,7 +62,7 @@ class EditorLayer: Layer("Sandbox2D") {
     private var activeScene = Scene()
     private var sceneState = SceneState.Edit
     private var editorScenePath: Path = Paths.get("")
-    private lateinit var editorScene: Scene
+    private var editorScene: Scene = activeScene
 
     private var gizmoType = -1
     val editorCamera = EditorCamera(30f, 1778f, 0.1f, 1000f)
@@ -89,25 +89,6 @@ class EditorLayer: Layer("Sandbox2D") {
         }
         framebuffer = Framebuffer.create(spec)
 
-        // scene
-//        camera = activeScene.createEntity("Camera Entity")
-//        var cameraScript: ScriptableEntity?
-//        square = activeScene.createEntity("Test Square")
-//        greenSquare = activeScene.createEntity("Green Square")
-//
-//        with(activeScene.world) {
-//            camera.configure {
-//                it += CameraComponent()
-//                it += ScriptComponent()
-//            }
-//            square.configure {
-//                it += SpriteRendererComponent(color)
-//            }
-//            greenSquare.configure {
-//                it += SpriteRendererComponent(Vec4(0.3, 0.8, 0.2, 1.0))
-//            }
-//        }
-//
 //        // script loading
 //        Coroutine(Dispatchers.IO).launchTask {
 //            cameraScript = ScriptEngine.loadScript(File("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\scripts\\CameraController.runescript.kts"))
@@ -169,9 +150,6 @@ class EditorLayer: Layer("Sandbox2D") {
             }
             else -> {}
         }
-
-        //activeScene.onUpdateEditor(dt, editorCamera)
-        //activeScene.onUpdateRuntime(dt)
 
         val mp = ImGui.getMousePos()
         val mx   = (mp.x - viewportBounds[0].x).toInt()
