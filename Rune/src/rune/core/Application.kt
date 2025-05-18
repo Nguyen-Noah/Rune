@@ -4,12 +4,10 @@ import org.lwjgl.glfw.GLFW.glfwGetTime
 import rune.events.Event
 import rune.events.EventDispatcher
 import rune.events.WindowCloseEvent
-
 import rune.events.WindowResizeEvent
 import rune.imgui.ImguiLayer
 import rune.renderer.Renderer
 import kotlin.system.exitProcess
-
 
 abstract class Application {
     private val window = Window.create()

@@ -16,7 +16,7 @@ import imgui.flag.ImGuiTreeNodeFlags
 import imgui.type.ImString
 import rune.components.*
 import rune.core.Logger
-import rune.imgui.RuneFonts
+import rune.imgui.*
 import rune.renderer.Texture2D
 import rune.scene.*
 
@@ -37,64 +37,99 @@ class SceneHierarchyPanel(private var scene: Scene) {
         selectedEntity = null
     }
 
-    fun onImGuiRender() {
-        ImGui.begin("Scene Hierarchy")
-        scene.world.family { all(TagComponent) }
-            .forEach { scene.world.drawEntityNode(it) }
-        if (ImGui.isMouseDown(0) && ImGui.isWindowHovered()) selectedEntity = null
+    fun onImGuiRender() = ui {
+        begin("Scene Hierarchy") {
+            entities(scene.world) { entity ->
+                pushID(entity.id)
 
-        // right-click on a blank space
-        if (ImGui.beginPopupContextWindow("SceneContextWindow", ImGuiPopupFlags.NoOpenOverItems or ImGuiPopupFlags.MouseButtonRight)) {
-            if (ImGui.menuItem("Create Empty Entity")) {
-                scene.createEntity("Empty Entity")
+                pushStyleVar(ImGuiStyleVar.FramePadding, 0f, 0f)
+                pushStyleVar(ImGuiStyleVar.ItemSpacing, 0f, 0f)
+
+                val tag = entity[TagComponent].tag
+                val flags = ImGuiTreeNodeFlags.OpenOnArrow or
+                        ImGuiTreeNodeFlags.SpanAvailWidth or
+                        if (selectedEntity == entity) ImGuiTreeNodeFlags.Selected else 0
+                val open = treeNodeEx(tag, flags)
+                if (isItemClicked())
+                    selectedEntity = entity
+
+                var entityDeleted = false
+                if (beginPopupContextItem()) {
+                    if (menuItem("Delete Entity"))
+                        entityDeleted = true
+                    endPopup()
+                }
+
+                if (open)
+                    treePop()
+
+                popStyleVar(2)
+
+                if (entityDeleted) {
+                    scene.destroyEntity(entity)
+                    if (selectedEntity == entity) {
+                        selectedEntity = null
+                    }
+                }
+
+                popID()
             }
-            ImGui.endPopup()
+
+            if (isMouseDown(0) && isWindowHovered())
+                selectedEntity = null
+
+            if (beginPopupContextWindow()) {
+                if (menuItem("Create Empty Entity"))
+                    scene.createEntity("Empty Entity")
+                endPopup()
+            }
         }
 
-        ImGui.end()
-
-        ImGui.begin("Properties")
-        selectedEntity?.let {
-            drawComponents(it)
+        begin("Properties") {
+            //selectedEntity?.let { drawComponentsDSL(it) }
+            selectedEntity?.let { drawComponents(it) }
         }
-        ImGui.end()
     }
 
-    private fun World.drawEntityNode(entity: Entity) {
-        ImGui.pushID(entity.id)
+    private fun WindowScope.drawComponentsDSL(entity: Entity) {
+        val tagComp = with(scene.world) { entity[TagComponent] }
+        val tagBuffer = ImString(tagComp.tag, 256)
+        if (inputText("##Tag", tagBuffer) && !tagBuffer.isEmpty)
+            tagComp.tag = tagBuffer.toString()
 
-        ImGui.pushStyleVar(ImGuiStyleVar.FramePadding, 0f, 0f)
-        ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, 0f, 0f)
+        sameLine()
+        pushItemWidth(-1f)
+        if (button("Add Component"))
+            openPopup("AddComponent")
 
-        val tag = entity[TagComponent].tag
-        val flags = ImGuiTreeNodeFlags.OpenOnArrow or
-                ImGuiTreeNodeFlags.SpanAvailWidth or
-                if (selectedEntity == entity) ImGuiTreeNodeFlags.Selected else 0
-        val open = ImGui.treeNodeEx(tag, flags)
-        if (ImGui.isItemClicked()) selectedEntity = entity
-
-        // deferring deletion in case any following code depends on the entity
-        var entityDeleted = false
-        if (ImGui.beginPopupContextItem()) {
-            if (ImGui.menuItem("Delete Entity")) {
-                entityDeleted = true
+        if (beginPopup("AddComponent")) {
+            with(scene.world) {
+                tryAdd(entity, entity.has(CameraComponent)         , "Camera") { CameraComponent() }
+                tryAdd(entity, entity.has(SpriteRendererComponent) , "Sprite Renderer"  ) { SpriteRendererComponent() }
+                tryAdd(entity, entity.has(CircleRendererComponent) , "Circle Renderer"  ) { CircleRendererComponent() }
+                tryAdd(entity, entity.has(RigidBody2DComponent)    , "Rigidbody 2D"     ) { RigidBody2DComponent() }
+                tryAdd(entity, entity.has(BoxCollider2DComponent)  , "Box Collider 2D"  ) { BoxCollider2DComponent() }
+                tryAdd(entity, entity.has(CircleCollider2DComponent),"Circle Collider 2D") { CircleCollider2DComponent() }
             }
-            ImGui.endPopup()
+            endPopup()
         }
+        popItemWidth()
 
-        if (open) ImGui.treePop()
+        /* ------------------------------------------------------------------ */
+        /*  ENTITY-SCOPED COMPONENT DRAWING                                   */
+        /* ------------------------------------------------------------------ */
+        entity(entity, scene.world) {
+            component("Transform", TransformComponent) { t ->
 
-        // popping padding
-        ImGui.popStyleVar(2)
-
-        if (entityDeleted) {
-            scene.destroyEntity(entity)
-            if (selectedEntity == entity) {
-                selectedEntity = null
             }
         }
+    }
 
-        ImGui.popID()
+    private inline fun <reified C : Component<C>> WindowScope.tryAdd(entity: Entity, flag: Boolean, name: String, make: () -> C) = with(scene.world) {
+        if (!flag && menuItem(name)) {
+            entity.configure { it += make() }
+            closeCurrentPopup()
+        }
     }
 
     private inline fun <reified C : Component<C>> World.drawComponent(

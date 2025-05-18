@@ -1,24 +1,19 @@
 package rune.scene
 
 import com.badlogic.gdx.math.Vector2
-import com.badlogic.gdx.physics.box2d.FixtureDef
 import com.github.quillraven.fleks.*
 import glm_.mat4x4.Mat4
 import glm_.vec2.Vec2
 import glm_.vec3.Vec3
 import glm_.vec4.Vec4
-import kotlinx.serialization.json.Json
 import ktx.box2d.*
 import rune.components.*
+import rune.core.Logger
 import rune.core.UUID
 import rune.renderer.EditorCamera
 import rune.renderer.Renderer2D
 import rune.renderer.RuneCamera
 import rune.scene.systems.ScriptSystem
-
-import rune.core.Logger
-import rune.scene.copyComponentsToEntity
-import kotlin.reflect.KClass
 
 typealias PhysicsWorld = com.badlogic.gdx.physics.box2d.World
 
@@ -29,6 +24,7 @@ class Scene {
         injectables {
             add(this@Scene)
         }
+
         onAddEntity {
 
         }
@@ -42,7 +38,7 @@ class Scene {
         }
     }
 
-    var physicsWorld: PhysicsWorld? = null
+    private var physicsWorld: PhysicsWorld2D = PhysicsWorld2D()
 
     fun destroyEntity(entity: Entity) {
         with(world) {
@@ -89,54 +85,86 @@ class Scene {
         }
     }
 
-    fun onRuntimeStart() {
-        physicsWorld = createWorld(Vector2(0f, -9.8f))
+    fun onPhysics2DStart() {
+        physicsWorld.onStart()
 
-        // creating physics bodies
-        with (world) {
-            family { all(RigidBody2DComponent) }.forEach {
-                val transform = it[TransformComponent]
-                val rb2d = it[RigidBody2DComponent]
+        world.family { all(RigidBody2DComponent) }.forEach {
+            val transform = it[TransformComponent]
+            val rb2d = it[RigidBody2DComponent]
 
-                val body = physicsWorld!!.body(type = rb2d.type.toBox2d()) {
-                    position.set(transform.translation.x, transform.translation.y)
-                    angle = transform.rotation.z
-                    fixedRotation = rb2d.fixedRotation
+            val body = physicsWorld.body(type = rb2d.type.toBox2d()) {
+                position.set(transform.translation.x, transform.translation.y)
+                angle = transform.rotation.z
+                fixedRotation = rb2d.fixedRotation
 
-                    if (it.has(BoxCollider2DComponent)) {
-                        val bc2d = it[BoxCollider2DComponent]
+                if (it.has(BoxCollider2DComponent)) {
+                    val bc2d = it[BoxCollider2DComponent]
 
-                        box(
-                            width = bc2d.size.x * transform.scale.x,
-                            height = bc2d.size.y * transform.scale.y
-                        ) {
-                            density = bc2d.density
-                            friction = bc2d.friction
-                            restitution = bc2d.restitution
-                            // TODO: figure out how to set restitutionThreshold (not avail in ktx-box2d:1.13.3-rc1
-                        }
-                    }
-                    if (it.has(CircleCollider2DComponent)) {
-                        val cc2d = it[CircleCollider2DComponent]
-
-                        circle(
-                            radius = transform.scale.x * cc2d.radius,
-                            position = Vector2(cc2d.offset.x, cc2d.offset.y)
-                        ) {
-                            density = cc2d.density
-                            friction = cc2d.friction
-                            restitution = cc2d.restitution
-                        }
+                    box(
+                        width = bc2d.size.x * transform.scale.x,
+                        height = bc2d.size.y * transform.scale.y
+                    ) {
+                        density = bc2d.density
+                        friction = bc2d.friction
+                        restitution = bc2d.restitution
+                        // TODO: figure out how to set restitutionThreshold (not avail in ktx-box2d:1.13.3-rc1
                     }
                 }
+                if (it.has(CircleCollider2DComponent)) {
+                    val cc2d = it[CircleCollider2DComponent]
 
-                rb2d.runtimeBody = body
+                    circle(
+                        radius = transform.scale.x * cc2d.radius,
+                        position = Vector2(cc2d.offset.x, cc2d.offset.y)
+                    ) {
+                        density = cc2d.density
+                        friction = cc2d.friction
+                        restitution = cc2d.restitution
+                    }
+                }
             }
+
+            rb2d.runtimeBody = body
         }
     }
 
+    fun onPhysics2DStop() {
+
+    }
+
+    fun onSimulationStart() {
+        onPhysics2DStart()
+    }
+
+    fun onSimulationStop() {
+        onPhysics2DStop()
+    }
+
+    fun onRuntimeStart() {
+        onPhysics2DStart()
+    }
+
     fun onRuntimeStop() {
-        physicsWorld = null
+        onPhysics2DStop()
+    }
+
+    fun onUpdateSimulation(dt: Float, camera: EditorCamera) {
+        physicsWorld.onUpdate(dt)
+
+        world.family { all(RigidBody2DComponent) }.forEach {
+            val tComp = it[TransformComponent]
+            val rbComp = it[RigidBody2DComponent]
+
+            rbComp.runtimeBody?.let { body ->
+                val position = body.position
+                tComp.translation.x = position.x
+                tComp.translation.y = position.y
+                tComp.rotation.z = body.angle
+            }
+        }
+
+        // render
+        renderScene(camera)
     }
 
     fun onUpdateRuntime(dt: Float) {
@@ -147,9 +175,7 @@ class Scene {
         world.update(dt)
 
         // physics
-        val velocityIterations = 6      // how often is it doing calculations
-        val positionIterations = 2      // TODO: expose these to the editor
-        physicsWorld!!.step(dt, velocityIterations, positionIterations)
+        physicsWorld.onUpdate(dt)
 
         // retrieve transform from box2d
         world.family { all(RigidBody2DComponent) }.forEach {
@@ -190,11 +216,14 @@ class Scene {
     }
 
     fun onUpdateEditor(dt: Float, camera: EditorCamera) {
+        renderScene(camera)
+    }
+
+    // TODO: SceneRenderer.kt
+    private fun renderScene(camera: EditorCamera) {
         Renderer2D.beginScene(camera)
 
-        val renderers = world.family { all(SpriteRendererComponent, TransformComponent) }
-
-        renderers.forEach {
+        world.family { all(SpriteRendererComponent, TransformComponent) }.forEach {
             Renderer2D.drawSprite(it[TransformComponent].getTransform(), it[SpriteRendererComponent], it.id)
         }
         world.family { all(CircleRendererComponent, TransformComponent) }.forEach {
@@ -208,17 +237,16 @@ class Scene {
         Renderer2D.endScene()
     }
 
-    fun getPrimaryCameraEntity(): Entity {
-        var primaryCamera: Entity = world.entity()  // default to an empty entity
+    fun getPrimaryCameraEntity(): Entity? {
+        var cameraEntity: Entity? = null
         world.family { all(CameraComponent) }.forEach {
             val comp = it[CameraComponent]
-
             if (comp.primary) {
-                primaryCamera = it
+                cameraEntity = it
                 return@forEach
             }
         }
-        return primaryCamera
+        return cameraEntity
     }
 
     companion object {

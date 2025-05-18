@@ -9,17 +9,17 @@ repositories {
 }
 
 // LWJGL versions (Kotlin DSL style)
-val lwjglVersion = "3.3.6"
-val jomlVersion = "1.10.7"
-val imguiVersion = "1.89.0"
-val glmVersion = "0.9.9.1-12"
-val koolVersion = "0.9.79"
-val fleksVersion = "2.11"
-val kamlVersion = "0.77.0"
-val lwjglNatives = "natives-windows"
-val ktxVersion = "1.13.1-rc1"
-val gdxVersion = "1.13.1"
-val jsonVersion = "1.6.3"
+val lwjglVersion     = "3.3.6"
+val jomlVersion      = "1.10.7"
+val imguiVersion     = "1.89.0"
+val glmVersion       = "0.9.9.1-12"
+val koolVersion      = "0.9.79"
+val fleksVersion     = "2.11"
+val lwjglNatives     = "natives-windows"
+val ktxVersion       = "1.13.1-rc1"
+val gdxVersion       = "1.13.1"
+val jsonVersion      = "1.6.3"
+val scriptingVersion = "2.1.0"      // this is the kotlin version - should probably get from prop
 
 dependencies {
     // Kotlin stdlib
@@ -49,7 +49,7 @@ dependencies {
     implementation("org.lwjgl:lwjgl-vulkan")
 
     // imgui
-    implementation("io.github.spair:imgui-java-app:${imguiVersion}")
+    implementation("io.github.spair:imgui-java-app:$imguiVersion")
 
     // glm
     implementation("io.github.kotlin-graphics:glm:$glmVersion")
@@ -80,10 +80,12 @@ dependencies {
     // Reflection
     implementation(kotlin("reflect"))
 
-    // Scripting TODO: get the kotlin version instead of hard coding it
-    implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:2.1.0")
-    implementation("org.jetbrains.kotlin:kotlin-scripting-jvm-host:2.1.0")
-    implementation("org.jetbrains.kotlin:kotlin-scripting-common:2.1.0")
+    // Scripting
+    implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:$scriptingVersion")
+    implementation("org.jetbrains.kotlin:kotlin-scripting-jvm-host:$scriptingVersion")
+    implementation("org.jetbrains.kotlin:kotlin-scripting-common:$scriptingVersion")
+
+    // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
 
     // Serialization

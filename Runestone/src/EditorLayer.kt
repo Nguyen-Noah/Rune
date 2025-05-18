@@ -43,8 +43,9 @@ class EditorLayer: Layer("Sandbox2D") {
     }
 
     // editor resources
-    private val iconPlay = Texture2D.create("resources/Icons/PlayButton.png", filter = GL_LINEAR)
-    private val iconStop = Texture2D.create("resources/Icons/StopButton.png", filter = GL_LINEAR)
+    private val iconPlay     = Texture2D.create("resources/Icons/PlayButton.png",     filter = GL_LINEAR)
+    private val iconStop     = Texture2D.create("resources/Icons/StopButton.png",     filter = GL_LINEAR)
+    private val iconSimulate = Texture2D.create("resources/Icons/SimulateButton.png", filter = GL_LINEAR)
     private var icon: Texture2D = iconPlay
 
     private lateinit var framebuffer: Framebuffer
@@ -160,6 +161,11 @@ class EditorLayer: Layer("Sandbox2D") {
                 editorCamera.onUpdate(dt)
 
                 activeScene.onUpdateEditor(dt, editorCamera)
+            }
+            SceneState.Simulate -> {
+                editorCamera.onUpdate(dt)
+
+                activeScene.onUpdateSimulation(dt, editorCamera)
             }
             else -> {}
         }
@@ -316,6 +322,9 @@ class EditorLayer: Layer("Sandbox2D") {
     }
 
     private fun onScenePlay() {
+        if (sceneState == SceneState.Simulate)
+            onSceneStop()
+
         sceneState = SceneState.Play
 
         editorScene = Scene.copy(activeScene)
@@ -325,10 +334,27 @@ class EditorLayer: Layer("Sandbox2D") {
     }
 
     private fun onSceneStop() {
+        if (sceneState == SceneState.Play) {
+            activeScene.onRuntimeStop()
+        } else if (sceneState == SceneState.Simulate) {
+            activeScene.onSimulationStop()
+        }
+
         sceneState = SceneState.Edit
 
-        activeScene.onRuntimeStop()
         activeScene = editorScene
+
+        sceneHierarchyPanel.setContext(activeScene)
+    }
+
+    private fun onSceneSimulate() {
+        if (sceneState == SceneState.Play)
+            onSceneStop()
+
+        sceneState = SceneState.Simulate
+
+        activeScene = Scene.copy(editorScene)
+        activeScene.onSimulationStart()
 
         sceneHierarchyPanel.setContext(activeScene)
     }
@@ -345,7 +371,7 @@ class EditorLayer: Layer("Sandbox2D") {
 
     private fun onOverlayRender() {
         if (sceneState == SceneState.Play) {
-            val camera = activeScene.getPrimaryCameraEntity()
+            val camera = activeScene.getPrimaryCameraEntity() ?: return
             with(activeScene.world) { Renderer2D.beginScene(camera[CameraComponent].camera, camera[TransformComponent].getTransform()) }
         } else {
             Renderer2D.beginScene(editorCamera)
@@ -611,15 +637,31 @@ class EditorLayer: Layer("Sandbox2D") {
         val flags = ImGuiWindowFlags.NoDecoration or ImGuiWindowFlags.NoScrollbar or ImGuiWindowFlags.NoScrollWithMouse
         ImGui.begin("##toolbar", null, flags)
 
-        val size = ImGui.getWindowHeight() - 4
-        icon = if (sceneState == SceneState.Edit) iconPlay else iconStop
+        val toolbarEnabled = (activeScene != null)
 
+        val tintColor = ImVec4(1f, 1f, 1f, 1f)
+        if (!toolbarEnabled)
+            tintColor.w = 0.5f
+
+        val size = ImGui.getWindowHeight() - 4
+
+        icon = if (sceneState == SceneState.Edit || sceneState == SceneState.Simulate) iconPlay else iconStop
         ImGui.pushStyleVar(ImGuiStyleVar.FramePadding, ImVec2(0f, 0f))
         ImGui.setCursorPosX((ImGui.getWindowContentRegionMax().x * 0.5f) - (size * 0.5f))
-        if (ImGui.imageButton("##button", icon.rendererID.toLong(), ImVec2(size, size))) {
-            if (sceneState == SceneState.Edit) {
+        if (ImGui.imageButton("##playButton", icon.rendererID.toLong(), ImVec2(size, size), ImVec2(0f, 0f), ImVec2(1f, 1f), ImVec4(0f, 0f, 0f, 0f), tintColor) && toolbarEnabled) {
+            if (sceneState == SceneState.Edit || sceneState == SceneState.Simulate) {
                 onScenePlay()
             } else if (sceneState == SceneState.Play) {
+                onSceneStop()
+            }
+        }
+        ImGui.sameLine()
+
+        icon = if (sceneState == SceneState.Edit || sceneState == SceneState.Play) iconSimulate else iconStop
+        if (ImGui.imageButton("##simButton", icon.rendererID.toLong(), ImVec2(size, size), ImVec2(0f, 0f), ImVec2(1f, 1f), ImVec4(0f, 0f, 0f, 0f), tintColor) && toolbarEnabled) {
+            if (sceneState == SceneState.Edit || sceneState == SceneState.Play) {
+                onSceneSimulate()
+            } else if (sceneState == SceneState.Simulate) {
                 onSceneStop()
             }
         }
