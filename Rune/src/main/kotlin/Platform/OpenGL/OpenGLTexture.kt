@@ -3,7 +3,7 @@ package rune.platforms.opengl
 import org.lwjgl.opengl.GL45.*
 import org.lwjgl.stb.STBImage.*
 import org.lwjgl.system.MemoryStack
-import rune.renderer.Texture2D
+import rune.renderer.gpu.Texture2D
 import java.nio.ByteBuffer
 import java.nio.IntBuffer
 
@@ -117,5 +117,9 @@ class OpenGLTexture : Texture2D {
 
     override fun hashCode(): Int {
         return rendererID
+    }
+
+    override fun toString(): String {
+        return "Texture2D(RendererID: $rendererID)"
     }
 }

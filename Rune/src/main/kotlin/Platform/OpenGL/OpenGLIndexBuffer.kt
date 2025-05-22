@@ -1,17 +1,31 @@
 package rune.platforms.opengl
 
 import org.lwjgl.opengl.GL33.*
-import org.lwjgl.system.MemoryUtil
-import rune.renderer.IndexBuffer
+import rune.renderer.gpu.IndexBuffer
 
-class OpenGLIndexBuffer(private val indices: IntArray, private val count: Int) : IndexBuffer {
+class OpenGLIndexBuffer : IndexBuffer {
     private var rendererID: Int = 0
+    private var indices: IntArray? = null
+    private var count: Int = 0
 
-    init {
+    constructor(indices: IntArray, count: Int) {
+        this.indices = indices
+        this.count = count
+
         rendererID = glGenBuffers()
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, rendererID)
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices, GL_STATIC_DRAW)
     }
+
+    constructor(indexBuffer: List<Int>) {
+        this.indices = indexBuffer.toIntArray()
+        this.count = indexBuffer.size
+
+        rendererID = glGenBuffers()
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, rendererID)
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices!!, GL_STATIC_DRAW)
+    }
+
 
     override fun getCount(): Int {
         return count

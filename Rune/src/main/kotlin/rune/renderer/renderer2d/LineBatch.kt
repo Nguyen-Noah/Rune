@@ -3,11 +3,12 @@ package rune.renderer.renderer2d
 import glm_.vec3.Vec3
 import glm_.vec4.Vec4
 import rune.renderer.*
+import rune.renderer.gpu.*
 
 const val lineWidth = 1f
 
 class LineBatch(
-    private val maxLines: Int = 5_000,
+    maxLines: Int = 5_000,
     private val shader: Shader
 ) : Batch {
 
@@ -18,7 +19,7 @@ class LineBatch(
         attr(2, BufferType.Int1)    // entityID
     }
 
-    private val writer = VertexBufferWriter(maxVertices, layout)
+    private val writer = VertexBufferWriter(maxVertices, layout.stride)
     private val vbo = VertexBuffer.create(maxVertices * layout.stride)
     private val vao = VertexArray.create(vbo, bufferLayout {
         attribute("a_Position", 3)
@@ -42,7 +43,7 @@ class LineBatch(
 
         shader.bind()
         RenderCommand.setLineThickness(lineWidth)
-        Renderer2D.stats.drawCalls++
+        Renderer.stats.drawCalls++
         RenderCommand.drawLines(vao, verts)
     }
 

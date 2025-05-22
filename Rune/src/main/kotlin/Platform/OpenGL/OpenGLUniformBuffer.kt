@@ -1,7 +1,7 @@
 package rune.platforms.opengl
 
 import org.lwjgl.opengl.GL45.*
-import rune.renderer.UniformBuffer
+import rune.renderer.gpu.UniformBuffer
 import java.nio.ByteBuffer
 
 class OpenGLUniformBuffer(private val size: Int, private val binding: Int) : UniformBuffer {

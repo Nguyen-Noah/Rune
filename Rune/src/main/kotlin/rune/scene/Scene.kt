@@ -11,46 +11,29 @@ import rune.components.*
 import rune.core.Logger
 import rune.core.UUID
 import rune.renderer.EditorCamera
-import rune.renderer.Renderer2D
-import rune.renderer.RuneCamera
+import rune.renderer.Renderer
+import rune.renderer.renderer2d.Renderer2D
+import rune.renderer.renderer3d.Renderer3D
 import rune.scene.systems.ScriptSystem
 
 typealias PhysicsWorld = com.badlogic.gdx.physics.box2d.World
 
 class Scene {
     var viewportWidth = 0
+        private set
     var viewportHeight = 0
+        private set
+
     var world: World = configureWorld {
-        injectables {
-            add(this@Scene)
-        }
-
-        onAddEntity {
-
-        }
-
-        onRemoveEntity {
-
-        }
-
-        systems {
-            add(ScriptSystem())
-        }
+        injectables { add(this@Scene) }
+        systems { add(ScriptSystem()) }
     }
 
     private var physicsWorld: PhysicsWorld2D = PhysicsWorld2D()
 
-    fun destroyEntity(entity: Entity) {
-        with(world) {
-            entity.remove()
-        }
-    }
+    fun destroyEntity(entity: Entity) = with(world) { entity.remove() }
 
-    fun createEntity(name: String? = null): Entity {
-        return createEntityWithUUID(UUID(), name)
-    }
-
-    fun createEntityWithUUID(uuid: UUID, name: String?): Entity {
+    fun createEntity(name: String? = null, uuid: UUID = UUID()): Entity {
         val entity = world.entity {
             it += IDComponent(uuid)
             it += TransformComponent()
@@ -63,29 +46,37 @@ class Scene {
     }
 
     fun duplicateEntity(src: Entity): Entity = with(world) {
-        val name = src[TagComponent].tag
-        val newEntity = createEntity("$name (copy)")
-
-        val components = world.snapshotOf(src).components
-
-        world.copyComponentsToEntity(newEntity, components)
+        val newEntity = createEntity("${src[TagComponent].tag} (copy)")
+        world.copyComponentsToEntity(newEntity, world.snapshotOf(src).components)
         newEntity
     }
+
+    /* ------------------------------------------------------------------ */
+    /*  Window resize                                                     */
+    /* ------------------------------------------------------------------ */
 
     fun onViewportResize(width: Int, height: Int) {
         viewportWidth = width
         viewportHeight = height
 
         // resize our non-aspectRatio fixed cameras
-        val cameras = world.family { all(CameraComponent) }
-        cameras.forEach {comp ->
+        world.family { all(CameraComponent) }.forEach {comp ->
             if (!comp[CameraComponent].fixedAspectRatio) {
                 comp[CameraComponent].camera.setViewportSize(width, height)
             }
         }
     }
 
-    fun onPhysics2DStart() {
+    /* ------------------------------------------------------------------ */
+    /*  Physics                                                           */
+    /* ------------------------------------------------------------------ */
+
+    fun onSimulationStart() = onPhysics2DStart()
+    fun onSimulationStop()  = onPhysics2DStop()
+    fun onRuntimeStart()    = onPhysics2DStart()
+    fun onRuntimeStop()     = onPhysics2DStop()
+
+    private fun onPhysics2DStart() {
         physicsWorld.onStart()
 
         world.family { all(RigidBody2DComponent) }.forEach {
@@ -128,125 +119,86 @@ class Scene {
         }
     }
 
-    fun onPhysics2DStop() {
+    private fun onPhysics2DStop() { /* TODO */}
 
-    }
-
-    fun onSimulationStart() {
-        onPhysics2DStart()
-    }
-
-    fun onSimulationStop() {
-        onPhysics2DStop()
-    }
-
-    fun onRuntimeStart() {
-        onPhysics2DStart()
-    }
-
-    fun onRuntimeStop() {
-        onPhysics2DStop()
-    }
+    /* ------------------------------------------------------------------ */
+    /*  Update loops                                                      */
+    /* ------------------------------------------------------------------ */
 
     fun onUpdateSimulation(dt: Float, camera: EditorCamera) {
-        physicsWorld.onUpdate(dt)
-
-        world.family { all(RigidBody2DComponent) }.forEach {
-            val tComp = it[TransformComponent]
-            val rbComp = it[RigidBody2DComponent]
-
-            rbComp.runtimeBody?.let { body ->
-                val position = body.position
-                tComp.translation.x = position.x
-                tComp.translation.y = position.y
-                tComp.rotation.z = body.angle
-            }
-        }
+        syncPhysicsToTransforms(dt)
 
         // render
         renderScene(camera)
     }
 
     fun onUpdateRuntime(dt: Float) {
-        // camera
-        var mainCamera: RuneCamera? = null
-        var transform: Mat4? = null
-
         world.update(dt)
+        syncPhysicsToTransforms(dt)
 
-        // physics
-        physicsWorld.onUpdate(dt)
-
-        // retrieve transform from box2d
-        world.family { all(RigidBody2DComponent) }.forEach {
-            val physicsTransform = it[TransformComponent]
-            val rb2d = it[RigidBody2DComponent]
-
-            rb2d.runtimeBody?.let { body ->
-                val position = body.position
-                physicsTransform.translation.x = position.x
-                physicsTransform.translation.y = position.y
-                physicsTransform.rotation.z = body.angle
-            }
+        val pair = with(world) {
+            family { all(TransformComponent, CameraComponent) }
+                .firstOrNull { it[CameraComponent].primary }
+                ?.let { it[CameraComponent].camera to it[TransformComponent].getTransform() }
+                ?: return
         }
 
-        val family = world.family { all(TransformComponent, CameraComponent) }
-        family.forEach {
-            val camera = it[CameraComponent]
-            if (camera.primary) {
-                mainCamera = camera.camera
-                transform = it[TransformComponent].getTransform()
-                return@forEach      // same as break but for forEach
-            }
-        }
+        val (mainCamera, transform) = pair
 
-        if (mainCamera != null) {
-            Renderer2D.beginScene(mainCamera!!, transform!!)
-
-            world.family { all(SpriteRendererComponent, TransformComponent) }.forEach {
-                Renderer2D.drawSprite(it[TransformComponent].getTransform(), it[SpriteRendererComponent], it.id)
-            }
-            world.family { all(CircleRendererComponent, TransformComponent) }.forEach {
-                val circle = it[CircleRendererComponent]
-                Renderer2D.drawCircle(it[TransformComponent].getTransform(), circle.color, circle.thickness, circle.fade, it.id)
-            }
-
-            Renderer2D.endScene()
-        }
+        Renderer.beginScene(mainCamera, transform)
+        drawRenderables()
+        Renderer.endScene()
     }
 
     fun onUpdateEditor(dt: Float, camera: EditorCamera) {
         renderScene(camera)
     }
 
+    /* ------------------------------------------------------------------ */
+    /*  Helpers                                                           */
+    /* ------------------------------------------------------------------ */
+
+    private fun syncPhysicsToTransforms(dt: Float) {
+        physicsWorld.onUpdate(dt)
+
+        world.family { all(RigidBody2DComponent) }.forEach {
+            val transform = it[TransformComponent]
+            it[RigidBody2DComponent].runtimeBody?.let { body ->
+                val position = body.position
+                transform.translation.x = position.x
+                transform.translation.y = position.y
+                transform.rotation.z = body.angle
+            }
+        }
+    }
+
     // TODO: SceneRenderer.kt
     private fun renderScene(camera: EditorCamera) {
-        Renderer2D.beginScene(camera)
+        Renderer.beginScene(camera)   // TODO: Renderer.beginScene()
+        drawRenderables()
 
+        world.family { all(StaticMeshComponent) }.forEach {
+            val model = it[StaticMeshComponent].model
+            if (model != null) {
+                Renderer3D.renderStaticMesh(model, Mat4(1f), it.id)
+            }
+        }
+
+        Renderer.endScene()
+    }
+
+    private fun drawRenderables() {
         world.family { all(SpriteRendererComponent, TransformComponent) }.forEach {
             Renderer2D.drawSprite(it[TransformComponent].getTransform(), it[SpriteRendererComponent], it.id)
         }
         world.family { all(CircleRendererComponent, TransformComponent) }.forEach {
-            val circle = it[CircleRendererComponent]
-            Renderer2D.drawCircle(it[TransformComponent].getTransform(), circle.color, circle.thickness, circle.fade, it.id)
+            Renderer2D.drawCircle(it[TransformComponent].getTransform(), it[CircleRendererComponent], it.id)
         }
-
-        Renderer2D.drawRect(Vec3(0f), Vec2(1f), Vec4(1f, 1f, 1f, 1f))
-        Renderer2D.drawLine(Vec3(0f), Vec3(5f), Vec4(1f, 0f, 1f, 1f), -1)
-
-        Renderer2D.endScene()
     }
 
-    fun getPrimaryCameraEntity(): Entity? {
-        var cameraEntity: Entity? = null
-        world.family { all(CameraComponent) }.forEach {
-            val comp = it[CameraComponent]
-            if (comp.primary) {
-                cameraEntity = it
-                return@forEach
-            }
-        }
-        return cameraEntity
+    fun getPrimaryCameraEntity(): Entity? = with(world) {
+        family { all(CameraComponent) }
+            .firstOrNull { it[CameraComponent].primary }
     }
 
     companion object {
@@ -273,10 +225,10 @@ class Scene {
             other.world.family { all(TagComponent) }.forEach { src ->
                 val id = src[IDComponent].id
                 val tag = src[TagComponent].tag
-                val newEntity = newScene.createEntityWithUUID(id, tag)
+                val newEntity = newScene.createEntity(tag, id)
 
                 val components = other.world.snapshotOf(src).components
-                Logger.warn("Copying entity $id with components ${components.map { it::class.simpleName }}")
+                //Logger.warn("Copying entity $id with components ${components.map { it::class.simpleName }}")
 
                 newWorld.copyComponentsToEntity(newEntity, components)
             }
@@ -292,14 +244,18 @@ fun World.copyComponentsToEntity(entity: Entity, components: List<Component<*>>)
         entity.configure {
             components.forEach { comp ->
                 when (comp) {
-                    is TransformComponent       -> entity += comp.copy()
-                    is SpriteRendererComponent  -> entity += comp.copy()
-                    is CircleRendererComponent  -> entity += comp.copy()
-                    is RigidBody2DComponent     -> entity += comp.copy()
-                    is BoxCollider2DComponent   -> entity += comp.copy()
-                    is CircleCollider2DComponent   -> entity += comp.copy()
-                    is CameraComponent          -> entity += comp.copy()
-                    else -> Logger.warn("Unmatched component: ${comp::class.simpleName}")
+                    is TransformComponent           -> entity += comp.copy()
+                    is SpriteRendererComponent      -> entity += comp.copy()
+                    is CircleRendererComponent      -> entity += comp.copy()
+                    is RigidBody2DComponent         -> entity += comp.copy()
+                    is BoxCollider2DComponent       -> entity += comp.copy()
+                    is CircleCollider2DComponent    -> entity += comp.copy()
+                    is CameraComponent              -> entity += comp.copy()
+                    is StaticMeshComponent          -> entity += comp.copy()
+                    else -> {
+                        if (comp !is IDComponent && comp !is TagComponent)
+                            Logger.warn("Unmatched component: ${comp::class.simpleName}")
+                    }
                     // TODO: add ScriptComponent
                 }
             }

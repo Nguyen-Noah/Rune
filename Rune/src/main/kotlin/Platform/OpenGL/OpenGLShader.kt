@@ -19,7 +19,7 @@ import org.lwjgl.util.spvc.Spvc.*
 import org.lwjgl.util.spvc.SpvcReflectedResource
 import rune.core.Logger
 import rune.core.Timer
-import rune.renderer.Shader
+import rune.renderer.gpu.Shader
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
@@ -121,6 +121,7 @@ class OpenGLShader private constructor(
                     compiler, source, glStageToShaderc(stage),
                     filePath, "main", options
                 )
+                println(shaderc_result_get_error_message(module))
                 require(shaderc_result_get_compilation_status(module) == shaderc_compilation_status_success)
 
                 val size = shaderc_result_get_length(module).toInt()

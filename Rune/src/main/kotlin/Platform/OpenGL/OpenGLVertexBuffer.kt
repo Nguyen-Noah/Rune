@@ -1,7 +1,8 @@
 package rune.platforms.opengl
 
 import org.lwjgl.opengl.GL45.*
-import rune.renderer.VertexBuffer
+import rune.renderer.gpu.VertexBuffer
+import rune.renderer.renderer3d.mesh.Vertex
 import java.nio.ByteBuffer
 
 class OpenGLVertexBuffer : VertexBuffer {
@@ -24,6 +25,24 @@ class OpenGLVertexBuffer : VertexBuffer {
         rendererID = glCreateBuffers()
         glBindBuffer(GL_ARRAY_BUFFER, rendererID)
         glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW)
+    }
+
+    constructor(vertices: List<Vertex>) {
+        val floatsPerVertex = 8 // position, normal, texcoords
+        val data = FloatArray(vertices.size * floatsPerVertex)
+
+        var i = 0
+        vertices.forEach { v ->
+            data[i++] = v.position.x;  data[i++] = v.position.y;  data[i++] = v.position.z
+            data[i++] = v.normal.x;  data[i++] = v.normal.y;  data[i++] = v.normal.z
+            data[i++] = v.texCoords.x;   data[i++] = v.texCoords.y
+        }
+
+        size = data.size * Float.SIZE_BYTES
+
+        rendererID = glCreateBuffers()
+        glBindBuffer(GL_ARRAY_BUFFER, rendererID)
+        glBufferData(GL_ARRAY_BUFFER, data, GL_STATIC_DRAW)
     }
 
     override fun setData(vertices: ByteBuffer) {

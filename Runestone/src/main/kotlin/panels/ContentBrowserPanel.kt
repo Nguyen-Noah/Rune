@@ -6,7 +6,7 @@ import imgui.ImVec4
 import imgui.flag.ImGuiCol
 import imgui.flag.ImGuiMouseButton
 import org.lwjgl.opengl.GL11.GL_LINEAR
-import rune.renderer.Texture2D
+import rune.renderer.gpu.Texture2D
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths

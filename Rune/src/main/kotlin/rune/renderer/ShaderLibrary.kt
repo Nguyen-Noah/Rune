@@ -1,5 +1,7 @@
 package rune.renderer
 
+import rune.renderer.gpu.Shader
+
 
 class ShaderLibrary {
         private val shaders = mutableMapOf<String, Shader>()

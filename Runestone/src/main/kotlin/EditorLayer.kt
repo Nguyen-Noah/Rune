@@ -13,16 +13,20 @@ import imgui.extension.imguizmo.ImGuizmo
 import imgui.extension.imguizmo.flag.Mode
 import imgui.extension.imguizmo.flag.Operation
 import imgui.flag.*
-import imgui.internal.ImGuiWindow
 import imgui.type.ImBoolean
 import org.lwjgl.opengl.GL11.GL_LINEAR
+import rune.asset.MeshImporter
 import rune.components.*
 import rune.core.*
 import rune.events.Event
 import rune.events.EventDispatcher
 import rune.events.KeyPressedEvent
 import rune.events.MouseButtonPressedEvent
+import rune.platforms.opengl.OpenGLRendererAPI
 import rune.renderer.*
+import rune.renderer.gpu.*
+import rune.renderer.renderer2d.Renderer2D
+import rune.renderer.renderer3d.Renderer3D
 import rune.scene.Scene
 import rune.scene.serialization.SceneSerializer
 import rune.utils.decomposeTransform
@@ -47,6 +51,8 @@ class EditorLayer: Layer("Sandbox2D") {
     private val iconStop     = Texture2D.create("src/main/resources/Icons/StopButton.png",     filter = GL_LINEAR)
     private val iconSimulate = Texture2D.create("src/main/resources/Icons/SimulateButton.png", filter = GL_LINEAR)
     private var icon: Texture2D = iconPlay
+
+    //private val zelda = MeshImporter.importMesh("Zelda.dae")
 
     private lateinit var framebuffer: Framebuffer
     private var viewportSize: Vec2 = Vec2(0f)
@@ -110,7 +116,17 @@ class EditorLayer: Layer("Sandbox2D") {
         sceneHierarchyPanel = SceneHierarchyPanel(activeScene)
         contentBrowserPanel = ContentBrowserPanel()
 
-        //SceneSerializer(activeScene).deserialize("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\assets\\scenes\\Cameras.rune")
+        //! TEMP
+        val zelda = activeScene.createEntity("Zelda")
+        with(activeScene.world) {
+            zelda.configure {
+                it += StaticMeshComponent(MeshImporter.importMesh("Zelda.dae"))
+            }
+        }
+
+
+
+        //SceneSerializer(activeScene).deserialize("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\assets\\scenes\\thingy.rune")
     }
 
     override fun onUpdate(dt: Float) {
@@ -126,7 +142,7 @@ class EditorLayer: Layer("Sandbox2D") {
         }
 
         // Render
-        Renderer2D.resetStats()
+        Renderer.resetStats()
         framebuffer.bind()
         RenderCommand.setClearColor(Vec4(0.1f, 0.1f, 0.1f, 1.0f))
         RenderCommand.clear()
@@ -304,7 +320,6 @@ class EditorLayer: Layer("Sandbox2D") {
             onSceneStop()
 
         sceneState = SceneState.Play
-
         editorScene = Scene.copy(activeScene)
         activeScene.onRuntimeStart()
 
@@ -330,8 +345,7 @@ class EditorLayer: Layer("Sandbox2D") {
             onSceneStop()
 
         sceneState = SceneState.Simulate
-
-        activeScene = Scene.copy(editorScene)
+        editorScene = Scene.copy(activeScene)
         activeScene.onSimulationStart()
 
         sceneHierarchyPanel.setContext(activeScene)
@@ -350,9 +364,9 @@ class EditorLayer: Layer("Sandbox2D") {
     private fun onOverlayRender() {
         if (sceneState == SceneState.Play) {
             val camera = activeScene.getPrimaryCameraEntity() ?: return
-            with(activeScene.world) { Renderer2D.beginScene(camera[CameraComponent].camera, camera[TransformComponent].getTransform()) }
+            with(activeScene.world) { Renderer.beginScene(camera[CameraComponent].camera, camera[TransformComponent].getTransform()) }
         } else {
-            Renderer2D.beginScene(editorCamera)
+            Renderer.beginScene(editorCamera)
         }
 
         // TODO: disable depth testing and render physics colliders after the rest of scene -> lets lines go through walls
@@ -477,7 +491,7 @@ class EditorLayer: Layer("Sandbox2D") {
         ImGui.text("Hovered Entity: $name")
 
         // stats
-        val stats = Renderer2D.stats
+        val stats = Renderer.stats
         ImGui.text("Renderer2D Stats:")
         ImGui.text("Draw Calls: ${stats.drawCalls}")
         ImGui.text("Quads: ${stats.quadCount}")
@@ -543,12 +557,6 @@ class EditorLayer: Layer("Sandbox2D") {
                 ImGuizmo.setRect(ImGui.getWindowPosX(), ImGui.getWindowPosY(), windowWidth, windowHeight)
 
                 with (activeScene.world) {
-                    // runtime entity camera
-//                    val cameraEntity = activeScene.getPrimaryCameraEntity()
-//                    val camera = cameraEntity[CameraComponent].camera
-//                    val cameraProjection: Mat4 = camera.projection
-//                    val cameraView: Mat4 = glm.inverse(cameraEntity[TransformComponent].getTransform())
-
                     // editorCamera
                     val cameraProjection: Mat4 = editorCamera.projection
                     val cameraView: Mat4 = editorCamera.viewMatrix
@@ -587,6 +595,13 @@ class EditorLayer: Layer("Sandbox2D") {
                     }
                 }
             }
+        }
+
+        // scene drag n drop
+        if (ImGui.beginDragDropTarget()) {
+            val payload: String? = ImGui.acceptDragDropPayload("CONTENT_BROWSER_ITEM")
+
+            ImGui.endDragDropTarget()
         }
 
 

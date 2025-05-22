@@ -3,9 +3,10 @@ package rune.renderer.renderer2d
 import glm_.mat4x4.Mat4
 import glm_.vec4.Vec4
 import rune.renderer.*
+import rune.renderer.gpu.*
 
 class CircleBatch(
-    private val maxCircles: Int = 10_000,
+    maxCircles: Int = 10_000,
     private val shader: Shader
 ) : Batch {
 
@@ -21,7 +22,7 @@ class CircleBatch(
         attr(5, BufferType.Int1)    // entityID
     }
 
-    private val writer = VertexBufferWriter(maxVertices, layout)
+    private val writer = VertexBufferWriter(maxVertices, layout.stride)
     private val ibo = makeIndexBuffer()
     private var indices = 0
     private val vbo = VertexBuffer.create(maxVertices * layout.stride)
@@ -49,7 +50,7 @@ class CircleBatch(
 
         shader.bind()
         RenderCommand.drawIndexed(vao, indices)
-        Renderer2D.stats.drawCalls++
+        Renderer.stats.drawCalls++
     }
 
     /* --------------- Render API ----------------- */

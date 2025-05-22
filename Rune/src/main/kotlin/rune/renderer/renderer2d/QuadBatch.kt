@@ -5,13 +5,49 @@ import glm_.vec2.Vec2
 import glm_.vec4.Vec4
 import rune.core.Logger
 import rune.renderer.*
+import rune.renderer.gpu.*
+import rune.renderer.pipeline.Pipeline
+import rune.renderer.pipeline.pipelineSpec
 
 class QuadBatch(
-    private val maxQuads: Int = 10_000,
+    maxQuads: Int = 10_000,
     private val maxTextureSlots: Int = 32,  // TODO: gpu capabilities
     private val shader: Shader,
     whiteTex: Texture2D
 ) : Batch {
+
+    private val ibo = makeIndexBuffer()
+
+//    val pipelineSpec = pipelineSpec {
+//        debugName = "Renderer2D-Quad"
+//        shader = this@QuadBatch.shader
+//        targetFramebuffer = null
+//        layout = VertexLayout.build {
+//            attr(0, BufferType.Float3)  // position
+//            attr(1, BufferType.Float4)  // color
+//            attr(2, BufferType.Float2)  // texcoords
+//            attr(3, BufferType.Float1)  // texIndex
+//            attr(4, BufferType.Float1)  // tilingFactor
+//            attr(5, BufferType.Int1)    // entityID
+//        }
+//        vao = VertexArray.create(vbo, bufferLayout {
+//            attribute("a_Position", 3)
+//            attribute("a_Color", 4)
+//            attribute("a_TexCoord", 2)
+//            attribute("a_TexIndex", 1)
+//            attribute("a_TilingFactor", 1)
+//            attribute("a_EntityID", 1)
+//        }).apply { setIndexBuffer(ibo) }
+//        enableDepthTest = true
+//        backfaceCulling = false
+//    }
+//    val pipeline = Pipeline.create(pipelineSpec)
+//
+//    val quadSpec = renderPassSpec {
+//        pipeline = this@QuadBatch.pipeline
+//        debugName = "Renderer2D-Quad"
+//    }
+
 
     /* ------------- constants and buffers --------------- */
     private val maxVertices = maxQuads * 4
@@ -26,8 +62,7 @@ class QuadBatch(
         attr(5, BufferType.Int1)    // entityID
     }
 
-    private val writer = VertexBufferWriter(maxVertices, layout)
-    private val ibo = makeIndexBuffer()
+    private val writer = VertexBufferWriter(maxVertices, layout.stride)
     private var indices = 0
     private val vbo = VertexBuffer.create(maxVertices * layout.stride)
     private val vao = VertexArray.create(vbo, bufferLayout {
@@ -59,7 +94,7 @@ class QuadBatch(
 
         shader.bind()
         RenderCommand.drawIndexed(vao, indices)
-        Renderer2D.stats.drawCalls++
+        Renderer.stats.drawCalls++
     }
 
     /* --------------- Render API ----------------- */

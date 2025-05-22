@@ -2,11 +2,10 @@ package rune.platforms.opengl
 
 import org.lwjgl.opengl.GL45.*
 import org.lwjgl.system.MemoryStack
-import rune.renderer.Framebuffer
-import rune.renderer.FramebufferSpecification
-import rune.renderer.FramebufferTextureFormat
-import rune.renderer.FramebufferTextureSpecification
-import java.nio.FloatBuffer
+import rune.renderer.gpu.Framebuffer
+import rune.renderer.gpu.FramebufferSpecification
+import rune.renderer.gpu.FramebufferTextureFormat
+import rune.renderer.gpu.FramebufferTextureSpecification
 import java.nio.IntBuffer
 
 // TODO: update all rendering API to take in specifications
@@ -14,7 +13,7 @@ class OpenGLFramebuffer(private val spec: FramebufferSpecification) : Framebuffe
     companion object {
         val maxFramebufferSize = 8192       // TODO: get this number from the gpu
     }
-    private var rendererId: Int = -1
+    override var rendererId: Int = -1
 
     private val colorAttachmentSpecs: ArrayList<FramebufferTextureSpecification> = arrayListOf()
     private var depthAttachmentSpec: FramebufferTextureSpecification = FramebufferTextureSpecification()   // defaults to None

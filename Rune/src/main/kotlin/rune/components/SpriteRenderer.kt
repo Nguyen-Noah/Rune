@@ -5,7 +5,7 @@ import com.github.quillraven.fleks.ComponentType
 import glm_.vec4.Vec4
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import rune.renderer.Texture2D
+import rune.renderer.gpu.Texture2D
 import rune.scene.serialization.Texture2DPath
 import rune.scene.serialization.Vec4AsList
 import rune.utils.copy

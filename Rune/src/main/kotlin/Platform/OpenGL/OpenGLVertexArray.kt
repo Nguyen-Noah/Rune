@@ -1,10 +1,10 @@
 package rune.platforms.opengl
 
 import org.lwjgl.opengl.GL45.*
-import rune.renderer.IndexBuffer
-import rune.renderer.VertexArray
-import rune.renderer.VertexBuffer
-import rune.renderer.VertexBufferLayout
+import rune.renderer.gpu.IndexBuffer
+import rune.renderer.gpu.VertexArray
+import rune.renderer.gpu.VertexBuffer
+import rune.renderer.gpu.VertexBufferLayout
 
 private val INTEGER_TYPES = setOf(GL_INT, GL_UNSIGNED_INT, GL_UNSIGNED_SHORT, GL_UNSIGNED_BYTE)
 

@@ -13,8 +13,8 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import rune.core.UUID
-import rune.platforms.opengl.OpenGLTexture
-import rune.renderer.Texture2D
+import rune.renderer.gpu.Texture2D
+import rune.renderer.renderer3d.*
 import rune.scene.ProjectionType
 import rune.scene.SceneCamera
 
@@ -136,5 +136,31 @@ object Texture2DPath : KSerializer<Texture2D?> {
     @OptIn(ExperimentalSerializationApi::class)
     override fun deserialize(decoder: Decoder): Texture2D? {
         return decoder.decodeNullableSerializableValue(String.serializer())?.let { Texture2D.create(it) }
+    }
+}
+
+
+object AABBSerializer : KSerializer<AABB> {
+    @Serializable
+    private data class Surrogate(
+        @Serializable(with = Vec3AsList::class) val min: Vec3,
+        @Serializable(with = Vec3AsList::class) val max: Vec3
+    )
+
+    override val descriptor: SerialDescriptor =
+        buildClassSerialDescriptor("AABB") {
+            element<Vec3>("Min")   // re-uses Vec3AsList
+            element<Vec3>("Max")
+        }
+
+    override fun serialize(encoder: Encoder, value: AABB) =
+        encoder.encodeSerializableValue(
+            Surrogate.serializer(),
+            Surrogate(value.min, value.max)
+        )
+
+    override fun deserialize(decoder: Decoder): AABB {
+        val dto = decoder.decodeSerializableValue(Surrogate.serializer())
+        return AABB(dto.min, dto.max)
     }
 }

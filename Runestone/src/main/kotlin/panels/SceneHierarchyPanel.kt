@@ -10,14 +10,13 @@ import glm_.vec3.Vec3
 import imgui.ImGui
 import imgui.ImVec2
 import imgui.flag.ImGuiCol
-import imgui.flag.ImGuiPopupFlags
 import imgui.flag.ImGuiStyleVar
 import imgui.flag.ImGuiTreeNodeFlags
 import imgui.type.ImString
+import rune.asset.MeshImporter
 import rune.components.*
-import rune.core.Logger
 import rune.imgui.*
-import rune.renderer.Texture2D
+import rune.renderer.gpu.Texture2D
 import rune.scene.*
 
 class SceneHierarchyPanel(private var scene: Scene) {
@@ -239,6 +238,13 @@ class SceneHierarchyPanel(private var scene: Scene) {
                         ImGui.closeCurrentPopup()
                     }
                 }
+
+                if (!it.has(StaticMeshComponent)) {
+                    if (ImGui.menuItem("Static Mesh")) {
+                        it += StaticMeshComponent()
+                        ImGui.closeCurrentPopup()
+                    }
+                }
             }
             ImGui.endPopup()
         }
@@ -443,6 +449,11 @@ class SceneHierarchyPanel(private var scene: Scene) {
             if (ImGui.dragFloat("Restitution", tmpFloat, 0.01f, 0f, 1f)) {
                 src.restitution = tmpFloat[0]
             }
+        }
+
+        drawComponent<StaticMeshComponent>(entity, StaticMeshComponent, "Static Mesh") { src ->
+            // texture
+            ImGui.button("Mesh", ImVec2(100f, 0f))
         }
     }
 

@@ -1,9 +1,12 @@
 package rune.platforms.opengl
 
+import glm_.mat4x4.Mat4
 import glm_.vec4.Vec4
 import org.lwjgl.opengl.GL45.*
+import rune.renderer.Renderer
 import rune.renderer.RendererAPI
-import rune.renderer.VertexArray
+import rune.renderer.gpu.VertexArray
+import rune.renderer.renderer3d.Model
 
 class OpenGLRendererAPI : RendererAPI {
     override fun init() {
@@ -37,5 +40,39 @@ class OpenGLRendererAPI : RendererAPI {
 
     override fun setLineWidth(width: Float) {
         glLineWidth(width)
+    }
+
+    override fun renderStaticMesh(model: Model, transform: Mat4, entityId: Int) {
+        model.vao.bind()
+
+        model.mesh.subMeshes.forEach { sm ->
+            // 1. bind the material
+            sm.material.texture.bind()
+
+            val byteOffset = (sm.indexOffset * Int.SIZE_BYTES).toLong()
+
+            glDrawElementsBaseVertex(
+                GL_TRIANGLES,
+                sm.indexCount,
+                GL_UNSIGNED_INT,
+                byteOffset,
+                0
+            )
+            Renderer.stats.drawCalls++
+        }
+
+        model.vao.unbind()
+    }
+
+    override fun beginRenderPass() {
+        TODO("Not yet implemented")
+    }
+
+    override fun endRenderPass() {
+        TODO("Not yet implemented")
+    }
+
+    override fun renderGeometry() {
+        TODO("Not yet implemented")
     }
 }
