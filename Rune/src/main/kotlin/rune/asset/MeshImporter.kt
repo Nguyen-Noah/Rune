@@ -19,9 +19,10 @@ import java.nio.IntBuffer
 
 object MeshImporter {
 
-    private val assetPath = "assets/meshes/Zelda"
+    private val assetPath = "assets/meshes"
 
     fun importStaticMesh(fileName: String): Model {
+        val resourcePath = fileName.split("/").first()
         val flags = Assimp.aiProcess_Triangulate or
                     //Assimp.aiProcess_FlipUVs or
                     Assimp.aiProcess_GenNormals or
@@ -65,7 +66,7 @@ object MeshImporter {
                 // white texture
                 var texture: Texture2D = Texture2D.create(1, 1).apply { setData(0xffffffff.toInt(), 4) }
                 if (textPath.isNotEmpty()) {
-                    texture = Texture2D.create("$assetPath/$textPath")
+                    texture = Texture2D.create("$assetPath/$resourcePath/$textPath")
                     Logger.warn("Loaded texture: $textPath.")
                 }
 

@@ -6,6 +6,8 @@ import imgui.ImVec4
 import imgui.flag.ImGuiCol
 import imgui.flag.ImGuiMouseButton
 import org.lwjgl.opengl.GL11.GL_LINEAR
+import rune.asset.AssetHandle
+import rune.asset.AssetType
 import rune.renderer.gpu.Texture2D
 import java.nio.file.Files
 import java.nio.file.Path
@@ -14,6 +16,15 @@ import java.nio.file.Paths
 // TODO: dont refresh the file scanning every single second, maybe have a listener or refresh every 30-60Hz
 
 class ContentBrowserPanel {
+    private val supportedTypes = listOf(
+        AssetType.Texture,
+        AssetType.Mesh,
+        AssetType.StaticMesh,
+        AssetType.Scene,
+        AssetType.Script
+    )
+
+    private val directories: Map<AssetHandle, DirectoryInfo> = mutableMapOf()
 
     // TODO: once we have projects, change this to take in a RuneProject
     private val assetsDirectory: String = "assets"
@@ -25,6 +36,18 @@ class ContentBrowserPanel {
 
     private var padding = 16f
     private var thumbnailSize = 128f
+
+
+//    fun getDirectory(filepath: Path): Path {
+//        if (filepath.toString().isEmpty())
+//            return Paths.get(assetsDirectory)
+//
+//
+//    }
+
+    fun processDirectory(dirPath: Path, parent: Path) {
+
+    }
 
     fun onImGuiRender() {
         ImGui.begin("Content Browser")

@@ -139,7 +139,7 @@ class EditorLayer : Layer("Sandbox2D") {
 
         //! TEMP
         val zelda = activeScene.createEntity("Zelda").apply {
-            with(activeScene.world) { configure { it += StaticMeshComponent(MeshImporter.importStaticMesh("Zelda.dae")) } }
+            with(activeScene.world) { configure { it += StaticMeshComponent(MeshImporter.importStaticMesh("Zelda/Zelda.dae")) } }
         }
 
 
