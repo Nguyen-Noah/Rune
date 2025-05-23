@@ -58,8 +58,18 @@ class OpenGLShader private constructor(
 
     // ────────────────────────── public API ─────────────────────────────────
     override fun getName() = name
-    override fun bind()   = glUseProgram(rendererID)
-    override fun unbind() = glUseProgram(0)
+    override fun bind() {
+        // avoids unnecessary binding
+        if (currentProgram != rendererID) {
+            glUseProgram(rendererID)
+            currentProgram = rendererID
+        }
+    }
+    override fun unbind() {
+        if (currentProgram == rendererID)
+            return
+        glUseProgram(0)
+    }
 
     // uploadUniform helpers (same as before, omitted for brevity) ───────────
     override fun uploadUniform(name: String, value: Float)  { intUniform1(name){ glUniform1f(it, value) } }

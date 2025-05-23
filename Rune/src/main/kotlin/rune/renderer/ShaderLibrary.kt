@@ -2,17 +2,14 @@ package rune.renderer
 
 import rune.renderer.gpu.Shader
 
-
 class ShaderLibrary {
         private val shaders = mutableMapOf<String, Shader>()
 
-        fun add(name: String, shader: Shader) {
+        private fun add(name: String, shader: Shader) {
             require(!exists(name)) { "Shader already exists!" }
             shaders[name] = shader
         }
-        fun add(shader: Shader) {
-            add(shader.getName(), shader)
-        }
+        private fun add(shader: Shader) = add(shader.getName(), shader)
 
         fun load(filepath: String): Shader {
             val shader = Shader.create(filepath)
@@ -31,4 +28,12 @@ class ShaderLibrary {
         }
 
         private fun exists(name: String): Boolean = shaders.containsKey(name)
+
+    override fun toString(): String {
+        var s = ""
+        shaders.forEach {
+            s += "${it.key} "
+        }
+        return s
+    }
 }

@@ -46,6 +46,9 @@ class OpenGLRendererAPI : RendererAPI {
         model.vao.bind()
 
         model.mesh.subMeshes.forEach { sm ->
+            // binding the shader
+            sm.material.shader.bind()
+
             // 1. bind the material
             sm.material.texture.bind()
 
@@ -58,6 +61,7 @@ class OpenGLRendererAPI : RendererAPI {
                 byteOffset,
                 0
             )
+            sm.material.shader.unbind()
             Renderer.stats.drawCalls++
         }
 

@@ -10,6 +10,7 @@ import org.lwjgl.assimp.AIMesh
 import org.lwjgl.assimp.AIString
 import org.lwjgl.assimp.Assimp
 import rune.core.Logger
+import rune.renderer.Renderer
 import rune.renderer.gpu.*
 import rune.renderer.renderer3d.*
 import rune.renderer.renderer3d.mesh.Vertex
@@ -20,7 +21,7 @@ object MeshImporter {
 
     private val assetPath = "assets/meshes/Zelda"
 
-    fun importMesh(fileName: String): Model {
+    fun importStaticMesh(fileName: String): Model {
         val flags = Assimp.aiProcess_Triangulate or
                     //Assimp.aiProcess_FlipUVs or
                     Assimp.aiProcess_GenNormals or
@@ -98,7 +99,13 @@ object MeshImporter {
                     Vec4(color.r(), color.g(), color.b(), color.a())
                 } ?: Vec4(1f)
 
-                materials += Material(texture, ambient, diffuse, specular)
+                materials += Material(
+                    texture,
+                    ambient,
+                    diffuse,
+                    specular,
+                    Renderer.getShader("StaticMesh")
+                )
             }
         }
 

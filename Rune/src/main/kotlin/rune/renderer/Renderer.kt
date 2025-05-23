@@ -14,14 +14,40 @@ import rune.renderer.renderer3d.Renderer3D
 object Renderer {
     data class CameraData(var viewProjection: Mat4 = Mat4(1f))
 
-    private val cameraBuffer: CameraData = CameraData()
-    private val cameraUniformBuffer: UniformBuffer = UniformBuffer.create(FLOAT_MAT4_SIZE, 0)
-
     //! STATISTICS
     data class Statistics(var drawCalls: Int = 0, var quadCount: Int = 0) {
         fun getTotalVertexCount(): Int = quadCount * 4
         fun getTotalIndexCount(): Int = quadCount * 6
     }
+
+    private val cameraBuffer: CameraData = CameraData()
+    private val cameraUniformBuffer: UniformBuffer = UniformBuffer.create(FLOAT_MAT4_SIZE, 0)
+
+    fun init() {
+        initShaders()
+
+        RenderCommand.init()
+        Renderer2D.init()
+        Renderer3D.init()
+    }
+
+    //*///////////////////////////////////////////////////////////////*//
+    //*//                       LOADING SHADERS                     //*//
+    //*///////////////////////////////////////////////////////////////*//
+    val shaderLib: ShaderLibrary = ShaderLibrary()
+
+    private fun initShaders() {
+        // Renderer2D
+        shaderLib.load("assets/shaders/Renderer2D_Quad.glsl")
+        shaderLib.load("assets/shaders/Renderer2D_Circle.glsl")
+        shaderLib.load("assets/shaders/Renderer2D_Line.glsl")
+
+        // Renderer3D
+        shaderLib.load("assets/shaders/StaticMesh.glsl")
+
+        println(shaderLib)
+    }
+
 
     val stats = Statistics()
 
@@ -30,10 +56,7 @@ object Renderer {
         stats.drawCalls = 0
     }
 
-    fun init() {
-        RenderCommand.init()
-        Renderer2D.init()
-    }
+
 
     fun getAPI() = RendererAPI.getAPI()
 
@@ -77,6 +100,8 @@ object Renderer {
 //        vao.bind()
 //        RenderCommand.drawIndexed(vao)
     }
+
+    fun getShader(name: String): Shader = shaderLib.get(name)
 
     fun onWindowResize(width: Int, height: Int) {
         RenderCommand.setViewport(0, 0, width, height)

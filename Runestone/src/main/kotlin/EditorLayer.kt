@@ -22,11 +22,9 @@ import rune.events.Event
 import rune.events.EventDispatcher
 import rune.events.KeyPressedEvent
 import rune.events.MouseButtonPressedEvent
-import rune.platforms.opengl.OpenGLRendererAPI
 import rune.renderer.*
 import rune.renderer.gpu.*
 import rune.renderer.renderer2d.Renderer2D
-import rune.renderer.renderer3d.Renderer3D
 import rune.scene.Scene
 import rune.scene.serialization.SceneSerializer
 import rune.utils.decomposeTransform
@@ -38,49 +36,93 @@ import kotlin.io.path.extension
 
 // TODO: create a scene renderer ref: https://youtu.be/U16wc8w8IA4?si=KzL82TfupQIPOq5z&t=2419
 
-class EditorLayer: Layer("Sandbox2D") {
-    enum class SceneState(val state: Int) {
-        Play(0),
-        Edit(1),
-        Stop(2),
-        Simulate(3),
+class EditorLayer : Layer("Sandbox2D") {
+
+    /* --------------------------------------------------------------------- */
+    /*  Scene‑state machine                                                  */
+    /* --------------------------------------------------------------------- */
+
+    private sealed interface SceneState {
+        fun onEnter(layer: EditorLayer) {}
+        fun onExit(layer: EditorLayer) {}
+        fun onUpdate(layer: EditorLayer, dt: Float) {}
+
+        data object Edit : SceneState {
+            override fun onUpdate(layer: EditorLayer, dt: Float) {
+                layer.editorCamera.onUpdate(dt)
+                layer.activeScene.onUpdateEditor(dt, layer.editorCamera)
+            }
+        }
+
+        data object Play : SceneState {
+            override fun onEnter(layer: EditorLayer) = layer.activeScene.onRuntimeStart()
+            override fun onUpdate(layer: EditorLayer, dt: Float) = layer.activeScene.onUpdateRuntime(dt)
+            override fun onExit(layer: EditorLayer) = layer.activeScene.onRuntimeStop()
+        }
+
+        data object Simulate : SceneState {
+            override fun onEnter(layer: EditorLayer) = layer.activeScene.onRuntimeStart()
+            override fun onUpdate(layer: EditorLayer, dt: Float) {
+                layer.editorCamera.onUpdate(dt)
+                layer.activeScene.onUpdateSimulation(dt, layer.editorCamera)
+            }
+            override fun onExit(layer: EditorLayer) = layer.activeScene.onSimulationStop()
+        }
     }
 
-    // editor resources
+    private var state: SceneState = SceneState.Edit
+    private fun changeState(newState: SceneState, copy: (() -> Unit)? = null) {
+        if (state === newState) return
+        state.onExit(this)
+        state = newState
+        copy?.let { copy() }
+        state.onEnter(this)
+    }
+
+    /* --------------------------------------------------------------------- */
+    /*  Editor resources                                                     */
+    /* --------------------------------------------------------------------- */
+
     private val iconPlay     = Texture2D.create("src/main/resources/Icons/PlayButton.png",     filter = GL_LINEAR)
     private val iconStop     = Texture2D.create("src/main/resources/Icons/StopButton.png",     filter = GL_LINEAR)
     private val iconSimulate = Texture2D.create("src/main/resources/Icons/SimulateButton.png", filter = GL_LINEAR)
     private var icon: Texture2D = iconPlay
 
-    //private val zelda = MeshImporter.importMesh("Zelda.dae")
+    /* --------------------------------------------------------------------- */
+    /*  Frame‑/viewport                                                      */
+    /* --------------------------------------------------------------------- */
 
     private lateinit var framebuffer: Framebuffer
     private var viewportSize: Vec2 = Vec2(0f)
 
+    private val viewportBounds: Array<Vec2> = Array(2) { Vec2() }
     private var viewportFocused = false
     private var viewportHovered = false
 
-    // ui
-    private lateinit var sceneHierarchyPanel: SceneHierarchyPanel
-    private lateinit var contentBrowserPanel: ContentBrowserPanel
+    /* --------------------------------------------------------------------- */
+    /*  Scene / panels                                                       */
+    /* --------------------------------------------------------------------- */
 
-    // scene
     private var activeScene = Scene()
-    private var sceneState = SceneState.Edit
-    private var editorScenePath: Path = Paths.get("")
     private var editorScene: Scene = activeScene
+    private var editorScenePath: Path = Paths.get("")
 
-    private var gizmoType = -1
+    private var sceneHierarchyPanel: SceneHierarchyPanel = SceneHierarchyPanel(activeScene)
+    private var contentBrowserPanel: ContentBrowserPanel = ContentBrowserPanel()
+
+    /* --------------------------------------------------------------------- */
+    /*  Misc                                                                 */
+    /* --------------------------------------------------------------------- */
+
     val editorCamera = EditorCamera(30f, 1778f, 0.1f, 1000f)
-
+    private var gizmoType = -1
     private var hoveredEntity: Entity? = null
+    private var showColliders: Boolean = false
 
-    private val viewportBounds: Array<Vec2> = Array(2) { Vec2() }
 
     // TODO: remove this lmao -> see [[ContentBrowserPanel.kt]]
     private val assetsDirectory: String = "assets"
 
-    private var showColliders: Boolean = false
 
     override fun onAttach() {
         val spec = framebuffer {
@@ -94,6 +136,12 @@ class EditorLayer: Layer("Sandbox2D") {
             }
         }
         framebuffer = Framebuffer.create(spec)
+
+        //! TEMP
+        val zelda = activeScene.createEntity("Zelda").apply {
+            with(activeScene.world) { configure { it += StaticMeshComponent(MeshImporter.importStaticMesh("Zelda.dae")) } }
+        }
+
 
 //        // script loading
 //        Coroutine(Dispatchers.IO).launchTask {
@@ -113,113 +161,51 @@ class EditorLayer: Layer("Sandbox2D") {
 //            }
 //        }
 //
-        sceneHierarchyPanel = SceneHierarchyPanel(activeScene)
-        contentBrowserPanel = ContentBrowserPanel()
-
-        //! TEMP
-        val zelda = activeScene.createEntity("Zelda")
-        with(activeScene.world) {
-            zelda.configure {
-                it += StaticMeshComponent(MeshImporter.importMesh("Zelda.dae"))
-            }
-        }
-
-
-
         //SceneSerializer(activeScene).deserialize("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\assets\\scenes\\thingy.rune")
     }
 
     override fun onUpdate(dt: Float) {
         // Resize
-        val spec = framebuffer.getSpecification()
-
-        if (viewportSize.x > 0f && viewportSize.y > 0f &&
-            (spec.width != viewportSize.x.toInt() || spec.height != viewportSize.y.toInt())
-        ) {
-            framebuffer.resize(viewportSize.x.toInt(), viewportSize.y.toInt())
-            editorCamera.setViewportSize(viewportSize.x, viewportSize.y)
-            activeScene.onViewportResize(viewportSize.x.toInt(), viewportSize.y.toInt())
-        }
+        updateFramebuffer()
 
         // Render
         Renderer.resetStats()
         framebuffer.bind()
-        RenderCommand.setClearColor(Vec4(0.1f, 0.1f, 0.1f, 1.0f))
-        RenderCommand.clear()
+        RenderCommand.run {
+            setClearColor(Vec4(0.1f, 0.1f, 0.1f, 1.0f))
+            clear()
+        }
 
         // clear entity ID attachment to -1
         framebuffer.clearAttachment(1, -1)
 
-        when (sceneState) {
-            SceneState.Play -> {
-                activeScene.onUpdateRuntime(dt)
-            }
-            SceneState.Edit -> {
-                editorCamera.onUpdate(dt)
+        state.onUpdate(this, dt)
 
-                activeScene.onUpdateEditor(dt, editorCamera)
-            }
-            SceneState.Simulate -> {
-                editorCamera.onUpdate(dt)
-
-                activeScene.onUpdateSimulation(dt, editorCamera)
-            }
-            else -> {}
-        }
-
-        val mp = ImGui.getMousePos()
-        val mx   = (mp.x - viewportBounds[0].x).toInt()
-        var my   = (mp.y - viewportBounds[0].y).toInt()
-
-        my = (viewportSize.y - my).toInt()
-        if ((mx >= 0) and (my >= 0) and
-            (mx < viewportSize.x.toInt()) and (my < viewportSize.y.toInt())) {
-            val pixelData = framebuffer.readPixel(1, mx, my)
-            hoveredEntity = when (pixelData) {
-                -1 -> null
-                else ->  {
-                    // corner case in the event an invalid entity is created
-                    val e = Entity(pixelData, 0u)
-                    if (activeScene.world.contains(e)) e else null
-                }
-            }
-        }
-
-        onOverlayRender()
+        updateMousePicking()
+        renderOverlays()
 
         framebuffer.unbind()
     }
 
     private fun newScene() {
-        activeScene = Scene()
-        activeScene.onViewportResize(viewportSize.x.toInt(), viewportSize.y.toInt())
+        activeScene = Scene().also { it.onViewportResize(viewportSize.x.toInt(), viewportSize.y.toInt()) }
         sceneHierarchyPanel.setContext(activeScene)
-
         editorScenePath = Paths.get("")
     }
 
     private fun openScene() {
-        val nfd = rune.utils.FileDialog()
-        val filePath = nfd.openFile()
-
-        if (filePath.isNotEmpty()) {
-            openScene(Paths.get(filePath))
-        }
+        rune.utils.FileDialog().openFile()
+            .takeIf { it.isNotEmpty() }
+            ?.let { openScene(Paths.get(it)) }
     }
 
     private fun openScene(path: Path) {
-        if (sceneState != SceneState.Edit)
-            onSceneStop()
-
         if (path.extension != "rune") {
             Logger.warn("Could not load ${path.fileName} - not a scene file")
             return
         }
-
-        activeScene = Scene()
-        SceneSerializer(activeScene).deserialize(path.toString())
-
-        // swap scenes and bookkeeping
+        changeState(SceneState.Edit)
+        activeScene = Scene().also { SceneSerializer(it).deserialize(path.toString()) }
         editorScene = Scene.copy(activeScene)
         editorScenePath = path
 
@@ -242,13 +228,10 @@ class EditorLayer: Layer("Sandbox2D") {
     }
 
     private fun saveSceneAs() {
-        val nfd = rune.utils.FileDialog()
-        val filepath = nfd.saveAs("Untitled")
-
-        if (filepath.isNotEmpty()) {
-            SceneSerializer(activeScene).serialize(filepath)
-            Logger.info("Saved new scene to $filepath")
-        }
+        rune.utils.FileDialog().saveAs("Untitled")
+            .takeIf { it.isNotEmpty() }
+            ?.also { SceneSerializer(activeScene).serialize(it) }
+        Logger.info("Saved new scene to ${'$'}it")
     }
 
     private fun serializeScene(scene: Scene, path: Path) {
@@ -258,13 +241,14 @@ class EditorLayer: Layer("Sandbox2D") {
     private fun onKeyPressed(e: KeyPressedEvent): Boolean {
         if (e.isRepeat) return false
 
-        val control = Input.isKeyPressed(Key.LeftControl) || Input.isKeyPressed(Key.RightControl)
+        val ctrl = Input.isKeyPressed(Key.LeftControl) || Input.isKeyPressed(Key.RightControl)
         val shift = Input.isKeyPressed(Key.LeftShift) || Input.isKeyPressed(Key.RightShift)
+        val combo = ctrl to shift   //
 
         when (e.keyCode) {
-            Key.N -> if (control) newScene()
-            Key.O -> if (control) openScene()
-            Key.S -> if (control) {
+            Key.N -> if (ctrl) newScene()
+            Key.O -> if (ctrl) openScene()
+            Key.S -> if (ctrl) {
                 if (shift) {
                     saveSceneAs()
                 } else {
@@ -286,7 +270,7 @@ class EditorLayer: Layer("Sandbox2D") {
         // scene commands
         when (e.keyCode) {
             Key.D -> {
-                if (control)
+                if (ctrl)
                     onDuplicateEntity()
             }
             else -> {}
@@ -309,96 +293,85 @@ class EditorLayer: Layer("Sandbox2D") {
             Application.get().close()
 
         editorCamera.onEvent(e)
-
-        val dispatcher = EventDispatcher(e)
-        dispatcher.dispatch<KeyPressedEvent>(::onKeyPressed)
-        dispatcher.dispatch<MouseButtonPressedEvent>(::onMousePressed)
-    }
-
-    private fun onScenePlay() {
-        if (sceneState == SceneState.Simulate)
-            onSceneStop()
-
-        sceneState = SceneState.Play
-        editorScene = Scene.copy(activeScene)
-        activeScene.onRuntimeStart()
-
-        sceneHierarchyPanel.setContext(activeScene)
-    }
-
-    private fun onSceneStop() {
-        if (sceneState == SceneState.Play) {
-            activeScene.onRuntimeStop()
-        } else if (sceneState == SceneState.Simulate) {
-            activeScene.onSimulationStop()
+        EventDispatcher(e).apply {
+            dispatch<KeyPressedEvent>(::onKeyPressed)
+            dispatch<MouseButtonPressedEvent>(::onMousePressed)
         }
-
-        sceneState = SceneState.Edit
-
-        activeScene = editorScene
-
-        sceneHierarchyPanel.setContext(activeScene)
-    }
-
-    private fun onSceneSimulate() {
-        if (sceneState == SceneState.Play)
-            onSceneStop()
-
-        sceneState = SceneState.Simulate
-        editorScene = Scene.copy(activeScene)
-        activeScene.onSimulationStart()
-
-        sceneHierarchyPanel.setContext(activeScene)
     }
 
     private fun onDuplicateEntity() {
-        if (sceneState != SceneState.Edit)
-            return
-
-        val selectedEntity = sceneHierarchyPanel.selectedEntity
-        println(selectedEntity)
-        if (selectedEntity != null)
-            activeScene.duplicateEntity(selectedEntity)
+        if (state == SceneState.Edit)
+            sceneHierarchyPanel.selectedEntity?.let(activeScene::duplicateEntity)
     }
 
-    private fun onOverlayRender() {
-        if (sceneState == SceneState.Play) {
-            val camera = activeScene.getPrimaryCameraEntity() ?: return
-            with(activeScene.world) { Renderer.beginScene(camera[CameraComponent].camera, camera[TransformComponent].getTransform()) }
-        } else {
-            Renderer.beginScene(editorCamera)
+    /* ===================================================================== */
+    /*  ––––––––––––––––––––––––––  Private helpers  ––––––––––––––––––––––– */
+    /* ===================================================================== */
+
+    /* ---------- Framebuffer ---------- */
+
+    private fun updateFramebuffer() {
+        val spec = framebuffer.getSpecification()
+        if (viewportSize.x > 0 && viewportSize.y > 0 &&
+            (spec.width != viewportSize.x.toInt() || spec.height != viewportSize.y.toInt())) {
+            framebuffer.resize(viewportSize.x.toInt(), viewportSize.y.toInt())
+            editorCamera.setViewportSize(viewportSize.x, viewportSize.y)
+            activeScene.onViewportResize(viewportSize.x.toInt(), viewportSize.y.toInt())
         }
+    }
 
-        // TODO: disable depth testing and render physics colliders after the rest of scene -> lets lines go through walls
-        if (showColliders) {
-            activeScene.world.family { all(TransformComponent, BoxCollider2DComponent) }.forEach { src ->
-                val transformComp = src[TransformComponent]
-                val bc2d = src[BoxCollider2DComponent]
+    /* ---------- Mouse picking ---------- */
 
-                val translation = transformComp.translation + Vec3(bc2d.offset, 0.001f)
-                val scale = transformComp.scale * Vec3(bc2d.size, 1f)
+    private fun updateMousePicking() {
+        val (mxGlobal, myGlobal) = ImGui.getMousePos()
+        val mx = (mxGlobal - viewportBounds[0].x).toInt()
+        var my = (myGlobal - viewportBounds[0].y).toInt()
+        my = (viewportSize.y - my).toInt()
 
-                val transform = glm.translate(Mat4(1f), translation) *
-                        glm.rotate(Mat4(1f), transformComp.rotation.z, Vec3(0f, 0f, 1f)) *
-                        glm.scale(Mat4(1f), scale)
+        hoveredEntity = if (mx in 0 until viewportSize.x.toInt() && my in 0 until viewportSize.y.toInt()) {
+            when (val id = framebuffer.readPixel(1, mx, my)) {
+                -1   -> null
+                else -> Entity(id, 0u).takeIf { activeScene.world.contains(it) }
+            }
+        } else null
+    }
 
+    /* ---------- Overlay rendering ---------- */
+
+    private fun renderOverlays() {
+        with(activeScene.world) {
+            val (camera, cameraTransform) = when (state) {
+                SceneState.Play       -> activeScene.getPrimaryCameraEntity()?.let { it[CameraComponent].camera to it[TransformComponent].getTransform() }
+                else                  -> editorCamera to Mat4(1f)
+            } ?: return
+
+            Renderer.beginScene(camera, cameraTransform)
+            if (showColliders) drawColliders()
+            Renderer2D.endScene()
+        }
+    }
+
+    private fun drawColliders() {
+        with(activeScene.world) {
+            family { all(TransformComponent, BoxCollider2DComponent) }.forEach { e ->
+                val tComp = e[TransformComponent]
+                val bc = e[BoxCollider2DComponent]
+                val transform = glm.translate(Mat4(1f), tComp.translation + Vec3(bc.offset, 0.001f)) *
+                        glm.rotate(Mat4(1f), tComp.rotation.z, Vec3(0f, 0f, 1f)) *
+                        glm.scale(Mat4(1f), tComp.scale * Vec3(bc.size, 1f))
                 Renderer2D.drawRect(transform, Vec4(0f, 0.3f, 1f, 1f))
             }
-
-            activeScene.world.family { all(TransformComponent, CircleCollider2DComponent) }.forEach { src ->
-                val transformComp = src[TransformComponent]
-                val cc2d = src[CircleCollider2DComponent]
-
-                val translation = transformComp.translation + Vec3(cc2d.offset, 0.001f)
-                val scale = transformComp.scale * Vec3(cc2d.radius * 2f)    // diameter
-
-                val transform = glm.translate(Mat4(1f), translation) * glm.scale(Mat4(1f), scale)
-
+            family { all(TransformComponent, CircleCollider2DComponent) }.forEach { e ->
+                val tComp = e[TransformComponent]
+                val cc = e[CircleCollider2DComponent]
+                val transform = glm.translate(Mat4(1f), tComp.translation + Vec3(cc.offset, 0.001f)) *
+                        glm.scale(Mat4(1f), tComp.scale * Vec3(cc.radius * 2f))
                 Renderer2D.drawCircle(transform, Vec4(0f, 0.3f, 1f, 1f), 0.05f)
             }
         }
-        Renderer2D.endScene()
     }
+
+    /* ---------- ImGui: dockspace + windows ---------- */
 
     override fun onImGuiRender() {
         // dockspace
@@ -608,13 +581,12 @@ class EditorLayer: Layer("Sandbox2D") {
         ImGui.end()
         ImGui.popStyleVar()
 
-        UI_Toolbar()
+        drawToolbar()
 
         ImGui.end()
     }
 
-    private fun UI_Toolbar() {
-
+    private fun drawToolbar() {
         ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, ImVec2(0f, 2f))
         ImGui.pushStyleVar(ImGuiStyleVar.ItemInnerSpacing, ImVec2(0f, 0f))
 
@@ -630,38 +602,43 @@ class EditorLayer: Layer("Sandbox2D") {
         val flags = ImGuiWindowFlags.NoDecoration or ImGuiWindowFlags.NoScrollbar or ImGuiWindowFlags.NoScrollWithMouse
         ImGui.begin("##toolbar", null, flags)
 
-        val toolbarEnabled = (activeScene != null)
-
-        val tintColor = ImVec4(1f, 1f, 1f, 1f)
-        if (!toolbarEnabled)
-            tintColor.w = 0.5f
-
         val size = ImGui.getWindowHeight() - 4
 
-        icon = if (sceneState == SceneState.Edit || sceneState == SceneState.Simulate) iconPlay else iconStop
-        ImGui.pushStyleVar(ImGuiStyleVar.FramePadding, ImVec2(0f, 0f))
+        ImGui.pushStyleVar(ImGuiStyleVar.FramePadding, ImVec2())
         ImGui.setCursorPosX((ImGui.getWindowContentRegionMax().x * 0.5f) - (size * 0.5f))
-        if (ImGui.imageButton("##playButton", icon.rendererID.toLong(), ImVec2(size, size), ImVec2(0f, 0f), ImVec2(1f, 1f), ImVec4(0f, 0f, 0f, 0f), tintColor) && toolbarEnabled) {
-            if (sceneState == SceneState.Edit || sceneState == SceneState.Simulate) {
-                onScenePlay()
-            } else if (sceneState == SceneState.Play) {
-                onSceneStop()
-            }
+        icon = when (state) {
+            SceneState.Edit, SceneState.Simulate -> iconPlay
+            SceneState.Play                      -> iconStop
         }
+        drawToolbarButton("##play", icon, size) { togglePlay() }
         ImGui.sameLine()
 
-        icon = if (sceneState == SceneState.Edit || sceneState == SceneState.Play) iconSimulate else iconStop
-        if (ImGui.imageButton("##simButton", icon.rendererID.toLong(), ImVec2(size, size), ImVec2(0f, 0f), ImVec2(1f, 1f), ImVec4(0f, 0f, 0f, 0f), tintColor) && toolbarEnabled) {
-            if (sceneState == SceneState.Edit || sceneState == SceneState.Play) {
-                onSceneSimulate()
-            } else if (sceneState == SceneState.Simulate) {
-                onSceneStop()
-            }
+        icon = when (state) {
+            SceneState.Edit, SceneState.Play -> iconSimulate
+            SceneState.Simulate             -> iconStop
         }
+        drawToolbarButton("##simulate", icon, size) { toggleSimulate() }
 
         ImGui.popStyleVar(3)
         ImGui.popStyleColor(3)
+
         ImGui.end()
+    }
+
+    private inline fun drawToolbarButton(id: String, icon: Texture2D, size: Float, onClick: () -> Unit) {
+        val tintColor = ImVec4(1f, 1f, 1f, if (activeScene != null) 1f else 0.5f)
+        if (ImGui.imageButton(id, icon.rendererID.toLong(), ImVec2(size, size), ImVec2(0f, 0f), ImVec2(1f, 1f), ImVec4(0f, 0f, 0f, 0f), tintColor))
+            onClick()
+    }
+
+    private fun togglePlay() = when (state) {
+        SceneState.Edit, SceneState.Simulate -> changeState(SceneState.Play).also { editorScene = Scene.copy(activeScene) }
+        SceneState.Play                      -> changeState(SceneState.Edit).also { activeScene = editorScene }
+    }
+
+    private fun toggleSimulate() = when (state) {
+        SceneState.Edit, SceneState.Play -> changeState(SceneState.Simulate).also { editorScene = Scene.copy(activeScene) }
+        SceneState.Simulate              -> changeState(SceneState.Edit).also { activeScene = editorScene }
     }
 }
 

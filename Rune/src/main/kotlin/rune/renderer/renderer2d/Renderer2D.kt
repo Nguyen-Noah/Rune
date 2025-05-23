@@ -20,9 +20,9 @@ object Renderer2D {
 
     fun init() {
         val whiteTex = Texture2D.create(1, 1).apply { setData(0xffffffff.toInt(), 4) }
-        quadBatch = QuadBatch(shader = Shader.create("assets/shaders/Renderer2D_Quad.glsl"), whiteTex = whiteTex)
-        circleBatch = CircleBatch(shader = Shader.create("assets/shaders/Renderer2D_Circle.glsl"))
-        lineBatch = LineBatch(shader = Shader.create("assets/shaders/Renderer2D_Line.glsl"))
+        quadBatch = QuadBatch(shader = Renderer.getShader("Renderer2D_Quad"), whiteTex = whiteTex)
+        circleBatch = CircleBatch(shader = Renderer.getShader("Renderer2D_Circle"))
+        lineBatch = LineBatch(shader = Renderer.getShader("Renderer2D_Line"))
     }
 
     fun beginScene() {
