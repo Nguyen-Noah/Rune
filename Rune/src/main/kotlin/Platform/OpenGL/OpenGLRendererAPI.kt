@@ -3,12 +3,18 @@ package rune.platforms.opengl
 import glm_.mat4x4.Mat4
 import glm_.vec4.Vec4
 import org.lwjgl.opengl.GL45.*
+import org.lwjgl.system.MemoryUtil
 import rune.renderer.Renderer
 import rune.renderer.RendererAPI
+import rune.renderer.gpu.UniformBuffer
 import rune.renderer.gpu.VertexArray
+import rune.renderer.renderer2d.FLOAT_MAT4_SIZE
 import rune.renderer.renderer3d.Model
 
 class OpenGLRendererAPI : RendererAPI {
+    // TODO: find a better place for this (maybe per model)
+    private val transformBuf = UniformBuffer.create(FLOAT_MAT4_SIZE, 1)
+
     override fun init() {
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -46,11 +52,14 @@ class OpenGLRendererAPI : RendererAPI {
         model.vao.bind()
 
         model.mesh.subMeshes.forEach { sm ->
-            // binding the shader
+            // 1. binding the shader
             sm.material.shader.bind()
 
-            // 1. bind the material
+            // 2. bind the material
             sm.material.texture.bind()
+
+            // 3. upload the transform
+            transformBuf.setData(transform)
 
             val byteOffset = (sm.indexOffset * Int.SIZE_BYTES).toLong()
 

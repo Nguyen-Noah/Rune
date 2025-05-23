@@ -62,11 +62,7 @@ object Renderer {
 
     fun beginScene(camera: RuneCamera, transform: Mat4) {
         cameraBuffer.viewProjection = camera.projection * glm.inverse(transform)
-        MemoryUtil.memAlloc(FLOAT_MAT4_SIZE).apply {
-            cameraBuffer.viewProjection to this
-            cameraUniformBuffer.setData(this)
-            MemoryUtil.memFree(this)
-        }
+        cameraUniformBuffer.setData(cameraBuffer.viewProjection)
 
         Renderer2D.beginScene()
         Renderer3D.beginScene()
@@ -75,11 +71,7 @@ object Renderer {
     fun beginScene(camera: EditorCamera) {
         // setting the uniform buffer
         cameraBuffer.viewProjection = camera.getViewProjection()
-        MemoryUtil.memAlloc(FLOAT_MAT4_SIZE).apply {
-            cameraBuffer.viewProjection to this
-            cameraUniformBuffer.setData(this)
-            MemoryUtil.memFree(this)
-        }
+        cameraUniformBuffer.setData(cameraBuffer.viewProjection)
 
         Renderer2D.beginScene()
         Renderer3D.beginScene()

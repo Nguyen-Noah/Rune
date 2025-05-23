@@ -22,7 +22,6 @@ import rune.core.Timer
 import rune.renderer.gpu.Shader
 import java.io.File
 import java.nio.ByteBuffer
-import java.nio.FloatBuffer
 import java.nio.LongBuffer
 import java.nio.file.Files
 import java.nio.file.Path
@@ -69,28 +68,6 @@ class OpenGLShader private constructor(
         if (currentProgram == rendererID)
             return
         glUseProgram(0)
-    }
-
-    // uploadUniform helpers (same as before, omitted for brevity) ───────────
-    override fun uploadUniform(name: String, value: Float)  { intUniform1(name){ glUniform1f(it, value) } }
-    override fun uploadUniform(name: String, value: Int)    { intUniform1(name){ glUniform1i(it, value) } }
-
-    override fun uploadUniform(name: String, values: IntArray) {
-        val loc = glGetUniformLocation(rendererID, name)
-        if (loc != -1) glUniform1iv(loc, values)
-    }
-
-    override fun uploadUniform(name: String, value: Vec2)   { intUniform1(name){ glUniform2f(it, value.x, value.y) } }
-    override fun uploadUniform(name: String, value: Vec3)   { intUniform1(name){ glUniform3f(it, value.x, value.y, value.z) } }
-    override fun uploadUniform(name: String, value: Vec4)   { intUniform1(name){ glUniform4f(it, value.x, value.y, value.z, value.w) } }
-    override fun uploadUniform(name: String, value: Mat4) {
-        intUniform1(name) {
-            MemoryStack.stackPush().use { s ->
-                val fb: FloatBuffer = s.mallocFloat(16)
-                value to fb
-                glUniformMatrix4fv(it, false, fb)
-            }
-        }
     }
 
     // ────────────────────────── impl details ───────────────────────────────

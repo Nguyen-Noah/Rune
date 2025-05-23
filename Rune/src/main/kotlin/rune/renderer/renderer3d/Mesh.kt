@@ -1,7 +1,9 @@
 package rune.renderer.renderer3d
 
 import rune.asset.Material
+import rune.renderer.gpu.UniformBuffer
 import rune.renderer.gpu.VertexArray
+import rune.renderer.renderer2d.FLOAT_MAT4_SIZE
 
 data class SubMesh(
     val indexOffset: Int,

@@ -177,10 +177,12 @@ class Scene {
         Renderer.beginScene(camera)   // TODO: Renderer.beginScene()
         drawRenderables()
 
-        world.family { all(StaticMeshComponent) }.forEach {
+        world.family { all(StaticMeshComponent, TransformComponent) }.forEach {
             val model = it[StaticMeshComponent].model
+            val tComp = it[TransformComponent]
+
             if (model != null) {
-                Renderer3D.renderStaticMesh(model, Mat4(1f), it.id)
+                Renderer3D.renderStaticMesh(model, tComp.getTransform(), it.id)
             }
         }
 
