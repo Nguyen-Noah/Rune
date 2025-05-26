@@ -35,11 +35,14 @@ layout(location = 0) in vec2 f_TexCoords;
 layout(location = 0) out vec4 o_Color;
 //layout(location = 1) out flat int o_EntityID;
 
-layout(binding = 0) uniform sampler2D u_Texture;
+// Phong lighting
+layout(set = 0, binding = 0) uniform sampler2D u_AlbedoTexture;
+layout(set = 0, binding = 1) uniform sampler2D u_NormalTexture;
+layout(set = 0, binding = 2) uniform sampler2D u_SpecularTexture;
 
 void main()
 {
-    o_Color = texture(u_Texture, f_TexCoords);
+    o_Color = texture(u_AlbedoTexture, f_TexCoords);
 
     //o_EntityID = f_EntityID;
 }

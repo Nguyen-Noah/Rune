@@ -1,6 +1,7 @@
 package rune.asset
 
-object AssetRegistry {
+import rune.core.UUID
 
-    private val assetRegistry: Map<AssetHandle, AssetMetadata> = mutableMapOf()
+object AssetRegistry {
+    private val assetRegistry: Map<UUID, AssetMetadata> = mutableMapOf()
 }

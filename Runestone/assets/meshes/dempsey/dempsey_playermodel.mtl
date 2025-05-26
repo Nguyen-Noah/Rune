@@ -1,0 +1,146 @@
+# Blender MTL File: 'None'
+# Material Count: 12
+
+newmtl mtl_c_gen_eye_blue
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd i_c_gen_eye_blue_c.png
+map_d i_c_gen_eye_blue_c.png
+
+newmtl mtl_c_gen_insidemouth_teeth
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd i_c_gen_insidemouth_teeth_c.png
+map_d i_c_gen_insidemouth_teeth_c.png
+
+newmtl mtl_c_zom_dlc_dempsey_devices
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd i_c_zom_dlc1_dempsey_metal_devices_c.png
+map_d i_c_zom_dlc1_dempsey_metal_devices_c.png
+
+newmtl mtl_c_zom_dlc_dempsey_glove
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd i_c_zom_dlc1_dempsey_glove_c.png
+map_d i_c_zom_dlc1_dempsey_glove_c.png
+
+newmtl mtl_c_zom_dlc_dempsey_head_eyebrows
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd i_c_zom_dlc_dempsey_head_eyebrows_c.png
+map_d i_c_zom_dlc_dempsey_head_eyebrows_c.png
+
+newmtl mtl_c_zom_dlc_dempsey_head_hair
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd i_c_zom_dlc_dempsey_head_hair_c.png
+map_d i_c_zom_dlc_dempsey_head_hair_c.png
+
+newmtl mtl_c_zom_dlc_dempsey_head_hair_cards
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd i_c_zom_dlc_dempsey_head_hair_cards_c.png
+map_d i_c_zom_dlc_dempsey_head_hair_cards_c.png
+
+newmtl mtl_c_zom_dlc_dempsey_head_hair_eyelashes
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd i_c_zom_dlc_dempsey_head_hair_eyelashes_c.png
+map_d i_c_zom_dlc_dempsey_head_hair_eyelashes_c.png
+
+newmtl mtl_c_zom_dlc_dempsey_head_notns
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd i_c_zom_dlc_dempsey_head_c.png
+map_d i_c_zom_dlc_dempsey_head_c.png
+
+newmtl mtl_c_zom_dlc_dempsey_lower
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd i_c_zom_dlc1_dempsey_lower_c.png
+map_d i_c_zom_dlc1_dempsey_lower_c.png
+
+newmtl mtl_c_zom_dlc_dempsey_parts
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd i_c_zom_dlc1_dempsey_parts_c.png
+map_d i_c_zom_dlc1_dempsey_parts_c.png
+
+newmtl mtl_c_zom_dlc_dempsey_upper
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd i_c_zom_dlc1_dempsey_upper_c.png
+map_d i_c_zom_dlc1_dempsey_upper_c.png

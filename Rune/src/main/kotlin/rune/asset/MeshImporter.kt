@@ -11,11 +11,13 @@ import org.lwjgl.assimp.AIString
 import org.lwjgl.assimp.Assimp
 import rune.core.Logger
 import rune.renderer.Renderer
+import rune.renderer.TextureType
 import rune.renderer.gpu.*
 import rune.renderer.renderer3d.*
 import rune.renderer.renderer3d.mesh.Vertex
 import java.nio.FloatBuffer
 import java.nio.IntBuffer
+import java.util.EnumMap
 
 object MeshImporter {
 
@@ -46,29 +48,29 @@ object MeshImporter {
             material?.let {
                 // * processing the material
                 val color: AIColor4D = AIColor4D.create()
-                val path: AIString = AIString.calloc()
-
-                // this will always run, but material is AIMaterial?
-                Assimp.aiGetMaterialTexture(
-                    material,
-                    Assimp.aiTextureType_DIFFUSE,
-                    0,
-                    path,
-                    null as IntBuffer?,     // mapping
-                    null as IntBuffer?,     // uvindex
-                    null as FloatBuffer?,   // blend
-                    null as IntBuffer?,     // op
-                    null as IntBuffer?,     // mapmode
-                    null as IntBuffer?
-                )
-
-                val textPath = path.dataString()
-                // white texture
-                var texture: Texture2D = Texture2D.create(1, 1).apply { setData(0xffffffff.toInt(), 4) }
-                if (textPath.isNotEmpty()) {
-                    texture = Texture2D.create("$assetPath/$resourcePath/$textPath")
-                    Logger.warn("Loaded texture: $textPath.")
-                }
+//                val path: AIString = AIString.calloc()
+//
+//                // this will always run, but material is AIMaterial?
+//                Assimp.aiGetMaterialTexture(
+//                    material,
+//                    Assimp.aiTextureType_DIFFUSE,
+//                    0,
+//                    path,
+//                    null as IntBuffer?,     // mapping
+//                    null as IntBuffer?,     // uvindex
+//                    null as FloatBuffer?,   // blend
+//                    null as IntBuffer?,     // op
+//                    null as IntBuffer?,     // mapmode
+//                    null as IntBuffer?
+//                )
+//
+//                val textPath = path.dataString()
+//                // white texture
+//                var texture: Texture2D = Texture2D.create(1, 1).apply { setData(0xffffffff.toInt(), 4) }
+//                if (textPath.isNotEmpty()) {
+//                    texture = Texture2D.create("$assetPath/$resourcePath/$textPath")
+//                    Logger.warn("Loaded texture: $textPath.")
+//                }
 
                 val ambient: Vec4 = Assimp.aiGetMaterialColor(
                     material,
@@ -101,7 +103,7 @@ object MeshImporter {
                 } ?: Vec4(1f)
 
                 materials += Material(
-                    texture,
+                    loadTextures(material, resourcePath),
                     ambient,
                     diffuse,
                     specular,
@@ -160,6 +162,56 @@ object MeshImporter {
         }).apply { setIndexBuffer(buffers.ibo) }
 
         return Model(mesh, vao)
+    }
+
+    private fun loadTextures(mat: AIMaterial, resourcePath: String): Array<Texture2D?> {
+        //* map for all Assimp texture types
+        val map = mapOf(
+            Assimp.aiTextureType_DIFFUSE    to TextureType.Albedo,
+            Assimp.aiTextureType_NORMALS    to TextureType.Normal,
+            Assimp.aiTextureType_SPECULAR   to TextureType.Specular,
+            //Assimp.aiTextureType_AMBIENT_OCCLUSION to TextureType.AmbientOcclusion,
+            //Assimp.aiTextureType_METALNESS  to TextureType.Metallic,
+            //Assimp.aiTextureType_DIFFUSE_ROUGHNESS to TextureType.Roughness
+        )
+
+        val textures: Array<Texture2D?> = arrayOfNulls(TextureType.entries.size)
+
+        for ((aiType, texType) in map) {
+            val path = AIString.calloc()
+            val hasTex = Assimp.aiGetMaterialTexture(
+                mat,
+                aiType,
+                0,
+                path,
+                null as IntBuffer?,     // mapping
+                null as IntBuffer?,     // uvindex
+                null as FloatBuffer?,   // blend
+                null as IntBuffer?,     // op
+                null as IntBuffer?,     // mapmode
+                null as IntBuffer?
+            ) == Assimp.aiReturn_SUCCESS && path.dataString().isNotEmpty()
+
+            textures[texType.ordinal] = if (hasTex) {
+                Texture2D.create("$assetPath/$resourcePath/${path.dataString()}")
+            } else {
+                Texture2D.create(1, 1).apply { setData(0xffffffff.toInt(), 4) }
+            }
+//            textures[texType.ordinal] = Texture2D.run {
+//                if (hasTex) {
+//                    println("$texType ${path.dataString()}")
+//                    create("$assetPath/$resourcePath/${path.dataString()}")
+//                } else {
+//                    println("SDFOJHSDF")
+//                    create(1, 1).apply { setData(0xffffffff.toInt(), 4) }
+//                }
+//            }
+
+            println(textures.contentToString())
+
+            path.free()
+        }
+        return textures
     }
 }
 

@@ -1,12 +1,12 @@
 package runestone.panels
 
-import rune.asset.AssetHandle
+import rune.core.UUID
 import java.nio.file.Path
 
 data class DirectoryInfo(
-    val handle: AssetHandle,
+    val handle: UUID,
     val parent: DirectoryInfo?,
     val filepath: Path,
-    val assets: List<AssetHandle>,
-    val subDirectories: Map<AssetHandle, DirectoryInfo>
+    val assets: List<UUID>,
+    val subDirectories: Map<UUID, DirectoryInfo>
 )

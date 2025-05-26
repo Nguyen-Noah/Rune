@@ -6,8 +6,8 @@ import imgui.ImVec4
 import imgui.flag.ImGuiCol
 import imgui.flag.ImGuiMouseButton
 import org.lwjgl.opengl.GL11.GL_LINEAR
-import rune.asset.AssetHandle
 import rune.asset.AssetType
+import rune.core.UUID
 import rune.renderer.gpu.Texture2D
 import java.nio.file.Files
 import java.nio.file.Path
@@ -24,7 +24,7 @@ class ContentBrowserPanel {
         AssetType.Script
     )
 
-    private val directories: Map<AssetHandle, DirectoryInfo> = mutableMapOf()
+    private val directories: Map<UUID, DirectoryInfo> = mutableMapOf()
 
     // TODO: once we have projects, change this to take in a RuneProject
     private val assetsDirectory: String = "assets"

@@ -56,7 +56,9 @@ class OpenGLRendererAPI : RendererAPI {
             sm.material.shader.bind()
 
             // 2. bind the material
-            sm.material.texture.bind()
+            sm.material.textures.forEachIndexed { i, tex ->
+                tex?.bind(i)
+            }
 
             // 3. upload the transform
             transformBuf.setData(transform)

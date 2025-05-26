@@ -4,6 +4,7 @@ import org.lwjgl.opengl.GL11.GL_LINEAR
 import rune.platforms.opengl.OpenGLTexture
 import rune.renderer.Renderer
 import rune.renderer.RendererPlatform
+import rune.renderer.TextureType
 
 interface Texture {
     val width: Int
@@ -31,3 +32,5 @@ interface Texture2D : Texture {
         }
     }
 }
+
+infix fun Texture.at(texSlot: TextureType): Pair<TextureType, Texture> = texSlot to this

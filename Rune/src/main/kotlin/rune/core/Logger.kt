@@ -47,7 +47,10 @@ object Logger {
     fun debug(message: String) = log(LogLevel.DEBUG, message)
     fun info(message: String) = log(LogLevel.INFO, message)
     fun warn(message: String) = log(LogLevel.WARN, message)
-    fun error(message: String) = log(LogLevel.ERROR, message)
+    fun error(message: String) {
+        log(LogLevel.ERROR, message)
+        // kotlin.error(message)
+    }
 
     fun error(message: String, throwable: Throwable) {
         log(LogLevel.ERROR, "$message\n${throwable.stackTraceToString()}")
