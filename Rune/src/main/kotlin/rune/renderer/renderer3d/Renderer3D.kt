@@ -2,8 +2,7 @@ package rune.renderer.renderer3d
 
 import glm_.mat4x4.Mat4
 import rune.platforms.opengl.OpenGLRendererAPI
-import rune.renderer.Renderer
-import rune.renderer.gpu.Shader
+import rune.scene.SceneLights
 
 object Renderer3D {
     private val rendererAPI = OpenGLRendererAPI()

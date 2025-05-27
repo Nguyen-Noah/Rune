@@ -5,6 +5,7 @@ import glm_.mat4x4.Mat4
 import org.lwjgl.system.MemoryUtil
 import rune.platforms.opengl.OpenGLShader
 import rune.renderer.gpu.Shader
+import rune.renderer.gpu.U_CAMERA
 import rune.renderer.gpu.UniformBuffer
 import rune.renderer.gpu.VertexArray
 import rune.renderer.renderer2d.FLOAT_MAT4_SIZE
@@ -21,7 +22,7 @@ object Renderer {
     }
 
     private val cameraBuffer: CameraData = CameraData()
-    private val cameraUniformBuffer: UniformBuffer = UniformBuffer.create(FLOAT_MAT4_SIZE, 0)
+    private val cameraUniformBuffer: UniformBuffer = UniformBuffer.create(FLOAT_MAT4_SIZE, U_CAMERA)
 
     fun init() {
         initShaders()

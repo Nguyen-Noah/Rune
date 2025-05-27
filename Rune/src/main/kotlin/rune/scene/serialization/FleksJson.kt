@@ -24,6 +24,9 @@ private val componentModule = SerializersModule {
         subclass(CircleRendererComponent::class, CircleRendererComponent.serializer())
         subclass(TagComponent::class, TagComponent.serializer())
         subclass(TransformComponent::class, TransformComponent.serializer())
+
+        // lights
+        subclass(DirectionalLightComponent::class, DirectionalLightComponent.serializer())
     }
 }
 

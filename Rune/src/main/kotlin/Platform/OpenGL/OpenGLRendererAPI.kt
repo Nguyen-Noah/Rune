@@ -1,19 +1,22 @@
 package rune.platforms.opengl
 
 import glm_.mat4x4.Mat4
+import glm_.vec3.Vec3
 import glm_.vec4.Vec4
 import org.lwjgl.opengl.GL45.*
 import org.lwjgl.system.MemoryUtil
 import rune.renderer.Renderer
 import rune.renderer.RendererAPI
-import rune.renderer.gpu.UniformBuffer
-import rune.renderer.gpu.VertexArray
+import rune.renderer.gpu.*
 import rune.renderer.renderer2d.FLOAT_MAT4_SIZE
 import rune.renderer.renderer3d.Model
+import rune.scene.DirectionalLight
+import rune.scene.SceneLights
 
 class OpenGLRendererAPI : RendererAPI {
     // TODO: find a better place for this (maybe per model)
-    private val transformBuf = UniformBuffer.create(FLOAT_MAT4_SIZE, 1)
+    private val transformBuf = UniformBuffer.create(FLOAT_MAT4_SIZE, U_TRANSFORM)
+    private val matBuf = UniformBuffer.create(48, U_MATERIAL)
 
     override fun init() {
         glEnable(GL_BLEND)
@@ -55,12 +58,34 @@ class OpenGLRendererAPI : RendererAPI {
             // 1. binding the shader
             sm.material.shader.bind()
 
-            // 2. bind the material
+            // 2. bind the texture
             sm.material.textures.forEachIndexed { i, tex ->
                 tex?.bind(i)
             }
 
-            // 3. upload the transform
+            // 3. bind the PBR materials
+            MemoryUtil.memAlloc(48).apply {
+                putFloat(sm.material.ambient.r)
+                putFloat(sm.material.ambient.g)
+                putFloat(sm.material.ambient.b)
+                putFloat(sm.material.ambient.a)
+
+                putFloat(sm.material.diffuse.r)
+                putFloat(sm.material.diffuse.g)
+                putFloat(sm.material.diffuse.b)
+                putFloat(sm.material.diffuse.a)
+
+                putFloat(sm.material.specular.r)
+                putFloat(sm.material.specular.g)
+                putFloat(sm.material.specular.b)
+                putFloat(sm.material.specular.a)
+
+                flip()
+                matBuf.setData(this)
+                MemoryUtil.memFree(this)
+            }
+
+            // 4. upload the transform
             transformBuf.setData(transform)
 
             val byteOffset = (sm.indexOffset * Int.SIZE_BYTES).toLong()

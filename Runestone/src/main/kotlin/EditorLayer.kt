@@ -26,6 +26,7 @@ import rune.renderer.*
 import rune.renderer.gpu.*
 import rune.renderer.renderer2d.Renderer2D
 import rune.scene.Scene
+import rune.scene.SceneRenderer
 import rune.scene.serialization.SceneSerializer
 import rune.utils.decomposeTransform
 import runestone.panels.ContentBrowserPanel
@@ -107,6 +108,8 @@ class EditorLayer : Layer("Sandbox2D") {
     private var editorScene: Scene = activeScene
     private var editorScenePath: Path = Paths.get("")
 
+    private val vRenderer = SceneRenderer(activeScene)
+
     private var sceneHierarchyPanel: SceneHierarchyPanel = SceneHierarchyPanel(activeScene)
     private var contentBrowserPanel: ContentBrowserPanel = ContentBrowserPanel()
 
@@ -138,30 +141,12 @@ class EditorLayer : Layer("Sandbox2D") {
         framebuffer = Framebuffer.create(spec)
 
         //! TEMP
-        val zelda = activeScene.createEntity("Zelda").apply {
-            with(activeScene.world) { configure { it += StaticMeshComponent(MeshImporter.importStaticMesh("Zelda/Zelda.dae")) } }
+        activeScene.createEntity("Zelda").apply {
+            with(activeScene.world) { configure { it += StaticMeshComponent(MeshImporter.importStaticMesh("totk/zelda_search.dae")) } }//"Zelda/Zelda.dae"
         }
-
-
-//        // script loading
-//        Coroutine(Dispatchers.IO).launchTask {
-//            cameraScript = ScriptEngine.loadScript(File("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\scripts\\CameraController.runescript.kts"))
-//
-//            activeScene.world.family { all(ScriptComponent) }
-//            .forEach {entity ->
-//                val scriptComp = entity[ScriptComponent]
-//                cameraScript?.let {
-//                    if (!scriptComp.isBound) {
-//                        scriptComp.bind(cameraScript!!)
-//                        scriptComp.instance.entity = entity
-//                        scriptComp.instance.scene = activeScene
-//                        scriptComp.instance.onCreate()
-//                    }
-//                }
-//            }
+//        activeScene.createEntity("Dempsey").apply {
+//            with(activeScene.world) { configure { it += StaticMeshComponent(MeshImporter.importStaticMesh("dempsey/dempsey_playermodel.dae")) } }
 //        }
-//
-        //SceneSerializer(activeScene).deserialize("C:\\Users\\nohan\\Desktop\\Projects\\Original\\Rune3D\\Runestone\\assets\\scenes\\thingy.rune")
     }
 
     override fun onUpdate(dt: Float) {
@@ -243,7 +228,7 @@ class EditorLayer : Layer("Sandbox2D") {
 
         val ctrl = Input.isKeyPressed(Key.LeftControl) || Input.isKeyPressed(Key.RightControl)
         val shift = Input.isKeyPressed(Key.LeftShift) || Input.isKeyPressed(Key.RightShift)
-        val combo = ctrl to shift   //
+
 
         when (e.keyCode) {
             Key.N -> if (ctrl) newScene()

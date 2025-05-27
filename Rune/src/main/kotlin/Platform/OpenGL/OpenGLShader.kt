@@ -75,14 +75,14 @@ class OpenGLShader private constructor(
     private val vulkanSpv = HashMap<Int, ByteBuffer>()
     private val openGlSpv = HashMap<Int, ByteBuffer>()
 
-    private val enableCache = true
+    private val enableCache = false
     private val timer: Timer = Timer()
 
     init {
         compileOrGetVulkanBinaries()
         compileOrGetOpenGLBinaries()
         createProgram()
-        Logger.warn("Shader creation took ${timer.elapsedMillis()} ms.")
+        Logger.warn("Shader [${getName()}] compilation took ${timer.elapsedMillis()} ms.")
     }
 
     private fun compileOrGetVulkanBinaries() {

@@ -169,7 +169,7 @@ object MeshImporter {
         val map = mapOf(
             Assimp.aiTextureType_DIFFUSE    to TextureType.Albedo,
             Assimp.aiTextureType_NORMALS    to TextureType.Normal,
-            Assimp.aiTextureType_SPECULAR   to TextureType.Specular,
+            Assimp.aiTextureType_SHININESS   to TextureType.Specular,
             //Assimp.aiTextureType_AMBIENT_OCCLUSION to TextureType.AmbientOcclusion,
             //Assimp.aiTextureType_METALNESS  to TextureType.Metallic,
             //Assimp.aiTextureType_DIFFUSE_ROUGHNESS to TextureType.Roughness
@@ -192,22 +192,13 @@ object MeshImporter {
                 null as IntBuffer?
             ) == Assimp.aiReturn_SUCCESS && path.dataString().isNotEmpty()
 
-            textures[texType.ordinal] = if (hasTex) {
-                Texture2D.create("$assetPath/$resourcePath/${path.dataString()}")
-            } else {
-                Texture2D.create(1, 1).apply { setData(0xffffffff.toInt(), 4) }
+            textures[texType.ordinal] = Texture2D.run {
+                if (hasTex) {
+                    create("$assetPath/$resourcePath/${path.dataString()}")
+                } else {
+                    create(1, 1).apply { setData(0xffffffff.toInt(), 4) }
+                }
             }
-//            textures[texType.ordinal] = Texture2D.run {
-//                if (hasTex) {
-//                    println("$texType ${path.dataString()}")
-//                    create("$assetPath/$resourcePath/${path.dataString()}")
-//                } else {
-//                    println("SDFOJHSDF")
-//                    create(1, 1).apply { setData(0xffffffff.toInt(), 4) }
-//                }
-//            }
-
-            println(textures.contentToString())
 
             path.free()
         }

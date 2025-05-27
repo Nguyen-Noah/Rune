@@ -4,6 +4,7 @@ import glm_.mat4x4.Mat4
 import glm_.vec4.Vec4
 import rune.renderer.gpu.VertexArray
 import rune.renderer.renderer3d.Model
+import rune.scene.SceneLights
 
 enum class RendererPlatform {
     None,

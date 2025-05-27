@@ -2,10 +2,9 @@ package rune.scene
 
 import com.badlogic.gdx.math.Vector2
 import com.github.quillraven.fleks.*
-import glm_.mat4x4.Mat4
-import glm_.vec2.Vec2
+import glm_.glm
+import glm_.mat3x3.Mat3
 import glm_.vec3.Vec3
-import glm_.vec4.Vec4
 import ktx.box2d.*
 import rune.components.*
 import rune.core.Logger
@@ -23,6 +22,8 @@ class Scene {
         private set
     var viewportHeight = 0
         private set
+
+    val lightEnvironment: SceneLights = SceneLights()
 
     var world: World = configureWorld {
         injectables { add(this@Scene) }
@@ -154,6 +155,10 @@ class Scene {
         renderScene(camera)
     }
 
+    fun onRenderEditor(renderer: SceneRenderer, dt: Float, camera: EditorCamera) {
+
+    }
+
     /* ------------------------------------------------------------------ */
     /*  Helpers                                                           */
     /* ------------------------------------------------------------------ */
@@ -174,15 +179,44 @@ class Scene {
 
     // TODO: SceneRenderer.kt
     private fun renderScene(camera: EditorCamera) {
-        Renderer.beginScene(camera)   // TODO: Renderer.beginScene()
+        Renderer.beginScene(camera)
+
+        //! LIGHTS
+        var dLightIdx = 0
+        world.family { all(DirectionalLightComponent, TransformComponent) }.forEach {
+//            if (dLightIdx > lightEnvironment.maxDirectionalLight)
+//                return@forEach
+//
+//            val dLight = it[DirectionalLightComponent]
+//            val tComp = it[TransformComponent]
+//
+//            val direction: Vec3 = glm.normalize(Mat3(tComp.getTransform()) * Vec3(1.0f))
+//            lightEnvironment.directionalLights[dLightIdx++] = DirectionalLight(
+//                dLight.color,
+//                dLight.ambientIntensity,
+//                direction
+//            )
+            // only supports a single light rn
+            val dLight = it[DirectionalLightComponent]
+            val tComp = it[TransformComponent]
+
+            val direction: Vec3 = glm.normalize(Mat3(tComp.getTransform()) * Vec3(1.0f))
+            lightEnvironment.light = DirectionalLight(
+                dLight.color,
+                dLight.diffuseIntensity,
+                dLight.direction
+            )
+        }
+
+        lightEnvironment.bake()
         drawRenderables()
 
         world.family { all(StaticMeshComponent, TransformComponent) }.forEach {
             val model = it[StaticMeshComponent].model
             val tComp = it[TransformComponent]
 
-            if (model != null) {
-                Renderer3D.renderStaticMesh(model, tComp.getTransform(), it.id)
+            model?.let { m ->
+                Renderer3D.renderStaticMesh(m, tComp.getTransform(), it.id)
             }
         }
 
@@ -247,13 +281,24 @@ fun World.copyComponentsToEntity(entity: Entity, components: List<Component<*>>)
             components.forEach { comp ->
                 when (comp) {
                     is TransformComponent           -> entity += comp.copy()
+
+                    // 2D rendering
                     is SpriteRendererComponent      -> entity += comp.copy()
                     is CircleRendererComponent      -> entity += comp.copy()
+
+                    // physics 2D
                     is RigidBody2DComponent         -> entity += comp.copy()
                     is BoxCollider2DComponent       -> entity += comp.copy()
                     is CircleCollider2DComponent    -> entity += comp.copy()
+
                     is CameraComponent              -> entity += comp.copy()
+
+                    // 3d
                     is StaticMeshComponent          -> entity += comp.copy()
+
+                    // lights
+                    is DirectionalLightComponent    -> entity += comp.copy()
+
                     else -> {
                         if (comp !is IDComponent && comp !is TagComponent)
                             Logger.warn("Unmatched component: ${comp::class.simpleName}")
