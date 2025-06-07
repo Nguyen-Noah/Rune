@@ -31,7 +31,7 @@ class Mesh(
 }
 
 // TODO: link this model via UUID to serialize
-class Model(val mesh: Mesh, val vao: VertexArray) {
+class Model(val mesh: Mesh) {
     override fun toString(): String {
         return buildString {
             appendLine("Model(meshes=[")

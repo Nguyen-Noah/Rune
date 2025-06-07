@@ -1,11 +1,7 @@
 package rune.renderer.gpu
 
-import glm_.mat3x3.Mat3
 import glm_.mat4x4.Mat4
-import glm_.vec2.Vec2
-import glm_.vec3.Vec3
-import glm_.vec4.Vec4
-import rune.platforms.opengl.OpenGLUniformBuffer
+import rune.platforms.opengl.GLUniformBuffer
 import rune.renderer.RendererAPI
 import rune.renderer.RendererPlatform
 import java.nio.ByteBuffer
@@ -24,9 +20,9 @@ interface UniformBuffer {
     fun setData(data: Mat4, offset: Int = 0)
 
     companion object {
-        fun create(size: Int, binding: Int): UniformBuffer {
+        fun create(size: Int, binding: Int, name: String = ""): UniformBuffer {
             return when (RendererAPI.getAPI()) {
-                RendererPlatform.OpenGL -> OpenGLUniformBuffer(size, binding)
+                RendererPlatform.OpenGL -> GLUniformBuffer(size, binding, name)
                 RendererPlatform.None -> TODO()
             }
         }

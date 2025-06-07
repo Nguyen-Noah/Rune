@@ -4,10 +4,11 @@ import org.lwjgl.opengl.GL45.*
 import org.lwjgl.stb.STBImage.*
 import org.lwjgl.system.MemoryStack
 import rune.renderer.gpu.Texture2D
+import rune.renderer.SubmitRender
 import java.nio.ByteBuffer
 import java.nio.IntBuffer
 
-class OpenGLTexture : Texture2D {
+class GLTexture : Texture2D {
     override val width: Int
     override val height: Int
     override val rendererID: Int
@@ -105,12 +106,12 @@ class OpenGLTexture : Texture2D {
     }
 
     override fun bind(slot: Int) {
-        glBindTextureUnit(slot, rendererID)
+        SubmitRender("GLTex-bind") { glBindTextureUnit(slot, rendererID) }
     }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is OpenGLTexture) return false
+        if (other !is GLTexture) return false
 
         return rendererID == other.rendererID
     }

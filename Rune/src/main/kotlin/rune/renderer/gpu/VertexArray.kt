@@ -1,6 +1,6 @@
 package rune.renderer.gpu
 
-import rune.platforms.opengl.OpenGLVertexArray
+import rune.platforms.opengl.GLVertexArray
 import rune.renderer.Renderer
 import rune.renderer.RendererPlatform
 
@@ -16,7 +16,7 @@ interface VertexArray {
     companion object {
         fun create(vbo: VertexBuffer, layout: VertexBufferLayout): VertexArray {
             when (Renderer.getAPI()) {
-                RendererPlatform.OpenGL -> return OpenGLVertexArray(vbo, layout)
+                RendererPlatform.OpenGL -> return GLVertexArray(vbo, layout)
                 RendererPlatform.None -> TODO()
             }
         }

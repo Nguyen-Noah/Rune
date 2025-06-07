@@ -42,9 +42,9 @@ class LineBatch(
         vbo.setData(writer.slice())
 
         shader.bind()
-        RenderCommand.setLineThickness(lineWidth)
+        Renderer.setLineThickness(lineWidth)
         Renderer.stats.drawCalls++
-        RenderCommand.drawLines(vao, verts)
+        Renderer.drawLines(vao, verts)
     }
 
     /* --------------- Render API ----------------- */

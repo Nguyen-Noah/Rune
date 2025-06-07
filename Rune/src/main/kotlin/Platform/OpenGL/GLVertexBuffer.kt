@@ -5,26 +5,27 @@ import rune.renderer.gpu.VertexBuffer
 import rune.renderer.renderer3d.mesh.Vertex
 import java.nio.ByteBuffer
 
-class OpenGLVertexBuffer : VertexBuffer {
-    private var rendererID: Int = 0
-    private var vertices: FloatArray? = null
-    private var size: Int
+class GLVertexBuffer : VertexBuffer, GLBuffer {
+    override var rendererID: Int = 0
+    override val target: Int = GL_ARRAY_BUFFER
+    override var size: Int
 
     constructor(size: Int) {
         this.size = size
-
         rendererID = glCreateBuffers()
-        glBindBuffer(GL_ARRAY_BUFFER, rendererID)
-        glBufferData(GL_ARRAY_BUFFER, size.toLong(), GL_DYNAMIC_DRAW)
+
+        glBindBuffer(target, rendererID)
+        glBufferData(target, size.toLong(), GL_DYNAMIC_DRAW)
     }
 
-    constructor(vertices: FloatArray, size: Int) {
-        this.vertices = vertices
-        this.size = size
+    constructor(vertices: FloatArray) : this(vertices, vertices.size * Float.SIZE_BYTES)
 
+    constructor(vertices: FloatArray, size: Int) {
+        this.size = size
         rendererID = glCreateBuffers()
-        glBindBuffer(GL_ARRAY_BUFFER, rendererID)
-        glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW)
+
+        glBindBuffer(target, rendererID)
+        glBufferData(target, vertices, GL_STATIC_DRAW)
     }
 
     constructor(vertices: List<Vertex>) {
@@ -41,24 +42,15 @@ class OpenGLVertexBuffer : VertexBuffer {
         size = data.size * Float.SIZE_BYTES
 
         rendererID = glCreateBuffers()
-        glBindBuffer(GL_ARRAY_BUFFER, rendererID)
-        glBufferData(GL_ARRAY_BUFFER, data, GL_STATIC_DRAW)
+        glBindBuffer(target, rendererID)
+        glBufferData(target, data, GL_STATIC_DRAW)
     }
 
     override fun setData(vertices: ByteBuffer) {
-        glBindBuffer(GL_ARRAY_BUFFER, rendererID)
-        glBufferSubData(GL_ARRAY_BUFFER, 0L, vertices)
+        glBindBuffer(target, rendererID)
+        glBufferSubData(target, 0L, vertices)
     }
 
-    override fun getSize(): Int {
-        return size
-    }
-
-    override fun bind() {
-        glBindBuffer(GL_ARRAY_BUFFER, rendererID)
-    }
-
-    override fun unbind() {
-        glBindBuffer(GL_ARRAY_BUFFER, 0)
-    }
+    override fun bind() = glBindBuffer(target, rendererID)
+    override fun unbind() = glBindBuffer(target, 0)
 }

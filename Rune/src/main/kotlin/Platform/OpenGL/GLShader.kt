@@ -1,9 +1,5 @@
 package rune.platforms.opengl
 
-import glm_.mat4x4.Mat4
-import glm_.vec2.Vec2
-import glm_.vec3.Vec3
-import glm_.vec4.Vec4
 import org.lwjgl.PointerBuffer
 import org.lwjgl.opengl.ARBGLSPIRV
 import org.lwjgl.opengl.GL
@@ -20,6 +16,7 @@ import org.lwjgl.util.spvc.SpvcReflectedResource
 import rune.core.Logger
 import rune.core.Timer
 import rune.renderer.gpu.Shader
+import rune.renderer.SubmitRender
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.LongBuffer
@@ -60,7 +57,7 @@ class OpenGLShader private constructor(
     override fun bind() {
         // avoids unnecessary binding
         if (currentProgram != rendererID) {
-            glUseProgram(rendererID)
+            SubmitRender("GLShader-bind") { glUseProgram(rendererID) }
             currentProgram = rendererID
         }
     }
@@ -75,7 +72,7 @@ class OpenGLShader private constructor(
     private val vulkanSpv = HashMap<Int, ByteBuffer>()
     private val openGlSpv = HashMap<Int, ByteBuffer>()
 
-    private val enableCache = false
+    private val enableCache = true
     private val timer: Timer = Timer()
 
     init {

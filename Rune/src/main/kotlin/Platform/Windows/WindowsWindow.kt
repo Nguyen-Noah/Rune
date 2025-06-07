@@ -3,10 +3,10 @@ package rune.platforms.windows
 import org.lwjgl.glfw.GLFW.*
 import rune.core.*
 import rune.events.*
-import rune.platforms.opengl.OpenGLContext
+import rune.platforms.opengl.GLContext
 
 class WindowsWindow(props: WindowProps) : Window {
-    lateinit var ctx: OpenGLContext
+    lateinit var ctx: GLContext
 
     private data class WindowData(
         var title: String,
@@ -62,7 +62,7 @@ class WindowsWindow(props: WindowProps) : Window {
         )
         require(windowHandle != 0L) { "Failed to create GLFW window" }
 
-        ctx = OpenGLContext(windowHandle)
+        ctx = GLContext(windowHandle)
         ctx.init()
 
         // enable v-sync

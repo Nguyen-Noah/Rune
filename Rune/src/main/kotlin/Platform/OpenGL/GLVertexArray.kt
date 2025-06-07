@@ -8,7 +8,7 @@ import rune.renderer.gpu.VertexBufferLayout
 
 private val INTEGER_TYPES = setOf(GL_INT, GL_UNSIGNED_INT, GL_UNSIGNED_SHORT, GL_UNSIGNED_BYTE)
 
-class OpenGLVertexArray(
+class GLVertexArray(
     vbo: VertexBuffer,
     private val layout: VertexBufferLayout
 ) : VertexArray {

@@ -13,7 +13,7 @@ data class SceneLights(
     var maxDirectionalLight: Int = 4,
     val directionalLights: Array<DirectionalLight?> = arrayOfNulls(maxDirectionalLight),
     var light: DirectionalLight? = null,
-    private val lightBuffer: UniformBuffer = UniformBuffer.create(48, U_LIGHTS)
+    private val lightBuffer: UniformBuffer = UniformBuffer.create(48, U_LIGHTS, name = "Lights")
     ) {
     fun bake() {
         light?.let {
@@ -35,7 +35,6 @@ data class SceneLights(
                 MemoryUtil.memFree(this)
             }
         }
-
     }
 
     override fun equals(other: Any?): Boolean {

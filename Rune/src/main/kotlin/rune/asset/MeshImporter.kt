@@ -48,29 +48,6 @@ object MeshImporter {
             material?.let {
                 // * processing the material
                 val color: AIColor4D = AIColor4D.create()
-//                val path: AIString = AIString.calloc()
-//
-//                // this will always run, but material is AIMaterial?
-//                Assimp.aiGetMaterialTexture(
-//                    material,
-//                    Assimp.aiTextureType_DIFFUSE,
-//                    0,
-//                    path,
-//                    null as IntBuffer?,     // mapping
-//                    null as IntBuffer?,     // uvindex
-//                    null as FloatBuffer?,   // blend
-//                    null as IntBuffer?,     // op
-//                    null as IntBuffer?,     // mapmode
-//                    null as IntBuffer?
-//                )
-//
-//                val textPath = path.dataString()
-//                // white texture
-//                var texture: Texture2D = Texture2D.create(1, 1).apply { setData(0xffffffff.toInt(), 4) }
-//                if (textPath.isNotEmpty()) {
-//                    texture = Texture2D.create("$assetPath/$resourcePath/$textPath")
-//                    Logger.warn("Loaded texture: $textPath.")
-//                }
 
                 val ambient: Vec4 = Assimp.aiGetMaterialColor(
                     material,
@@ -153,15 +130,7 @@ object MeshImporter {
 
         val mesh = Mesh(fileName.substringBefore('.'), buffers, subs)
 
-        // TEMP: MOVE THIS ELSEWHERE
-        val vao = VertexArray.create(buffers.vbo, bufferLayout {
-            attribute("a_Position", 3)
-            attribute("a_Normal", 3)
-            attribute("a_TexCoords", 2)
-            //attribute("a_EntityID", 1)
-        }).apply { setIndexBuffer(buffers.ibo) }
-
-        return Model(mesh, vao)
+        return Model(mesh)
     }
 
     private fun loadTextures(mat: AIMaterial, resourcePath: String): Array<Texture2D?> {

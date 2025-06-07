@@ -6,8 +6,8 @@ import glm_.vec4.Vec4
 import rune.core.Logger
 import rune.renderer.*
 import rune.renderer.gpu.*
-import rune.renderer.pipeline.Pipeline
-import rune.renderer.pipeline.pipelineSpec
+import rune.rhi.Pipeline
+import rune.rhi.pipeline
 
 class QuadBatch(
     maxQuads: Int = 10_000,
@@ -17,6 +17,29 @@ class QuadBatch(
 ) : Batch {
 
     private val ibo = makeIndexBuffer()
+
+    val vBufferLayout = bufferLayout {
+        attribute("a_Position", 3)
+        attribute("a_Color", 4)
+        attribute("a_TexCoords", 2)
+        attribute("a_TilingFactor", 1)
+        attribute("a_EntityID", 1)
+    }
+
+    val pipelineSpec = pipeline {
+        debugName = "Renderer2D-Quad"
+        shader = this@QuadBatch.shader
+        layout = VertexLayout.build {
+            attr(0, BufferType.Float3)  // position
+            attr(1, BufferType.Float4)  // color
+            attr(2, BufferType.Float2)  // texcoords
+            attr(3, BufferType.Float1)  // texIndex
+            attr(4, BufferType.Float1)  // tilingFactor
+            attr(5, BufferType.Int1)    // entityID
+        }
+    }
+
+    //val pipeline = Pipeline.create(pipelineSpec)
 
 //    val pipelineSpec = pipelineSpec {
 //        debugName = "Renderer2D-Quad"
@@ -93,7 +116,7 @@ class QuadBatch(
         textureSlots.forEachIndexed { i, tex -> tex?.bind(i) }
 
         shader.bind()
-        RenderCommand.drawIndexed(vao, indices)
+        Renderer.drawIndexed(vao, indices)
         Renderer.stats.drawCalls++
     }
 

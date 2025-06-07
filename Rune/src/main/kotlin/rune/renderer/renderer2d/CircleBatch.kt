@@ -49,7 +49,7 @@ class CircleBatch(
         vbo.setData(writer.slice())
 
         shader.bind()
-        RenderCommand.drawIndexed(vao, indices)
+        Renderer.drawIndexed(vao, indices)
         Renderer.stats.drawCalls++
     }
 

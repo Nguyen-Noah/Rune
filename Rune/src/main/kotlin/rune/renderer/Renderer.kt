@@ -2,17 +2,36 @@ package rune.renderer
 
 import glm_.glm
 import glm_.mat4x4.Mat4
-import org.lwjgl.system.MemoryUtil
-import rune.platforms.opengl.OpenGLShader
+import glm_.vec4.Vec4
+import rune.platforms.opengl.GLRendererAPI
 import rune.renderer.gpu.Shader
 import rune.renderer.gpu.U_CAMERA
 import rune.renderer.gpu.UniformBuffer
 import rune.renderer.gpu.VertexArray
 import rune.renderer.renderer2d.FLOAT_MAT4_SIZE
 import rune.renderer.renderer2d.Renderer2D
-import rune.renderer.renderer3d.Renderer3D
+import rune.renderer.renderer3d.Mesh
+import rune.rhi.Pipeline
+import rune.rhi.RenderPass
+
+data class RenderTask(
+    val name: String,
+    val exec: () -> Unit
+) {
+    override fun toString(): String {
+        return name
+    }
+}
+
+private val renderQueue: MutableList<RenderTask> = mutableListOf()
 
 object Renderer {
+
+    private val rendererAPI = when(RendererAPI.getAPI()) {
+        RendererPlatform.OpenGL -> GLRendererAPI()
+        RendererPlatform.None -> TODO()
+    }
+
     data class CameraData(var viewProjection: Mat4 = Mat4(1f))
 
     //! STATISTICS
@@ -22,14 +41,12 @@ object Renderer {
     }
 
     private val cameraBuffer: CameraData = CameraData()
-    private val cameraUniformBuffer: UniformBuffer = UniformBuffer.create(FLOAT_MAT4_SIZE, U_CAMERA)
+    private val cameraUniformBuffer: UniformBuffer = UniformBuffer.create(FLOAT_MAT4_SIZE, U_CAMERA, name = "Camera")
 
     fun init() {
         initShaders()
 
-        RenderCommand.init()
         Renderer2D.init()
-        Renderer3D.init()
     }
 
     //*///////////////////////////////////////////////////////////////*//
@@ -45,6 +62,9 @@ object Renderer {
 
         // Renderer3D
         shaderLib.load("assets/shaders/StaticMesh.glsl")
+
+        // Runestone
+        shaderLib.load("assets/shaders/Grid.glsl")
 
         println(shaderLib)
     }
@@ -66,7 +86,6 @@ object Renderer {
         cameraUniformBuffer.setData(cameraBuffer.viewProjection)
 
         Renderer2D.beginScene()
-        Renderer3D.beginScene()
     }
 
     fun beginScene(camera: EditorCamera) {
@@ -75,28 +94,58 @@ object Renderer {
         cameraUniformBuffer.setData(cameraBuffer.viewProjection)
 
         Renderer2D.beginScene()
-        Renderer3D.beginScene()
     }
 
     fun endScene() {
         Renderer2D.endScene()
-        Renderer3D.endScene()
     }
 
-    fun submit(shader: Shader, vao: VertexArray, transform: Mat4 = Mat4(1.0)) {
-//        shader.bind()
-//        // TODO: change this back once shaders are abstracted to different rendering platforms
-//        (shader as OpenGLShader).uploadUniform {
-//            uniform("u_ViewProjection", sceneData!!.viewProjectionMatrix)
-//            uniform("u_ModelMatrix", transform)
-//        }
-//        vao.bind()
-//        RenderCommand.drawIndexed(vao)
+    fun beginRenderPass(pass: RenderPass, clear: Boolean = false) {
+        rendererAPI.beginRenderPass(pass, clear)
+    }
+
+    fun endRenderPass() {
+        rendererAPI.endRenderPass()
+    }
+
+    fun renderStaticMesh(pipeline: Pipeline, mesh: Mesh, transform: Mat4) {
+        rendererAPI.renderStaticMesh(pipeline, mesh, transform)
+    }
+
+    fun render() {
+        renderQueue.forEach { task ->
+            task.exec()
+        }
+        renderQueue.clear()
     }
 
     fun getShader(name: String): Shader = shaderLib.get(name)
 
     fun onWindowResize(width: Int, height: Int) {
-        RenderCommand.setViewport(0, 0, width, height)
+        rendererAPI.setViewport(0, 0, width, height)
     }
+
+    fun setLineThickness(width: Float) {
+        rendererAPI.setLineWidth(width)
+    }
+
+    fun drawLines(vao: VertexArray, vertexCount: Int) {
+        rendererAPI.drawLines(vao, vertexCount)
+    }
+
+    fun drawIndexed(vao: VertexArray, indexCount: Int = 0) {
+        rendererAPI.drawIndexed(vao, indexCount)
+    }
+
+    fun setClearColor(color: Vec4) {
+        rendererAPI.setClearColor(color)
+    }
+
+    fun clear() {
+        rendererAPI.clear()
+    }
+}
+
+fun SubmitRender(name: String = "Unnamed task", exec: () -> Unit) {
+    renderQueue += RenderTask(name, exec)
 }

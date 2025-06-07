@@ -2,9 +2,6 @@ package rune.scene
 
 import com.badlogic.gdx.math.Vector2
 import com.github.quillraven.fleks.*
-import glm_.glm
-import glm_.mat3x3.Mat3
-import glm_.vec3.Vec3
 import ktx.box2d.*
 import rune.components.*
 import rune.core.Logger
@@ -12,7 +9,6 @@ import rune.core.UUID
 import rune.renderer.EditorCamera
 import rune.renderer.Renderer
 import rune.renderer.renderer2d.Renderer2D
-import rune.renderer.renderer3d.Renderer3D
 import rune.scene.systems.ScriptSystem
 
 typealias PhysicsWorld = com.badlogic.gdx.physics.box2d.World
@@ -182,25 +178,10 @@ class Scene {
         Renderer.beginScene(camera)
 
         //! LIGHTS
-        var dLightIdx = 0
         world.family { all(DirectionalLightComponent, TransformComponent) }.forEach {
-//            if (dLightIdx > lightEnvironment.maxDirectionalLight)
-//                return@forEach
-//
-//            val dLight = it[DirectionalLightComponent]
-//            val tComp = it[TransformComponent]
-//
-//            val direction: Vec3 = glm.normalize(Mat3(tComp.getTransform()) * Vec3(1.0f))
-//            lightEnvironment.directionalLights[dLightIdx++] = DirectionalLight(
-//                dLight.color,
-//                dLight.ambientIntensity,
-//                direction
-//            )
             // only supports a single light rn
             val dLight = it[DirectionalLightComponent]
-            val tComp = it[TransformComponent]
 
-            val direction: Vec3 = glm.normalize(Mat3(tComp.getTransform()) * Vec3(1.0f))
             lightEnvironment.light = DirectionalLight(
                 dLight.color,
                 dLight.diffuseIntensity,
@@ -209,16 +190,7 @@ class Scene {
         }
 
         lightEnvironment.bake()
-        drawRenderables()
-
-        world.family { all(StaticMeshComponent, TransformComponent) }.forEach {
-            val model = it[StaticMeshComponent].model
-            val tComp = it[TransformComponent]
-
-            model?.let { m ->
-                Renderer3D.renderStaticMesh(m, tComp.getTransform(), it.id)
-            }
-        }
+        //drawRenderables()
 
         Renderer.endScene()
     }

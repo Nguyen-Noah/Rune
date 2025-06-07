@@ -3,7 +3,10 @@ package rune.renderer
 import glm_.mat4x4.Mat4
 import glm_.vec4.Vec4
 import rune.renderer.gpu.VertexArray
+import rune.renderer.renderer3d.Mesh
 import rune.renderer.renderer3d.Model
+import rune.rhi.Pipeline
+import rune.rhi.RenderPass
 import rune.scene.SceneLights
 
 enum class RendererPlatform {
@@ -19,12 +22,10 @@ interface RendererAPI {
     fun setViewport(x: Int, y: Int, width: Int, height: Int)
     fun drawLines(vao: VertexArray, vertexCount: Int)
     fun setLineWidth(width: Float)
-    fun renderStaticMesh(model: Model, transform: Mat4, entityId: Int = -1)
+    fun renderStaticMesh(pipeline: Pipeline, mesh: Mesh, transform: Mat4)
 
-    fun beginRenderPass()
+    fun beginRenderPass(pass: RenderPass, clear: Boolean = false)
     fun endRenderPass()
-
-    fun renderGeometry()
 
     companion object {
         private val rendererAPI = RendererPlatform.OpenGL

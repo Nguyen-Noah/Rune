@@ -27,6 +27,7 @@ import rune.renderer.gpu.*
 import rune.renderer.renderer2d.Renderer2D
 import rune.scene.Scene
 import rune.scene.SceneRenderer
+import rune.scene.SceneRendererSpec
 import rune.scene.serialization.SceneSerializer
 import rune.utils.decomposeTransform
 import runestone.panels.ContentBrowserPanel
@@ -83,16 +84,14 @@ class EditorLayer : Layer("Sandbox2D") {
     /* --------------------------------------------------------------------- */
     /*  Editor resources                                                     */
     /* --------------------------------------------------------------------- */
-
     private val iconPlay     = Texture2D.create("src/main/resources/Icons/PlayButton.png",     filter = GL_LINEAR)
     private val iconStop     = Texture2D.create("src/main/resources/Icons/StopButton.png",     filter = GL_LINEAR)
     private val iconSimulate = Texture2D.create("src/main/resources/Icons/SimulateButton.png", filter = GL_LINEAR)
     private var icon: Texture2D = iconPlay
 
     /* --------------------------------------------------------------------- */
-    /*  Frame‑/viewport                                                      */
+    /*  Frame/viewport                                                      */
     /* --------------------------------------------------------------------- */
-
     private lateinit var framebuffer: Framebuffer
     private var viewportSize: Vec2 = Vec2(0f)
 
@@ -103,12 +102,11 @@ class EditorLayer : Layer("Sandbox2D") {
     /* --------------------------------------------------------------------- */
     /*  Scene / panels                                                       */
     /* --------------------------------------------------------------------- */
-
     private var activeScene = Scene()
     private var editorScene: Scene = activeScene
     private var editorScenePath: Path = Paths.get("")
 
-    private val vRenderer = SceneRenderer(activeScene)
+    private val vRenderer = SceneRenderer(activeScene, SceneRendererSpec(viewportWidth = 1280, viewportHeight = 720))
 
     private var sceneHierarchyPanel: SceneHierarchyPanel = SceneHierarchyPanel(activeScene)
     private var contentBrowserPanel: ContentBrowserPanel = ContentBrowserPanel()
@@ -116,30 +114,16 @@ class EditorLayer : Layer("Sandbox2D") {
     /* --------------------------------------------------------------------- */
     /*  Misc                                                                 */
     /* --------------------------------------------------------------------- */
-
     val editorCamera = EditorCamera(30f, 1778f, 0.1f, 1000f)
     private var gizmoType = -1
     private var hoveredEntity: Entity? = null
     private var showColliders: Boolean = false
-
 
     // TODO: remove this lmao -> see [[ContentBrowserPanel.kt]]
     private val assetsDirectory: String = "assets"
 
 
     override fun onAttach() {
-        val spec = framebuffer {
-            width = 1280
-            height = 720
-
-            attachments {
-                color(FramebufferTextureFormat.RGBA8)
-                color(FramebufferTextureFormat.RED_INTEGER)
-                depth(FramebufferTextureFormat.DEPTH24STENCIL8)
-            }
-        }
-        framebuffer = Framebuffer.create(spec)
-
         //! TEMP
         activeScene.createEntity("Zelda").apply {
             with(activeScene.world) { configure { it += StaticMeshComponent(MeshImporter.importStaticMesh("totk/zelda_search.dae")) } }//"Zelda/Zelda.dae"
@@ -151,25 +135,19 @@ class EditorLayer : Layer("Sandbox2D") {
 
     override fun onUpdate(dt: Float) {
         // Resize
-        updateFramebuffer()
+        resizeIfNeeded()
 
         // Render
         Renderer.resetStats()
-        framebuffer.bind()
-        RenderCommand.run {
-            setClearColor(Vec4(0.1f, 0.1f, 0.1f, 1.0f))
-            clear()
-        }
 
         // clear entity ID attachment to -1
-        framebuffer.clearAttachment(1, -1)
 
         state.onUpdate(this, dt)
+        vRenderer.render(dt)
 
-        updateMousePicking()
-        renderOverlays()
+        //updateMousePicking()
+        //renderOverlays()
 
-        framebuffer.unbind()
     }
 
     private fun newScene() {
@@ -293,15 +271,15 @@ class EditorLayer : Layer("Sandbox2D") {
     /*  ––––––––––––––––––––––––––  Private helpers  ––––––––––––––––––––––– */
     /* ===================================================================== */
 
-    /* ---------- Framebuffer ---------- */
+    private fun resizeIfNeeded() {
+        val w = viewportSize.x.toInt()
+        val h = viewportSize.y.toInt()
+        val fbo = vRenderer.framebuffer
 
-    private fun updateFramebuffer() {
-        val spec = framebuffer.getSpecification()
-        if (viewportSize.x > 0 && viewportSize.y > 0 &&
-            (spec.width != viewportSize.x.toInt() || spec.height != viewportSize.y.toInt())) {
-            framebuffer.resize(viewportSize.x.toInt(), viewportSize.y.toInt())
-            editorCamera.setViewportSize(viewportSize.x, viewportSize.y)
-            activeScene.onViewportResize(viewportSize.x.toInt(), viewportSize.y.toInt())
+        if (w > 0 && h > 0 && (w != fbo.spec.width || h != fbo.spec.height)) {
+            fbo.resize(w, h)
+            editorCamera.setViewportSize(w.toFloat(), h.toFloat())
+            activeScene.onViewportResize(w, h)
         }
     }
 
@@ -488,7 +466,8 @@ class EditorLayer : Layer("Sandbox2D") {
         viewportSize = Vec2(viewportPanelSize.x, viewportPanelSize.y)
 
         ImGui.image(
-            framebuffer.getColorAttachment().toLong(),
+            vRenderer.framebuffer.getColorAttachment().toLong(),
+            //gPass.colorAttachmentRendererID(0).toLong(),
             ImVec2(viewportSize.x, viewportSize.y),
             ImVec2(0f, 1f),
             ImVec2(1f, 0f)

@@ -1,7 +1,6 @@
 package rune.platforms.opengl
 
 import glm_.mat4x4.Mat4
-import glm_.vec3.Vec3
 import glm_.vec4.Vec4
 import org.lwjgl.opengl.GL45.*
 import org.lwjgl.system.MemoryUtil
@@ -9,14 +8,17 @@ import rune.renderer.Renderer
 import rune.renderer.RendererAPI
 import rune.renderer.gpu.*
 import rune.renderer.renderer2d.FLOAT_MAT4_SIZE
-import rune.renderer.renderer3d.Model
-import rune.scene.DirectionalLight
-import rune.scene.SceneLights
+import rune.renderer.renderer3d.Mesh
+import rune.renderer.SubmitRender
+import rune.rhi.Pipeline
+import rune.rhi.RenderPass
 
-class OpenGLRendererAPI : RendererAPI {
+class GLRendererAPI : RendererAPI {
     // TODO: find a better place for this (maybe per model)
-    private val transformBuf = UniformBuffer.create(FLOAT_MAT4_SIZE, U_TRANSFORM)
-    private val matBuf = UniformBuffer.create(48, U_MATERIAL)
+    private val transformBuf: UniformBuffer = UniformBuffer.create(FLOAT_MAT4_SIZE, U_TRANSFORM, "Transform")
+    private val matBuf: UniformBuffer = UniformBuffer.create(48, U_MATERIAL, "Material")
+
+    private var activePass: RenderPass? = null
 
     override fun init() {
         glEnable(GL_BLEND)
@@ -51,19 +53,18 @@ class OpenGLRendererAPI : RendererAPI {
         glLineWidth(width)
     }
 
-    override fun renderStaticMesh(model: Model, transform: Mat4, entityId: Int) {
-        model.vao.bind()
+    override fun renderStaticMesh(pipeline: Pipeline, mesh: Mesh, transform: Mat4) {
+        pipeline.bind()
+        (pipeline as GLPipeline).apply { attachVertexBuffer(mesh.buffers.vbo.rendererID) }
+        mesh.buffers.ibo.bind()
 
-        model.mesh.subMeshes.forEach { sm ->
-            // 1. binding the shader
+        transformBuf.setData(transform)
+
+        mesh.subMeshes.forEach { sm ->
             sm.material.shader.bind()
 
-            // 2. bind the texture
-            sm.material.textures.forEachIndexed { i, tex ->
-                tex?.bind(i)
-            }
+            sm.material.textures.forEachIndexed { i, tex -> tex?.bind(i) }
 
-            // 3. bind the PBR materials
             MemoryUtil.memAlloc(48).apply {
                 putFloat(sm.material.ambient.r)
                 putFloat(sm.material.ambient.g)
@@ -85,34 +86,35 @@ class OpenGLRendererAPI : RendererAPI {
                 MemoryUtil.memFree(this)
             }
 
-            // 4. upload the transform
-            transformBuf.setData(transform)
+            SubmitRender("GLAPI-RenderStaticMesh") {
+                val byteOffset = (sm.indexOffset * Int.SIZE_BYTES).toLong()
 
-            val byteOffset = (sm.indexOffset * Int.SIZE_BYTES).toLong()
-
-            glDrawElementsBaseVertex(
-                GL_TRIANGLES,
-                sm.indexCount,
-                GL_UNSIGNED_INT,
-                byteOffset,
-                0
-            )
-            sm.material.shader.unbind()
-            Renderer.stats.drawCalls++
+                glDrawElementsBaseVertex(
+                    GL_TRIANGLES,
+                    sm.indexCount,
+                    GL_UNSIGNED_INT,
+                    byteOffset,
+                    0
+                )
+            }
         }
-
-        model.vao.unbind()
     }
 
-    override fun beginRenderPass() {
-        TODO("Not yet implemented")
+    override fun beginRenderPass(pass: RenderPass, clear: Boolean) {
+        activePass = pass
+        //pass.spec.targetFramebuffer.bind()
+        (pass as GLRenderPass).bind()
+
+        if (clear) {
+            SubmitRender("GLAPI-BeginPass-Clear") {
+                Renderer.setClearColor(Vec4(0.1f, 0.1f, 0.1f, 1.0f))   // TODO: put this in the pass
+                Renderer.clear()
+            }
+        }
     }
 
     override fun endRenderPass() {
-        TODO("Not yet implemented")
-    }
-
-    override fun renderGeometry() {
-        TODO("Not yet implemented")
+        require(activePass != null)
+        (activePass!! as GLRenderPass).unbind()
     }
 }

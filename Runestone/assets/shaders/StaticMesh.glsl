@@ -8,6 +8,7 @@ layout(location = 2) in vec2 a_TexCoords;
 
 layout(location = 0) out vec2 v_TexCoords;
 layout(location = 1) out vec3 v_Normal;
+layout(location = 2) out vec3 v_Position;
 //layout(location = 1) out flat int f_EntityID;
 
 layout(std140, binding = 0) uniform Camera {
@@ -21,7 +22,7 @@ layout(std140, binding = 1) uniform Transform {
 void main() {
     v_TexCoords = a_TexCoords;
     v_Normal = normalize(transpose(inverse(mat3(u_ModelTransform))) * a_Normal);
-    //v_Normal = a_Normal;
+    v_Position = a_Position;
 
     //f_EntityID = a_EntityID;
     gl_Position = u_ViewProjection * u_ModelTransform * vec4(a_Position, 1.0);
@@ -32,6 +33,7 @@ void main() {
 
 layout(location = 0) in vec2 v_TexCoords;
 layout(location = 1) in vec3 v_Normal;
+layout(location = 2) in vec3 v_Position;
 //layout(location = 1) in flat int f_EntityID;
 
 layout(location = 0) out vec4 o_Color;

@@ -86,6 +86,8 @@ abstract class Application {
                 for (layer in layerStack) {
                     layer.onUpdate(dt)
                 }
+
+                Renderer.render()
             }
 
             imGuiLayer.begin()

@@ -1,6 +1,22 @@
 package rune.renderer.gpu
 
-import org.lwjgl.opengl.GL45
+import rune.rhi.AttachmentFormat
+
+data class AttachmentSpec(val format: AttachmentFormat)
+
+class AttachmentList {
+    internal val list = mutableListOf<AttachmentSpec>()
+
+    fun color(format: AttachmentFormat) {
+        require(format != AttachmentFormat.DEPTH24STENCIL8)
+        list += AttachmentSpec(format)
+    }
+
+    fun depth(format: AttachmentFormat = AttachmentFormat.DEPTH24STENCIL8) {
+        require(format == AttachmentFormat.DEPTH24STENCIL8)
+        list += AttachmentSpec(format)
+    }
+}
 
 class FramebufferSpecification {
     var width: Int = 0
@@ -8,12 +24,12 @@ class FramebufferSpecification {
     var samples: Int = 1
     var swapChainTarget: Boolean = false   // are we rendering to the screen or nah
 
-    private val attachmentsBuilder: FramebufferAttachmentSpecification = FramebufferAttachmentSpecification()
-    val attachments: List<FramebufferTextureSpecification>
+    private val attachmentsBuilder = AttachmentList()
+    val attachments: List<AttachmentSpec>
         get() = attachmentsBuilder.list
 
     // DSL entry point
-    fun attachments(init: FramebufferAttachmentSpecification.() -> Unit) {
+    fun attachments(init: AttachmentList.() -> Unit) {
         attachmentsBuilder.init()
     }
 
@@ -33,39 +49,6 @@ class FramebufferSpecification {
     }
 }
 
-fun framebuffer(init: FramebufferSpecification.() -> Unit) = FramebufferSpecification().apply(init)
-
-
-enum class FramebufferTextureFormat(val glEnum: Int) {
-    None(0),
-
-    // color
-    RGBA8(GL45.GL_RGBA8),
-
-    // for entity id
-    RED_INTEGER(GL45.GL_RED_INTEGER),
-
-    // depth/stencil
-    DEPTH24STENCIL8(GL45.GL_DEPTH24_STENCIL8),
-
-    // default
-    Depth(DEPTH24STENCIL8.glEnum)
-}
-
-data class FramebufferTextureSpecification(val format: FramebufferTextureFormat = FramebufferTextureFormat.None)
-
-class FramebufferAttachmentSpecification {
-    internal val list = mutableListOf<FramebufferTextureSpecification>()
-
-    fun color(format: FramebufferTextureFormat) {
-        require(format != FramebufferTextureFormat.None)       // TODO: make a Rune.assert()
-        list += FramebufferTextureSpecification(format)
-    }
-
-    fun depth(format: FramebufferTextureFormat) {
-        require(format != FramebufferTextureFormat.None)
-        list += FramebufferTextureSpecification(format)
-    }
-}
-
-
+// TODO: make this return a Framebuffer
+fun framebuffer(init: FramebufferSpecification.() -> Unit) =
+    FramebufferSpecification().apply(init)

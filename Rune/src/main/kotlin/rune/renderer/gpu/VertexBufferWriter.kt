@@ -13,7 +13,7 @@ enum class BufferType(val comps: Int, val bytes: Int, val glType: Int) {
     val sizeBytes get() = comps * bytes
 }
 
-class VertexLayout private constructor(attributes: List<Attr>) {
+class VertexLayout private constructor(val attributes: List<Attr>) {
     class Attr(val loc: Int, val component: BufferType, var offset: Int = 0)
 
     val stride = attributes.sumOf { it.component.sizeBytes }

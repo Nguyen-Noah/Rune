@@ -4,7 +4,7 @@ import org.lwjgl.glfw.GLFW
 import org.lwjgl.opengl.GL
 import rune.renderer.RenderContext
 
-class OpenGLContext(private val windowHandle: Long) : RenderContext {
+class GLContext(private val windowHandle: Long) : RenderContext {
     override fun init() {
         // make the OpenGL current context
         GLFW.glfwMakeContextCurrent(windowHandle)
