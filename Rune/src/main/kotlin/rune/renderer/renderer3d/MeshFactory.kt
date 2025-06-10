@@ -6,7 +6,7 @@ import rune.renderer.renderer3d.mesh.Vertex
 
 object MeshFactory {
 
-    fun Box(size: Vec3) {
+    fun box(size: Vec3): Pair<Array<Vertex>, Array<Index?>> {
         val vertices: Array<Vertex> = Array(8) { Vertex() }
 
         // positions
@@ -44,7 +44,7 @@ object MeshFactory {
         indices[10] = Index(3, 2, 6)
         indices[11] = Index(6, 7, 4)
 
-
+        return Pair(vertices, indices)
     }
 
     fun createSphere(radius: Float) {
@@ -55,3 +55,9 @@ object MeshFactory {
 
     }
 }
+
+fun Pair<Array<Vertex>, Array<Index?>>.vbo() =
+    this.first
+
+fun Pair<Array<Vertex>, Array<Index?>>.ibo() =
+    this.second

@@ -63,3 +63,8 @@ internal val AttributeFormat.isInteger: Boolean
 
 internal val AttributeFormat.isDouble: Boolean
     get() = (scalar == ScalarType.DOUBLE)
+
+internal val Filter.gl: Int
+    get() = when(this) {
+        Filter.LINEAR -> GL_LINEAR
+    }

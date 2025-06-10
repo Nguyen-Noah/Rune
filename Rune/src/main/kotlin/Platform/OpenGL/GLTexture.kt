@@ -6,6 +6,7 @@ import org.lwjgl.system.MemoryStack
 import rune.renderer.gpu.Texture2D
 import rune.renderer.SubmitRender
 import java.nio.ByteBuffer
+import java.nio.FloatBuffer
 import java.nio.IntBuffer
 
 class GLTexture : Texture2D {
@@ -16,6 +17,7 @@ class GLTexture : Texture2D {
 
     private val internalFormat: Int
     private val dataFormat: Int
+    private val typeFormat: Int
 
     constructor(width: Int, height: Int, filter: Int) {
         this.width = width
@@ -23,6 +25,7 @@ class GLTexture : Texture2D {
         this.assetPath = null
         internalFormat = GL_RGBA8
         dataFormat = GL_RGBA
+        typeFormat = GL_FLOAT
 
         rendererID = glCreateTextures(GL_TEXTURE_2D)
         glTextureStorage2D(rendererID, 1, internalFormat, width, height)
@@ -43,39 +46,54 @@ class GLTexture : Texture2D {
             val h: IntBuffer = stack.mallocInt(1)
             val channels: IntBuffer = stack.mallocInt(1)
 
+            val isHdr = stbi_is_hdr(path)
+            val dataF: FloatBuffer?
+            val dataB: ByteBuffer?
+
             // load images vertically
             stbi_set_flip_vertically_on_load(true)
 
-            val data: ByteBuffer = stbi_load(path, w, h, channels, 0) ?: throw RuntimeException("failed to load image: $path")
+            if (isHdr) {
+                dataF = stbi_loadf(path, w, h, channels, 0)
+                dataB = null
+                require(dataF != null) { "Failed to load HDR: $path" }
+            } else {
+                dataB = stbi_load(path, w, h, channels, 0)
+                dataF = null
+                require(dataB != null) { "Failed to load HDR: $path" }
+            }
 
             width = w[0]
             height = h[0]
 
-            val formats = when (channels[0]) {
-                4 -> Pair(GL_RGBA8, GL_RGBA)
-                3 -> Pair(GL_RGB8, GL_RGB)
-                else -> {
-                    stbi_image_free(data)
-                    throw RuntimeException("Unsupported channel count: ${channels[0]}")
-                }
+            if (isHdr) {
+                internalFormat = if (channels[0] == 3) GL_RGB16F else GL_RGBA16F
+                dataFormat     = if (channels[0] == 3) GL_RGB    else GL_RGBA
+                typeFormat     = GL_FLOAT
+            } else {
+                internalFormat = if (channels[0] == 3) GL_RGB8 else GL_RGBA8
+                dataFormat     = if (channels[0] == 3) GL_RGB  else GL_RGBA
+                typeFormat     = GL_UNSIGNED_BYTE
             }
-            internalFormat = formats.first
-            dataFormat = formats.second
 
             rendererID = glCreateTextures(GL_TEXTURE_2D)
             glTextureStorage2D(rendererID, 1, internalFormat, width, height)
 
             glTextureParameteri(rendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
             glTextureParameteri(rendererID, GL_TEXTURE_MAG_FILTER, filter)
-            //glTextureParameteri(rendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-
-            glTextureParameteri(rendererID, GL_TEXTURE_WRAP_S, GL_REPEAT)
-            glTextureParameteri(rendererID, GL_TEXTURE_WRAP_T, GL_REPEAT)
-
-            glTextureSubImage2D(rendererID, 0, 0, 0, width, height, dataFormat, GL_UNSIGNED_BYTE, data)
+            glTextureParameteri(rendererID, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
+            glTextureParameteri(rendererID, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
 
             // free image data
-            stbi_image_free(data)
+            if (isHdr) {
+                glTextureSubImage2D(rendererID, 0, 0, 0, width, height,
+                    dataFormat, typeFormat, dataF!!)
+                stbi_image_free(dataF)
+            } else {
+                glTextureSubImage2D(rendererID, 0, 0, 0, width, height,
+                    dataFormat, typeFormat, dataB!!)
+                stbi_image_free(dataB)
+            }
         }
     }
 
@@ -106,7 +124,7 @@ class GLTexture : Texture2D {
     }
 
     override fun bind(slot: Int) {
-        SubmitRender("GLTex-bind") { glBindTextureUnit(slot, rendererID) }
+        glBindTextureUnit(slot, rendererID)
     }
 
     override fun equals(other: Any?): Boolean {

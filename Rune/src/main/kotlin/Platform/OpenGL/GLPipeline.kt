@@ -5,13 +5,13 @@ import rune.renderer.SubmitRender
 import rune.rhi.Pipeline
 import rune.rhi.PipelineSpec
 
-class GLPipeline(desc: PipelineSpec) : Pipeline {
-    private val shader = desc.shader
+class GLPipeline(val spec: PipelineSpec) : Pipeline {
+    private val shader = spec.shader
     private var vao = -1
-    private val raster = desc.raster
-    private val depth = desc.depth
-    private val blends = desc.blends
-    private val layout = desc.layout
+    private val raster = spec.raster
+    private val depth = spec.depth
+    private val blends = spec.blends
+    private val layout = spec.layout
 
     init {
         invalidate()

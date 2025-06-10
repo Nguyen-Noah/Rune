@@ -38,7 +38,7 @@ class GLUniformBuffer(private val size: Int, private val binding: Int, private v
         SubmitRender("GLUbo$n-setData") {
             MemoryUtil.memAlloc(FLOAT_MAT4_SIZE).apply {
                 data to this
-                setData(this)
+                setData(this, offset)
                 MemoryUtil.memFree(this)
             }
         }

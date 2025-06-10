@@ -1,6 +1,7 @@
 package rune.renderer
 
 import glm_.glm
+import glm_.mat3x3.Mat3
 import glm_.mat4x4.Mat4
 import glm_.quat.Quat
 import glm_.vec2.Vec2
@@ -118,6 +119,13 @@ class EditorCamera(private val fov: Float = 45f,
         viewportWidth = width
         viewportHeight = height
         updateProjection()
+    }
+
+    fun getSkyViewProjection(): Mat4 {
+        val rot3x3 = Mat3(viewMatrix)
+
+        val rotView = Mat4(rot3x3)
+        return glm.inverse(projection * rotView)
     }
 
     private fun getUpDirection() =      glm.rotate(getOrientation(), Vec3(0f, 1f, 0f))

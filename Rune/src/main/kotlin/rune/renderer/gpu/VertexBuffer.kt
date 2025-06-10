@@ -34,5 +34,12 @@ interface VertexBuffer {
                 RendererPlatform.None -> TODO()
             }
         }
+
+        fun create(vertices: FloatArray): VertexBuffer {
+            when (Renderer.getAPI()) {
+                RendererPlatform.OpenGL -> return GLVertexBuffer(vertices)
+                RendererPlatform.None -> TODO()
+            }
+        }
     }
 }

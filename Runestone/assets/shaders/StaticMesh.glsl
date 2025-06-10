@@ -13,6 +13,7 @@ layout(location = 2) out vec3 v_Position;
 
 layout(std140, binding = 0) uniform Camera {
     mat4 u_ViewProjection;
+    mat4 u_InverseProjection;
 };
 
 layout(std140, binding = 1) uniform Transform {

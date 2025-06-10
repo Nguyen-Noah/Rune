@@ -2,7 +2,10 @@ package rune.renderer
 
 import glm_.mat4x4.Mat4
 import glm_.vec4.Vec4
+import rune.renderer.gpu.IndexBuffer
+import rune.renderer.gpu.Texture
 import rune.renderer.gpu.VertexArray
+import rune.renderer.gpu.VertexBuffer
 import rune.renderer.renderer3d.Mesh
 import rune.renderer.renderer3d.Model
 import rune.rhi.Pipeline
@@ -15,6 +18,11 @@ enum class RendererPlatform {
 }
 
 interface RendererAPI {
+     data class FullscreenQuad(
+        val vbo: VertexBuffer,
+        val ibo: IndexBuffer
+    )
+
     fun init()
     fun setClearColor(color: Vec4)
     fun clear()
@@ -26,6 +34,9 @@ interface RendererAPI {
 
     fun beginRenderPass(pass: RenderPass, clear: Boolean = false)
     fun endRenderPass()
+
+    fun createEnvironmentMap(file: String): Texture
+    fun renderSkybox(pass: RenderPass, envMap: Texture)
 
     companion object {
         private val rendererAPI = RendererPlatform.OpenGL

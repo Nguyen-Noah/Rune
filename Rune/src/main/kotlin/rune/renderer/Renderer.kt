@@ -4,10 +4,7 @@ import glm_.glm
 import glm_.mat4x4.Mat4
 import glm_.vec4.Vec4
 import rune.platforms.opengl.GLRendererAPI
-import rune.renderer.gpu.Shader
-import rune.renderer.gpu.U_CAMERA
-import rune.renderer.gpu.UniformBuffer
-import rune.renderer.gpu.VertexArray
+import rune.renderer.gpu.*
 import rune.renderer.renderer2d.FLOAT_MAT4_SIZE
 import rune.renderer.renderer2d.Renderer2D
 import rune.renderer.renderer3d.Mesh
@@ -32,7 +29,10 @@ object Renderer {
         RendererPlatform.None -> TODO()
     }
 
-    data class CameraData(var viewProjection: Mat4 = Mat4(1f))
+    data class CameraData(
+        var viewProjection: Mat4 = Mat4(1f),
+        var skyProjection: Mat4 = Mat4(1f)
+    )
 
     //! STATISTICS
     data class Statistics(var drawCalls: Int = 0, var quadCount: Int = 0) {
@@ -41,7 +41,7 @@ object Renderer {
     }
 
     private val cameraBuffer: CameraData = CameraData()
-    private val cameraUniformBuffer: UniformBuffer = UniformBuffer.create(FLOAT_MAT4_SIZE, U_CAMERA, name = "Camera")
+    private val cameraUniformBuffer: UniformBuffer = UniformBuffer.create(FLOAT_MAT4_SIZE * 2, U_CAMERA, name = "Camera")
 
     fun init() {
         initShaders()
@@ -55,6 +55,12 @@ object Renderer {
     val shaderLib: ShaderLibrary = ShaderLibrary()
 
     private fun initShaders() {
+        // Compute
+        shaderLib.load("assets/shaders/EquirectangularToSkybox.glsl")
+
+        // Skybox
+        shaderLib.load("assets/shaders/Skybox.glsl")
+
         // Renderer2D
         shaderLib.load("assets/shaders/Renderer2D_Quad.glsl")
         shaderLib.load("assets/shaders/Renderer2D_Circle.glsl")
@@ -83,7 +89,10 @@ object Renderer {
 
     fun beginScene(camera: RuneCamera, transform: Mat4) {
         cameraBuffer.viewProjection = camera.projection * glm.inverse(transform)
+        cameraBuffer.skyProjection = camera.projection
         cameraUniformBuffer.setData(cameraBuffer.viewProjection)
+        println(cameraBuffer.skyProjection)
+        cameraUniformBuffer.setData(cameraBuffer.skyProjection, FLOAT_MAT4_SIZE)
 
         Renderer2D.beginScene()
     }
@@ -91,7 +100,9 @@ object Renderer {
     fun beginScene(camera: EditorCamera) {
         // setting the uniform buffer
         cameraBuffer.viewProjection = camera.getViewProjection()
+        cameraBuffer.skyProjection = camera.getSkyViewProjection()
         cameraUniformBuffer.setData(cameraBuffer.viewProjection)
+        cameraUniformBuffer.setData(cameraBuffer.skyProjection, FLOAT_MAT4_SIZE)
 
         Renderer2D.beginScene()
     }
@@ -143,6 +154,14 @@ object Renderer {
 
     fun clear() {
         rendererAPI.clear()
+    }
+
+    fun createEnvironmentMap(file: String): Texture {
+        return rendererAPI.createEnvironmentMap(file)
+    }
+
+    fun renderSkybox(pass: RenderPass, envMap: Texture) {
+        rendererAPI.renderSkybox(pass, envMap)
     }
 }
 

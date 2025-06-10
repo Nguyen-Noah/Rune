@@ -2,7 +2,9 @@ package rune.scene
 
 import rune.components.StaticMeshComponent
 import rune.components.TransformComponent
+import rune.platforms.opengl.GLPipeline
 import rune.renderer.Renderer
+import rune.renderer.SubmitRender
 import rune.renderer.gpu.*
 import rune.rhi.*
 
@@ -29,32 +31,68 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
             depth(AttachmentFormat.DEPTH24STENCIL8)
         }
     })
-    private val gPipeline = pipeline {
-        debugName = "Geometry-Buffer"
-        shader = Renderer.getShader("StaticMesh")
-        layout = VertexLayout.build {
-            attr(0, BufferType.Float3)
-            attr(1, BufferType.Float3)
-            attr(2, BufferType.Float2)
-        }
+
+    //! Temp
+    //private var envMap: Texture = Renderer.createEnvironmentMap("qwantani_noon_4k.hdr")
+    private var envMap: Texture = Renderer.createEnvironmentMap("citrus_orchard_puresky_4k.hdr")
+    //private var envMap: Texture = Renderer.createEnvironmentMap("symmetrical_garden_02_4k.hdr")
+
+    private lateinit var skyBoxPass: RenderPass
+    private lateinit var geometryPass: RenderPass
+
+    init {
+        initPasses()
     }
 
-    private val geometryPass = renderPass {
-        debugName = "Geometry-Buffer"
-        targetFramebuffer = framebuffer
-        depthStencilAttachment = AttachmentFormat.DEPTH24STENCIL8
-        pipeline = gPipeline
+    private fun initPasses() {
+
+        //* Environment Pass
+        skyBoxPass = renderPass {
+            debugName = "Skybox"
+            targetFramebuffer = framebuffer
+            pipeline = pipeline {
+                debugName = "Skybox"
+                shader = Renderer.getShader("Skybox")
+                layout = VertexLayout.build {
+                    attr(0, BufferType.Float3)
+                    attr(1, BufferType.Float2)
+                }
+            }
+        }
+
+        //* Geometry Pass
+        geometryPass = renderPass {
+            debugName = "Geometry-Buffer"
+            targetFramebuffer = framebuffer
+            depthStencilAttachment = AttachmentFormat.DEPTH24STENCIL8
+            pipeline = pipeline {
+                debugName = "Geometry-Buffer"
+                shader = Renderer.getShader("StaticMesh")
+                layout = VertexLayout.build {
+                    attr(0, BufferType.Float3)
+                    attr(1, BufferType.Float3)
+                    attr(2, BufferType.Float2)
+                }
+            }
+        }
     }
 
 
     fun render(dt: Float) {
         //computePass()
-        //skyboxPass()
+        //Renderer.createEnvironmentMap("citrus_orchard_puresky_4k.hdr")
+        skyBoxPass()
         renderGeometry()
     }
 
+    private fun skyBoxPass() {
+        Renderer.beginRenderPass(skyBoxPass, clear = true)
+        Renderer.renderSkybox(skyBoxPass, envMap)
+        Renderer.endRenderPass()
+    }
+
     private fun renderGeometry() {
-        Renderer.beginRenderPass(geometryPass, clear = true)
+        Renderer.beginRenderPass(geometryPass)
 
         // TODO: s_DrawList?
         scene.world.family { all(StaticMeshComponent, TransformComponent) }.forEach {

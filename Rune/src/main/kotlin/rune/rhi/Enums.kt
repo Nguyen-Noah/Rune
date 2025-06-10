@@ -106,6 +106,8 @@ R32_SFLOAT              (1, ScalarType.FLOAT , 4),
 //* Pixel format of a render target slot
 enum class AttachmentFormat { RGBA16F, SRGBA8, RGBA8, R32I, DEPTH24STENCIL8 }
 
+enum class Filter { LINEAR }
+
 //* Whether the contents of an attachment are kept or discarded at the start/end of a pass
 enum class LoadOp           { Load, Clear, DontCare }
 enum class StoreOp          { Store, DontCare }

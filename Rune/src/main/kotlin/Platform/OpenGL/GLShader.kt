@@ -34,15 +34,15 @@ data class UniformInfo(
 class OpenGLShader private constructor(
     private val name: String,
     private val filePath: String,
-    private val stages: Map<Int, String>
+    private val stages: Map<Int, Pair<String, String>>
 ) : Shader() {
     constructor(name: String, vertexSrc: String, fragmentSrc: String) :
             this(
                 name,
                 "<memory>",
                 mapOf(
-                    GL_VERTEX_SHADER   to vertexSrc,
-                    GL_FRAGMENT_SHADER to fragmentSrc
+                    GL_VERTEX_SHADER   to Pair(vertexSrc, "vertex"),
+                    GL_FRAGMENT_SHADER to Pair(fragmentSrc, "fragment")
                 )
             )
 
@@ -64,7 +64,7 @@ class OpenGLShader private constructor(
     override fun unbind() {
         if (currentProgram == rendererID)
             return
-        glUseProgram(0)
+        SubmitRender { glUseProgram(0) }
     }
 
     // ────────────────────────── impl details ───────────────────────────────
@@ -72,10 +72,17 @@ class OpenGLShader private constructor(
     private val vulkanSpv = HashMap<Int, ByteBuffer>()
     private val openGlSpv = HashMap<Int, ByteBuffer>()
 
-    private val enableCache = true
+    private val enableCache = false
     private val timer: Timer = Timer()
+    private var optimize = true
 
     init {
+        // runs at most 2 times so its fine, future me
+        stages.values.forEach {
+            if ("compute" in it.type())
+                optimize = false
+        }
+
         compileOrGetVulkanBinaries()
         compileOrGetOpenGLBinaries()
         createProgram()
@@ -89,11 +96,12 @@ class OpenGLShader private constructor(
 
         // set the compile version to Vulkan 1.2
         shaderc_compile_options_set_target_env(options, shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_2)
-        val optimize = true
         if (optimize)
             shaderc_compile_options_set_optimization_level(options, shaderc_optimization_level_performance)
 
-        for ((stage, source) in stages) {
+        for ((stage, shader) in stages) {
+            val source = shader.source()
+
             val cached = cachePath(stage, vulkan = true)
             vulkanSpv[stage] = if (enableCache && Files.exists(cached)) {      // TODO: do we need the spv in memory?
                 // the binary was found, so read the cached version
@@ -263,24 +271,24 @@ class OpenGLShader private constructor(
 
     fun reflect(stage: Int, spirv: ByteBuffer) = MemoryStack.stackPush().use { s ->
         /* ---- context + compiler ------------------------------------------------ */
-        val ctxPtr = s.mallocPointer(1)
-        check(spvc_context_create(ctxPtr) == SPVC_SUCCESS)
-        val ctx    = ctxPtr[0]
+        val ctx = s.mallocPointer(1)
+            .also { check(spvc_context_create(it) == SPVC_SUCCESS) }
+            .first()
 
-        val irPtr  = s.mallocPointer(1)
-        check(spvc_context_parse_spirv(ctx,
-            spirv.asIntBuffer(), (spirv.remaining() / 4).toLong(), irPtr) == SPVC_SUCCESS)
-        val ir     = irPtr[0]
+        val ir = s.mallocPointer(1)
+            .also { check(spvc_context_parse_spirv(ctx,
+                spirv.asIntBuffer(), (spirv.remaining() / 4).toLong(), it) == SPVC_SUCCESS) }
+            .first()
 
-        val compPtr = s.mallocPointer(1)
-        check(spvc_context_create_compiler(ctx, SPVC_BACKEND_NONE,
-            ir, SPVC_CAPTURE_MODE_COPY, compPtr) == SPVC_SUCCESS)
-        val compiler = compPtr[0]
+        val compiler = s.mallocPointer(1)
+            .also { check(spvc_context_create_compiler(ctx, SPVC_BACKEND_NONE,
+                ir, SPVC_CAPTURE_MODE_COPY, it) == SPVC_SUCCESS) }
+            .first()
 
         /* ---- resource list ----------------------------------------------------- */
-        val resPtr = s.mallocPointer(1)
-        check(spvc_compiler_create_shader_resources(compiler, resPtr) == SPVC_SUCCESS)
-        val res    = resPtr[0]
+        val res = s.mallocPointer(1)
+            .also { check(spvc_compiler_create_shader_resources(compiler, it) == SPVC_SUCCESS) }
+            .first()
 
         val listPtr = s.mallocPointer(1)   // out: const SpvcReflectedResource*
         val cntPtr  = s.mallocPointer(1)   // out: size_t*
@@ -304,10 +312,10 @@ class OpenGLShader private constructor(
             // temp
             val typeHandle = spvc_compiler_get_type_handle(compiler, resource.base_type_id())
 
-            val sizePtr = s.mallocPointer(1)
-            check(spvc_compiler_get_declared_struct_size(
-                compiler, typeHandle, sizePtr) == SPVC_SUCCESS)
-            val size = sizePtr[0].toInt()
+            val size = s.mallocPointer(1)
+                .also { check(spvc_compiler_get_declared_struct_size(
+                    compiler, typeHandle, it) == SPVC_SUCCESS) }
+                .first().toInt()
 
             val binding = spvc_compiler_get_decoration(
                 compiler, resource.id(), SPVC_DECORATION_BINDING)
@@ -336,6 +344,7 @@ class OpenGLShader private constructor(
         val ext = when (stage) {
             GL_VERTEX_SHADER   -> if (vulkan) ".cached_vulkan.vert" else ".cached_opengl.vert"
             GL_FRAGMENT_SHADER -> if (vulkan) ".cached_vulkan.frag" else ".cached_opengl.frag"
+            GL_COMPUTE_SHADER  -> if (vulkan) ".cached_vulkan.compute" else ".cached_opengl.compute"
             else -> error("Unsupported stage $stage")
         }
         val fname = File(filePath).nameWithoutExtension + ext
@@ -346,28 +355,30 @@ class OpenGLShader private constructor(
         private fun glStageToShaderc(stage: Int) = when (stage) {
             GL_VERTEX_SHADER   -> shaderc_glsl_vertex_shader
             GL_FRAGMENT_SHADER -> shaderc_glsl_fragment_shader
+            GL_COMPUTE_SHADER  -> shaderc_glsl_compute_shader
             else -> error("Unsupported GL stage $stage")
         }
         private fun extractName(path: String): String = File(path).nameWithoutExtension
 
-        /** Hazel‑style "#type <vertex|fragment>" pre‑processor. */
-        private fun preprocess(src: String): Map<Int, String> {
+        // "#type <vertex|fragment|compute>" pre‑processor.
+        private fun preprocess(src: String): Map<Int, Pair<String, String>> {
             val token = "#type"
             var pos   = src.indexOf(token)
             if (pos == -1) error("No #type blocks found in shader file")
-            val map = mutableMapOf<Int, String>()
+            val map = mutableMapOf<Int, Pair<String, String>>()
             while (pos != -1) {
                 val eol   = src.indexOf('\n', pos)
                 val type  = src.substring(pos + token.length, eol).trim()
                 val stage = when (type) {
                     "vertex"   -> GL_VERTEX_SHADER
                     "fragment", "pixel" -> GL_FRAGMENT_SHADER
+                    "compute" -> GL_COMPUTE_SHADER
                     else        -> error("Unknown shader type '$type'")
                 }
                 val nextLine = eol + 1
                 pos = src.indexOf(token, nextLine)
                 val code = if (pos == -1) src.substring(nextLine) else src.substring(nextLine, pos)
-                map[stage] = code
+                map[stage] = Pair(code, type)
             }
             return map
         }
@@ -379,3 +390,8 @@ class OpenGLShader private constructor(
 // helpful extensions
 fun PointerBuffer.first() = this[0]
 fun LongBuffer.first() = this[0]
+
+internal fun Pair<String, String>.source(): String =
+    this.first
+internal fun Pair<String, String>.type(): String =
+    this.second
