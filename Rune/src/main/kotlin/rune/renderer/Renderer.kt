@@ -140,12 +140,12 @@ object Renderer {
         rendererAPI.setLineWidth(width)
     }
 
-    fun drawLines(vao: VertexArray, vertexCount: Int) {
-        rendererAPI.drawLines(vao, vertexCount)
+    fun drawLines(pass: RenderPass, vertexCount: Int) {
+        rendererAPI.drawLines(pass, vertexCount)
     }
 
-    fun drawIndexed(vao: VertexArray, indexCount: Int = 0) {
-        rendererAPI.drawIndexed(vao, indexCount)
+    fun drawIndexed(pass: RenderPass, indexCount: Int = 0) {
+        rendererAPI.drawIndexed(pass, indexCount)
     }
 
     fun setClearColor(color: Vec4) {

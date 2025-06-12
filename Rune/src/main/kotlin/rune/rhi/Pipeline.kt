@@ -4,11 +4,15 @@ import rune.platforms.opengl.GLPipeline
 import rune.renderer.Renderer
 import rune.renderer.RendererPlatform
 import rune.renderer.gpu.Shader
+import rune.renderer.gpu.VertexBuffer
 import rune.renderer.gpu.VertexLayout
 
 interface Pipeline {
+    val spec: PipelineSpec
+
     fun bind()
     fun unbind()
+    fun attachVBO(vbo: VertexBuffer)
 
     companion object {
         fun create(spec: PipelineSpec): Pipeline {

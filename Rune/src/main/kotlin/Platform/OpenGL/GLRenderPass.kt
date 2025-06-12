@@ -13,11 +13,11 @@ data class GLRenderPass(override val spec: RenderPassSpec) : RenderPass {
     override val name: String = spec.debugName
 
 
-    fun bind() {
+    override fun bind() {
         spec.pipeline.bind()
         fbo.bind()
     }
-    fun unbind() {
+    override fun unbind() {
         spec.pipeline.unbind()
         fbo.unbind()
     }

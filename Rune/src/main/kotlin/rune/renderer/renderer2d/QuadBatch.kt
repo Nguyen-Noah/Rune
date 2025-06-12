@@ -8,6 +8,7 @@ import rune.renderer.*
 import rune.renderer.gpu.*
 import rune.rhi.Pipeline
 import rune.rhi.pipeline
+import rune.rhi.renderPass
 
 class QuadBatch(
     maxQuads: Int = 10_000,
@@ -18,61 +19,6 @@ class QuadBatch(
 
     private val ibo = makeIndexBuffer()
 
-    val vBufferLayout = bufferLayout {
-        attribute("a_Position", 3)
-        attribute("a_Color", 4)
-        attribute("a_TexCoords", 2)
-        attribute("a_TilingFactor", 1)
-        attribute("a_EntityID", 1)
-    }
-
-    val pipelineSpec = pipeline {
-        debugName = "Renderer2D-Quad"
-        shader = this@QuadBatch.shader
-        layout = VertexLayout.build {
-            attr(0, BufferType.Float3)  // position
-            attr(1, BufferType.Float4)  // color
-            attr(2, BufferType.Float2)  // texcoords
-            attr(3, BufferType.Float1)  // texIndex
-            attr(4, BufferType.Float1)  // tilingFactor
-            attr(5, BufferType.Int1)    // entityID
-        }
-    }
-
-    //val pipeline = Pipeline.create(pipelineSpec)
-
-//    val pipelineSpec = pipelineSpec {
-//        debugName = "Renderer2D-Quad"
-//        shader = this@QuadBatch.shader
-//        targetFramebuffer = null
-//        layout = VertexLayout.build {
-//            attr(0, BufferType.Float3)  // position
-//            attr(1, BufferType.Float4)  // color
-//            attr(2, BufferType.Float2)  // texcoords
-//            attr(3, BufferType.Float1)  // texIndex
-//            attr(4, BufferType.Float1)  // tilingFactor
-//            attr(5, BufferType.Int1)    // entityID
-//        }
-//        vao = VertexArray.create(vbo, bufferLayout {
-//            attribute("a_Position", 3)
-//            attribute("a_Color", 4)
-//            attribute("a_TexCoord", 2)
-//            attribute("a_TexIndex", 1)
-//            attribute("a_TilingFactor", 1)
-//            attribute("a_EntityID", 1)
-//        }).apply { setIndexBuffer(ibo) }
-//        enableDepthTest = true
-//        backfaceCulling = false
-//    }
-//    val pipeline = Pipeline.create(pipelineSpec)
-//
-//    val quadSpec = renderPassSpec {
-//        pipeline = this@QuadBatch.pipeline
-//        debugName = "Renderer2D-Quad"
-//    }
-
-
-    /* ------------- constants and buffers --------------- */
     private val maxVertices = maxQuads * 4
     private val maxIndices = maxQuads * 6
 
@@ -85,20 +31,37 @@ class QuadBatch(
         attr(5, BufferType.Int1)    // entityID
     }
 
+    private val pipeline = pipeline {
+        debugName = "Quad-Renderer2D"
+        shader = Renderer.getShader("Renderer2D_Quad")
+        layout = this@QuadBatch.layout
+    }
+
+    private val quadPass = renderPass {
+        debugName = "Quad-Renderer2D"
+        targetFramebuffer = Renderer2D.framebuffer
+        pipeline = this@QuadBatch.pipeline
+    }
+
+
     private val writer = VertexBufferWriter(maxVertices, layout.stride)
     private var indices = 0
     private val vbo = VertexBuffer.create(maxVertices * layout.stride)
-    private val vao = VertexArray.create(vbo, bufferLayout {
-        attribute("a_Position", 3)
-        attribute("a_Color", 4)
-        attribute("a_TexCoord", 2)
-        attribute("a_TexIndex", 1)
-        attribute("a_TilingFactor", 1)
-        attribute("a_EntityID", 1)
-    }).apply { setIndexBuffer(ibo) }
 
     private val textureSlots = arrayOfNulls<Texture2D>(maxTextureSlots).apply { this[0] = whiteTex }
     private var texSlotIdx = 1
+
+    init {
+        SubmitRender("QuadBatch-init") {
+            pipeline.bind()
+
+            pipeline.attachVBO(vbo)
+            ibo.bind()
+
+            pipeline.unbind()
+        }
+
+    }
 
     override fun begin() {
         writer.reset()
@@ -111,12 +74,15 @@ class QuadBatch(
 
     override fun flush() {
         if (indices == 0) return
-
-        vbo.setData(writer.slice())
-        textureSlots.forEachIndexed { i, tex -> tex?.bind(i) }
-
         shader.bind()
-        Renderer.drawIndexed(vao, indices)
+
+
+        SubmitRender("Quad-flush") {
+            vbo.setData(writer.slice())
+            textureSlots.forEachIndexed { i, tex -> tex?.bind(i) }
+            Renderer.drawIndexed(quadPass, indices)
+        }
+
         Renderer.stats.drawCalls++
     }
 

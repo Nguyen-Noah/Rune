@@ -4,36 +4,53 @@ import glm_.mat4x4.Mat4
 import glm_.vec4.Vec4
 import rune.renderer.*
 import rune.renderer.gpu.*
+import rune.rhi.pipeline
+import rune.rhi.renderPass
 
 class CircleBatch(
     maxCircles: Int = 10_000,
     private val shader: Shader
 ) : Batch {
+    private val ibo = makeIndexBuffer()
 
     private val maxVertices = maxCircles * 4
     private val maxIndices = maxCircles * 6
 
-    private val layout = VertexLayout.build {
-        attr(0, BufferType.Float3)  // worldPosition
-        attr(1, BufferType.Float3)  // localPosition
-        attr(2, BufferType.Float4)  // color
-        attr(3, BufferType.Float1)  // thickness
-        attr(4, BufferType.Float1)  // fade
-        attr(5, BufferType.Int1)    // entityID
+    private val pipeline = pipeline {
+        debugName = "Circle-Renderer2D"
+        shader = Renderer.getShader("Renderer2D_Circle")
+        layout =  VertexLayout.build {
+            attr(0, BufferType.Float3)  // worldPosition
+            attr(1, BufferType.Float3)  // localPosition
+            attr(2, BufferType.Float4)  // color
+            attr(3, BufferType.Float1)  // thickness
+            attr(4, BufferType.Float1)  // fade
+            attr(5, BufferType.Int1)    // entityID
+        }
     }
 
-    private val writer = VertexBufferWriter(maxVertices, layout.stride)
-    private val ibo = makeIndexBuffer()
+    private val circlePass = renderPass {
+        debugName = "Circle-Renderer2D"
+        targetFramebuffer = Renderer2D.framebuffer
+        pipeline = this@CircleBatch.pipeline
+    }
+
+
+    private val writer = VertexBufferWriter(maxVertices, pipeline.spec.layout.stride)
     private var indices = 0
-    private val vbo = VertexBuffer.create(maxVertices * layout.stride)
-    private val vao = VertexArray.create(vbo, bufferLayout {
-        attribute("a_WorldPosition", 3)
-        attribute("a_LocalPosition", 3)
-        attribute("a_Color", 4)
-        attribute("a_Thickness", 1)
-        attribute("a_Fade", 1)
-        attribute("a_EntityID", 1)
-    }).apply { setIndexBuffer(ibo) }
+    private val vbo = VertexBuffer.create(maxVertices * pipeline.spec.layout.stride)
+
+    init {
+        SubmitRender("CircleBatch-init") {
+            pipeline.bind()
+
+            pipeline.attachVBO(vbo)
+            ibo.bind()
+
+            pipeline.unbind()
+        }
+
+    }
 
     override fun begin() {
         writer.reset()
@@ -45,11 +62,12 @@ class CircleBatch(
 
     override fun flush() {
         if (indices == 0) return
-
-        vbo.setData(writer.slice())
-
         shader.bind()
-        Renderer.drawIndexed(vao, indices)
+
+        SubmitRender("Circle-flush") {
+            vbo.setData(writer.slice())
+            Renderer.drawIndexed(circlePass, indices)
+        }
         Renderer.stats.drawCalls++
     }
 

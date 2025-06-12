@@ -190,7 +190,7 @@ class Scene {
         }
 
         lightEnvironment.bake()
-        //drawRenderables()
+        drawRenderables()
 
         Renderer.endScene()
     }

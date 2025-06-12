@@ -8,8 +8,11 @@ import glm_.vec4.Vec4
 import rune.components.CircleRendererComponent
 import rune.components.SpriteRendererComponent
 import rune.renderer.Renderer
+import rune.renderer.gpu.Framebuffer
 import rune.renderer.gpu.Shader
 import rune.renderer.gpu.Texture2D
+import rune.renderer.gpu.framebuffer
+import rune.rhi.AttachmentFormat
 
 const val FLOAT_MAT4_SIZE = 16 * 4
 
@@ -17,6 +20,15 @@ object Renderer2D {
     private lateinit var quadBatch: QuadBatch
     private lateinit var circleBatch: CircleBatch
     private lateinit var lineBatch: LineBatch
+
+    val framebuffer = Framebuffer.create(framebuffer {
+        width = 1280; height = 720
+
+        attachments {
+            color(AttachmentFormat.SRGBA8)
+            color(AttachmentFormat.R32I)
+        }
+    })
 
     fun init() {
         val whiteTex = Texture2D.create(1, 1).apply { setData(0xffffffff.toInt(), 4) }
@@ -30,9 +42,11 @@ object Renderer2D {
     }
 
     fun endScene() {
+        framebuffer.bind()
         quadBatch.flush()
-        circleBatch.flush()
-        lineBatch.flush()
+        //circleBatch.flush()
+        //lineBatch.flush()
+        framebuffer.unbind()
     }
 
     private fun startBatch() {

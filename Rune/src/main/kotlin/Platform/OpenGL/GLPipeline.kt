@@ -2,10 +2,11 @@ package rune.platforms.opengl
 
 import org.lwjgl.opengl.GL45.*
 import rune.renderer.SubmitRender
+import rune.renderer.gpu.VertexBuffer
 import rune.rhi.Pipeline
 import rune.rhi.PipelineSpec
 
-class GLPipeline(val spec: PipelineSpec) : Pipeline {
+class GLPipeline(override val spec: PipelineSpec) : Pipeline {
     private val shader = spec.shader
     private var vao = -1
     private val raster = spec.raster
@@ -18,27 +19,23 @@ class GLPipeline(val spec: PipelineSpec) : Pipeline {
     }
 
     override fun bind() {
-        SubmitRender("GLPipeline-bind") {
-            glBindVertexArray(vao)
+        glBindVertexArray(vao)
 
-            with(depth) {
-                if (test) {
-                    glEnable(GL_DEPTH_TEST)
-                } else {
-                    glDisable(GL_DEPTH_TEST)
-                }
-
-                //glDepthMask(write)
-                //glDepthFunc(compare.gl)
+        with(depth) {
+            if (test) {
+                glEnable(GL_DEPTH_TEST)
+            } else {
+                glDisable(GL_DEPTH_TEST)
             }
+
+            //glDepthMask(write)
+            //glDepthFunc(compare.gl)
         }
     }
 
     override fun unbind() {
         //shader.unbind()
-        SubmitRender("GLPipeline-unbind") {
-            glBindVertexArray(0)
-        }
+        glBindVertexArray(0)
     }
 
     fun invalidate() {
@@ -77,6 +74,10 @@ class GLPipeline(val spec: PipelineSpec) : Pipeline {
 
             glBindVertexArray(0)
         }
+    }
+
+    override fun attachVBO(vbo: VertexBuffer) {
+        glVertexArrayVertexBuffer(vao, 0, vbo.rendererID, 0L, layout.stride)
     }
 
     internal fun attachVertexBuffer(vboId: Int) {

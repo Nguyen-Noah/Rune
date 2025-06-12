@@ -25,6 +25,6 @@ class GLIndexBuffer : IndexBuffer, GLIndexable {
 
     constructor(indexBuffer: List<Int>) : this(indexBuffer.toIntArray(), indexBuffer.size)
 
-    override fun bind() = SubmitRender("GLIbo-bind") { glBindBuffer(target, rendererID) }
+    override fun bind() = glBindBuffer(target, rendererID)
     override fun unbind() = glBindBuffer(target, 0)
 }

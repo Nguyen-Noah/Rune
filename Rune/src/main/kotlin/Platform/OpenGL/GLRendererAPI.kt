@@ -51,8 +51,8 @@ class GLRendererAPI : RendererAPI {
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
     }
 
-    override fun drawIndexed(vao: VertexArray, indexCount: Int) {
-        vao.bind()
+    override fun drawIndexed(pass: RenderPass, indexCount: Int) {
+        pass.spec.pipeline.bind()
         glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0L)
     }
 
@@ -60,8 +60,8 @@ class GLRendererAPI : RendererAPI {
         glViewport(x, y, width, height)
     }
 
-    override fun drawLines(vao: VertexArray, vertexCount: Int) {
-        vao.bind()
+    override fun drawLines(pass: RenderPass, vertexCount: Int) {
+        pass.bind()
         glDrawArrays(GL_LINES, 0, vertexCount)
     }
 
@@ -70,9 +70,8 @@ class GLRendererAPI : RendererAPI {
     }
 
     override fun renderStaticMesh(pipeline: Pipeline, mesh: Mesh, transform: Mat4) {
-        pipeline.bind()
-        (pipeline as GLPipeline).apply { attachVertexBuffer(mesh.buffers.vbo.rendererID) }
-        mesh.buffers.ibo.bind()
+        // TODO: redo this -> maybe make the model own its own pipeline
+        //(pipeline as GLPipeline).attachVertexBuffer(mesh.buffers.vbo.rendererID)
 
         transformBuf.setData(transform)
 
@@ -101,6 +100,10 @@ class GLRendererAPI : RendererAPI {
             }
 
             SubmitRender("GLAPI-RenderStaticMesh") {
+                pipeline.bind()
+                pipeline.attachVBO(mesh.buffers.vbo)
+                mesh.buffers.ibo.bind()
+
                 sm.material.textures.forEachIndexed { i, tex -> tex?.bind(i) }
 
                 val byteOffset = (sm.indexOffset * Int.SIZE_BYTES).toLong()
@@ -119,7 +122,7 @@ class GLRendererAPI : RendererAPI {
     override fun beginRenderPass(pass: RenderPass, clear: Boolean) {
         activePass = pass
         //pass.spec.targetFramebuffer.bind()
-        (pass as GLRenderPass).bind()
+        pass.bind()
 
         if (clear) {
             SubmitRender("GLAPI-BeginPass-Clear") {
@@ -131,7 +134,7 @@ class GLRendererAPI : RendererAPI {
 
     override fun endRenderPass() {
         require(activePass != null)
-        (activePass!! as GLRenderPass).unbind()
+        activePass!!.unbind()
     }
 
     override fun createEnvironmentMap(file: String): Texture {
@@ -163,24 +166,22 @@ class GLRendererAPI : RendererAPI {
     }
 
     override fun renderSkybox(pass: RenderPass, envMap: Texture) {
-        SubmitRender("GLAPI-depthFunc") {
+
+        SubmitRender("GLAPI-bindSkybox") {
+            pass.spec.pipeline.bind()
+            pass.spec.pipeline.attachVBO(fullscreenQuad.vbo)
+            fullscreenQuad.ibo.bind()
+        }
+        pass.spec.pipeline.spec.shader.bind()
+
+
+        SubmitRender("Render-Skybox") {
             glDepthFunc(GL_LEQUAL)
             glDepthMask(false)
-        }
-        
-        pass.spec.pipeline.bind()
-        (pass.spec.pipeline as GLPipeline).attachVertexBuffer(fullscreenQuad.vbo.rendererID)
-        (pass.spec.pipeline as GLPipeline).spec.shader.bind()
 
-        fullscreenQuad.ibo.bind()
-
-        SubmitRender("GLAPI-bindEnv") { envMap.bind(slot = GL_TEXTURE_CUBE_MAP) }
-
-        SubmitRender("GLAPI-DrawSkybox") {
+            envMap.bind(slot = GL_TEXTURE_CUBE_MAP)
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0)
-        }
 
-        SubmitRender("GLAPI-depthFunc") {
             glDepthFunc(GL_LESS)
             glDepthMask(true)
         }

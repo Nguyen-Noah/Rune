@@ -4,6 +4,8 @@ import glm_.vec3.Vec3
 import glm_.vec4.Vec4
 import rune.renderer.*
 import rune.renderer.gpu.*
+import rune.rhi.pipeline
+import rune.rhi.renderPass
 
 const val lineWidth = 1f
 
@@ -19,13 +21,21 @@ class LineBatch(
         attr(2, BufferType.Int1)    // entityID
     }
 
+    private val pipeline = pipeline {
+        debugName = "Line-Renderer2D"
+        shader = Renderer.getShader("Renderer2D_Line")
+        layout = this@LineBatch.layout
+    }
+
+    private val linePass = renderPass {
+        debugName = "Line-Renderer2D"
+        targetFramebuffer = Renderer2D.framebuffer
+        pipeline = this@LineBatch.pipeline
+    }
+
     private val writer = VertexBufferWriter(maxVertices, layout.stride)
     private val vbo = VertexBuffer.create(maxVertices * layout.stride)
-    private val vao = VertexArray.create(vbo, bufferLayout {
-        attribute("a_Position", 3)
-        attribute("a_Color", 4)
-        attribute("a_EntityID", 1)
-    })
+
     private var verts = 0
 
     override fun begin() {
@@ -38,13 +48,19 @@ class LineBatch(
 
     override fun flush() {
         if (verts == 0) return
-
-        vbo.setData(writer.slice())
-
         shader.bind()
-        Renderer.setLineThickness(lineWidth)
+
+        SubmitRender("Line-flush") {
+            pipeline.bind()
+
+            vbo.setData(writer.slice())
+            Renderer.drawLines(linePass, verts)
+
+            pipeline.unbind()
+        }
+
+        //Renderer.setLineThickness(lineWidth)
         Renderer.stats.drawCalls++
-        Renderer.drawLines(vao, verts)
     }
 
     /* --------------- Render API ----------------- */

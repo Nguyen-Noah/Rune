@@ -106,4 +106,8 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
 
         Renderer.endRenderPass()
     }
+
+    private fun render2D() {
+
+    }
 }

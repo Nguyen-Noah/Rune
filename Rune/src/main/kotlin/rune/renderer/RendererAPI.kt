@@ -26,9 +26,9 @@ interface RendererAPI {
     fun init()
     fun setClearColor(color: Vec4)
     fun clear()
-    fun drawIndexed(vao: VertexArray, indexCount: Int = 0)
+    fun drawIndexed(pass: RenderPass, indexCount: Int = 0)
     fun setViewport(x: Int, y: Int, width: Int, height: Int)
-    fun drawLines(vao: VertexArray, vertexCount: Int)
+    fun drawLines(pass: RenderPass, vertexCount: Int)
     fun setLineWidth(width: Float)
     fun renderStaticMesh(pipeline: Pipeline, mesh: Mesh, transform: Mat4)
 

@@ -42,6 +42,8 @@ interface RenderPass {
     val width: Int
     val height: Int
 
+    fun bind()
+    fun unbind()
     fun resize(w: Int, h: Int)
     fun colorAttachmentRendererID(index: Int = 0): Int
 
