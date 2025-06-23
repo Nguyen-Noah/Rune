@@ -1,8 +1,9 @@
 package rune.scene
 
+import rune.components.DirectionalLightComponent
 import rune.components.StaticMeshComponent
 import rune.components.TransformComponent
-import rune.platforms.opengl.GLPipeline
+import rune.renderer.AutoExposure
 import rune.renderer.Renderer
 import rune.renderer.SubmitRender
 import rune.renderer.gpu.*
@@ -22,6 +23,18 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
     )
     val stats = Statistics()
 
+    val gBuffer = Framebuffer.create(framebuffer {
+        width = 1280; height = 720
+
+        attachments {
+            color(AttachmentFormat.RGBA16F)   // position
+            color(AttachmentFormat.RGBA16F)   // normal
+            color(AttachmentFormat.SRGBA8)    // albedo
+            color(AttachmentFormat.SRGBA8)    // material data
+            depth(AttachmentFormat.DEPTH24STENCIL8)
+        }
+    })
+
     val framebuffer = Framebuffer.create(framebuffer {
         width = 1280; height = 720
 
@@ -39,6 +52,9 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
 
     private lateinit var skyBoxPass: RenderPass
     private lateinit var geometryPass: RenderPass
+    private lateinit var lightingPass: RenderPass
+
+    private val exposureHistogram = AutoExposure()
 
     init {
         initPasses()
@@ -63,15 +79,29 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
         //* Geometry Pass
         geometryPass = renderPass {
             debugName = "Geometry-Buffer"
-            targetFramebuffer = framebuffer
+            targetFramebuffer = gBuffer
             depthStencilAttachment = AttachmentFormat.DEPTH24STENCIL8
             pipeline = pipeline {
                 debugName = "Geometry-Buffer"
-                shader = Renderer.getShader("StaticMesh")
+                shader = Renderer.getShader("Geometry")
                 layout = VertexLayout.build {
                     attr(0, BufferType.Float3)
                     attr(1, BufferType.Float3)
                     attr(2, BufferType.Float2)
+                }
+            }
+        }
+
+        //* Lighting Pass
+        lightingPass = renderPass {
+            debugName = "Lighting-Pass"
+            targetFramebuffer = framebuffer
+            pipeline = pipeline {
+                debugName = "Lighting-Pass"
+                shader = Renderer.getShader("Rune_PBR")
+                layout = VertexLayout.build {
+                    attr(0, BufferType.Float3)  // a_Position
+                    attr(1, BufferType.Float2)  // a_TexCoords
                 }
             }
         }
@@ -81,18 +111,19 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
     fun render(dt: Float) {
         //computePass()
         //Renderer.createEnvironmentMap("citrus_orchard_puresky_4k.hdr")
-        skyBoxPass()
         renderGeometry()
-    }
+        lightingPass()
 
-    private fun skyBoxPass() {
-        Renderer.beginRenderPass(skyBoxPass, clear = true)
-        Renderer.renderSkybox(skyBoxPass, envMap)
-        Renderer.endRenderPass()
+        try {
+            exposureHistogram.update(dt, framebuffer.getColorAttachment(), scene.viewportWidth, scene.viewportHeight)
+        } catch (_: IndexOutOfBoundsException) {
+
+        }
+
     }
 
     private fun renderGeometry() {
-        Renderer.beginRenderPass(geometryPass)
+        Renderer.beginRenderPass(geometryPass, clear = true)
 
         // TODO: s_DrawList?
         scene.world.family { all(StaticMeshComponent, TransformComponent) }.forEach {
@@ -103,6 +134,40 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
                 Renderer.renderStaticMesh(geometryPass.spec.pipeline, m.mesh, tComp.getTransform())
             }
         }
+
+        Renderer.endRenderPass()
+    }
+
+    private fun lightingPass() {
+        Renderer.beginRenderPass(lightingPass, clear = true)
+
+        // 1. bind the attachments from the gBuffer
+        SubmitRender("SceneRenderer-bindAttachment") {
+            gBuffer.bindAttachment(0)   // position
+            gBuffer.bindAttachment(1)   // normal
+            gBuffer.bindAttachment(2)   // specular/albedo
+            gBuffer.bindDepth(3)         // depth
+
+            envMap.bind(4)               // cube map
+        }
+
+        // 2. get the lights
+        // TODO: Renderer.submitDirectionalLight, Renderer.submitSpotLight
+        scene.world.family { all(DirectionalLightComponent, TransformComponent) }.forEach {
+            // only supports a single light rn
+            val dLight = it[DirectionalLightComponent]
+
+            scene.lightEnvironment.light = DirectionalLight(
+                dLight.color,
+                dLight.diffuseIntensity,
+                dLight.direction
+            )
+        }
+
+        scene.lightEnvironment.bake()
+
+        // 2. execute the shader
+        Renderer.submitFullscreenQuad(lightingPass.spec.pipeline)
 
         Renderer.endRenderPass()
     }

@@ -178,18 +178,18 @@ class Scene {
         Renderer.beginScene(camera)
 
         //! LIGHTS
-        world.family { all(DirectionalLightComponent, TransformComponent) }.forEach {
-            // only supports a single light rn
-            val dLight = it[DirectionalLightComponent]
-
-            lightEnvironment.light = DirectionalLight(
-                dLight.color,
-                dLight.diffuseIntensity,
-                dLight.direction
-            )
-        }
-
-        lightEnvironment.bake()
+//        world.family { all(DirectionalLightComponent, TransformComponent) }.forEach {
+//            // only supports a single light rn
+//            val dLight = it[DirectionalLightComponent]
+//
+//            lightEnvironment.light = DirectionalLight(
+//                dLight.color,
+//                dLight.diffuseIntensity,
+//                dLight.direction
+//            )
+//        }
+//
+//        lightEnvironment.bake()
         drawRenderables()
 
         Renderer.endScene()

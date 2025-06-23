@@ -4,7 +4,6 @@ import org.lwjgl.opengl.GL45.*
 import org.lwjgl.stb.STBImage.*
 import org.lwjgl.system.MemoryStack
 import rune.renderer.gpu.Texture2D
-import rune.renderer.SubmitRender
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 import java.nio.IntBuffer

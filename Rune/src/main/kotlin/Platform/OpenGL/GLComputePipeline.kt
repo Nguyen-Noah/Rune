@@ -1,9 +1,6 @@
 package rune.platforms.opengl
 
-import org.lwjgl.opengl.GL45.glDispatchCompute
-import org.lwjgl.opengl.GL45.glMemoryBarrier
-import org.lwjgl.opengl.GL45.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT
-import rune.renderer.SubmitRender
+import org.lwjgl.opengl.GL45.*
 import rune.renderer.gpu.Shader
 import rune.rhi.ComputePipeline
 
@@ -13,15 +10,14 @@ class GLComputePipeline(val shader: Shader) : ComputePipeline {
     }
 
     override fun dispatch(groupsX: Int, groupsY: Int, groupsZ: Int) {
-        SubmitRender("GLCompute-dispatch") {
-            glDispatchCompute(groupsX, groupsY, groupsZ)
-        }
+        glDispatchCompute(groupsX, groupsY, groupsZ)
     }
 
     override fun end() {
-        SubmitRender("GLCompute-end") {
-            glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT)
-        }
-
+        glMemoryBarrier(
+        GL_SHADER_IMAGE_ACCESS_BARRIER_BIT or
+            GL_SHADER_STORAGE_BARRIER_BIT or
+            GL_BUFFER_UPDATE_BARRIER_BIT
+        )
     }
 }

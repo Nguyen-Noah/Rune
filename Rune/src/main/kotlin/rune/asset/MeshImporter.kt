@@ -84,7 +84,7 @@ object MeshImporter {
                     ambient,
                     diffuse,
                     specular,
-                    Renderer.getShader("StaticMesh")
+                    Renderer.getShader("Geometry")      // TODO: MOVE/REMOVE
                 )
             }
         }

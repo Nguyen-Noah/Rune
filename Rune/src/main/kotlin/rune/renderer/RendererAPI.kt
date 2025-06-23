@@ -31,6 +31,7 @@ interface RendererAPI {
     fun drawLines(pass: RenderPass, vertexCount: Int)
     fun setLineWidth(width: Float)
     fun renderStaticMesh(pipeline: Pipeline, mesh: Mesh, transform: Mat4)
+    fun submitFullscreenQuad(pipeline: Pipeline)
 
     fun beginRenderPass(pass: RenderPass, clear: Boolean = false)
     fun endRenderPass()

@@ -1,11 +1,8 @@
 package rune.platforms.opengl
 
 import org.lwjgl.opengl.GL45.*
-import rune.platforms.opengl.gl
-import rune.platforms.opengl.glInternal
 import rune.renderer.gpu.Texture
 import rune.renderer.gpu.TextureSpec
-import rune.rhi.AttachmentFormat
 
 class GLTextureCube(spec: TextureSpec) : Texture {
     override val width: Int = spec.width
@@ -23,9 +20,7 @@ class GLTextureCube(spec: TextureSpec) : Texture {
 
 
     override fun bind(slot: Int) {
-        //glBindTextureUnit(slot, rendererID)
-        //glBindTextureUnit(GL_TEXTURE_CUBE_MAP, rendererID)
-        glBindTexture(slot, rendererID)
+        glBindTextureUnit(slot, rendererID)
     }
 
     override fun setData(color: Int, size: Int) {

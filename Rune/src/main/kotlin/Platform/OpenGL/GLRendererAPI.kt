@@ -11,9 +11,6 @@ import rune.renderer.gpu.*
 import rune.renderer.renderer2d.FLOAT_MAT4_SIZE
 import rune.renderer.renderer3d.Mesh
 import rune.renderer.SubmitRender
-import rune.renderer.renderer3d.MeshFactory
-import rune.renderer.renderer3d.ibo
-import rune.renderer.renderer3d.vbo
 import rune.rhi.*
 
 class GLRendererAPI : RendererAPI {
@@ -74,9 +71,8 @@ class GLRendererAPI : RendererAPI {
         //(pipeline as GLPipeline).attachVertexBuffer(mesh.buffers.vbo.rendererID)
 
         transformBuf.setData(transform)
-
+        pipeline.shader.bind()
         mesh.subMeshes.forEach { sm ->
-            sm.material.shader.bind()
 
             MemoryUtil.memAlloc(48).apply {
                 putFloat(sm.material.ambient.r)
@@ -126,7 +122,7 @@ class GLRendererAPI : RendererAPI {
 
         if (clear) {
             SubmitRender("GLAPI-BeginPass-Clear") {
-                Renderer.setClearColor(Vec4(0.1f, 0.7f, 0.1f, 1.0f))   // TODO: put this in the pass
+                Renderer.setClearColor(Vec4(0.0f, 0.0f, 0.0f, 1.0f))   // TODO: put this in the pass
                 Renderer.clear()
             }
         }
@@ -154,13 +150,12 @@ class GLRendererAPI : RendererAPI {
         val pipeline = ComputePipeline.create(shader)
 
         pipeline.begin()
-
         SubmitRender("GLAPI-EnvMapBind") {
             srcTex.bind(1)
             (envMap as GLTextureCube).open()
+            pipeline.dispatch(groupsX = size / 8, groupsY = size / 4, groupsZ = 6)
+            pipeline.end()
         }
-        pipeline.dispatch(groupsX = size / 8, groupsY = size / 4, groupsZ = 6)
-        //pipeline.end()
 
         return envMap
     }
@@ -184,6 +179,19 @@ class GLRendererAPI : RendererAPI {
 
             glDepthFunc(GL_LESS)
             glDepthMask(true)
+        }
+    }
+
+    override fun submitFullscreenQuad(pipeline: Pipeline) {
+        SubmitRender("GLAPI-FullscreenQuadPrep") {
+            pipeline.bind()
+            pipeline.attachVBO(fullscreenQuad.vbo)
+            fullscreenQuad.ibo.bind()
+        }
+        pipeline.spec.shader.bind()
+
+        SubmitRender("GPLAPI-SubmitFullscreenQuad") {
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0)
         }
     }
 }

@@ -9,6 +9,7 @@ import rune.renderer.gpu.VertexLayout
 
 interface Pipeline {
     val spec: PipelineSpec
+    val shader: Shader
 
     fun bind()
     fun unbind()

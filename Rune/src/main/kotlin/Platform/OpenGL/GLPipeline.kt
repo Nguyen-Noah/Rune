@@ -7,7 +7,7 @@ import rune.rhi.Pipeline
 import rune.rhi.PipelineSpec
 
 class GLPipeline(override val spec: PipelineSpec) : Pipeline {
-    private val shader = spec.shader
+    override val shader = spec.shader
     private var vao = -1
     private val raster = spec.raster
     private val depth = spec.depth
@@ -24,12 +24,11 @@ class GLPipeline(override val spec: PipelineSpec) : Pipeline {
         with(depth) {
             if (test) {
                 glEnable(GL_DEPTH_TEST)
+                glDepthMask(write)
+                glDepthFunc(compare.gl)
             } else {
                 glDisable(GL_DEPTH_TEST)
             }
-
-            //glDepthMask(write)
-            //glDepthFunc(compare.gl)
         }
     }
 

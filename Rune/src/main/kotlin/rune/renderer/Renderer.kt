@@ -55,22 +55,31 @@ object Renderer {
     val shaderLib: ShaderLibrary = ShaderLibrary()
 
     private fun initShaders() {
-        // Compute
-        shaderLib.load("assets/shaders/EquirectangularToSkybox.glsl")
+        with(shaderLib) {
+            // Compute
+            load("assets/shaders/EquirectangularToSkybox.glsl")
 
-        // Skybox
-        shaderLib.load("assets/shaders/Skybox.glsl")
+            // Skybox
+            load("assets/shaders/Skybox.glsl")
 
-        // Renderer2D
-        shaderLib.load("assets/shaders/Renderer2D_Quad.glsl")
-        shaderLib.load("assets/shaders/Renderer2D_Circle.glsl")
-        shaderLib.load("assets/shaders/Renderer2D_Line.glsl")
+            // Deferred Shading
+            load("assets/shaders/Geometry.glsl")
+            load("assets/shaders/Rune_PBR.glsl")
 
-        // Renderer3D
-        shaderLib.load("assets/shaders/StaticMesh.glsl")
+            // Renderer2D
+            load("assets/shaders/Renderer2D_Quad.glsl")
+            load("assets/shaders/Renderer2D_Circle.glsl")
+            load("assets/shaders/Renderer2D_Line.glsl")
 
-        // Runestone
-        shaderLib.load("assets/shaders/Grid.glsl")
+            // Renderer3D
+            load("assets/shaders/StaticMesh.glsl")
+
+            // Post Processing
+            load("assets/shaders/AutoExposure.glsl")
+
+            // Runestone
+            load("assets/shaders/Grid.glsl")
+        }
 
         println(shaderLib)
     }
@@ -160,8 +169,8 @@ object Renderer {
         return rendererAPI.createEnvironmentMap(file)
     }
 
-    fun renderSkybox(pass: RenderPass, envMap: Texture) {
-        rendererAPI.renderSkybox(pass, envMap)
+    fun submitFullscreenQuad(pipeline: Pipeline) {
+        rendererAPI.submitFullscreenQuad(pipeline)
     }
 }
 

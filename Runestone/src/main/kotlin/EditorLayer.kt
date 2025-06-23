@@ -51,6 +51,7 @@ class EditorLayer : Layer("Sandbox2D") {
 
         data object Edit : SceneState {
             override fun onUpdate(layer: EditorLayer, dt: Float) {
+                layer.resizeIfNeeded()
                 layer.editorCamera.onUpdate(dt)
                 layer.activeScene.onUpdateEditor(dt, layer.editorCamera)
             }

@@ -16,6 +16,8 @@ interface Framebuffer {
     fun getColorAttachments(): List<AttachmentSpec>
     fun readPixel(attachmentIndex: Int, x: Int, y: Int): Int
     fun clearAttachment(attachmentIndex: Int, value: Int)
+    fun bindAttachment(index: Int)
+    fun bindDepth(unit: Int)
 
     companion object {
         fun create(spec: FramebufferSpecification): Framebuffer {

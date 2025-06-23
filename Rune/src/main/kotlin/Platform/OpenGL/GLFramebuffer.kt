@@ -158,6 +158,16 @@ class GLFramebuffer(override val spec: FramebufferSpecification) : Framebuffer {
     override fun getColorAttachment(index: Int): Int = colorAttachments[index]
     override fun getColorAttachments(): List<AttachmentSpec> = spec.attachments
 
+    override fun bindAttachment(index: Int) {
+        val texID = getColorAttachment(index)
+        glBindTextureUnit(index, texID)
+    }
+
+    override fun bindDepth(unit: Int) {
+        glActiveTexture(GL_TEXTURE0 + unit)
+        glBindTexture(GL_TEXTURE_2D, depthAttachment)
+    }
+
 
     // utils
     private fun textureTarget(multiSample: Boolean) =

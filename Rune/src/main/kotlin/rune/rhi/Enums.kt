@@ -70,12 +70,12 @@ enum class AttributeFormat(
     val scalar: ScalarType,
     val bytes: Int
 ) {
-//    R32_SFLOAT(1, 4),
-//    R32G32_SFLOAT(2, 8),
-//    R32G32B32_SFLOAT(3, 12),
-//    R32G32B32A32_SFLOAT(4, 16)
-/* ---------- 32-bit floats ---------- */
-R32_SFLOAT              (1, ScalarType.FLOAT , 4),
+    //    R32_SFLOAT(1, 4),
+    //    R32G32_SFLOAT(2, 8),
+    //    R32G32B32_SFLOAT(3, 12),
+    //    R32G32B32A32_SFLOAT(4, 16)
+    /* ---------- 32-bit floats ---------- */
+    R32_SFLOAT              (1, ScalarType.FLOAT , 4),
     R32G32_SFLOAT           (2, ScalarType.FLOAT , 4),
     R32G32B32_SFLOAT        (3, ScalarType.FLOAT , 4),
     R32G32B32A32_SFLOAT     (4, ScalarType.FLOAT , 4),
