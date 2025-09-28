@@ -82,7 +82,7 @@ class ImguiLayer : Layer("ImGuiLayer") {
     }
 
     override fun onImGuiRender() {
-        //ImGui.showDemoWindow()
+        ImGui.showDemoWindow()
     }
 
     fun blockEvents(block: Boolean) { blockEvents = block }

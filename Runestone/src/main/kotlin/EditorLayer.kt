@@ -15,6 +15,8 @@ import imgui.extension.imguizmo.flag.Operation
 import imgui.flag.*
 import imgui.type.ImBoolean
 import org.lwjgl.opengl.GL11.GL_LINEAR
+import rune.project.Project
+import rune.project.ProjectManager
 import rune.asset.MeshImporter
 import rune.components.*
 import rune.core.*
@@ -31,6 +33,7 @@ import rune.scene.SceneRendererSpec
 import rune.scene.serialization.SceneSerializer
 import rune.utils.decomposeTransform
 import runestone.panels.ContentBrowserPanel
+import runestone.panels.RendererManagerPanel
 import runestone.panels.SceneHierarchyPanel
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -41,7 +44,13 @@ import kotlin.io.path.extension
 class EditorLayer : Layer("Sandbox2D") {
 
     /* --------------------------------------------------------------------- */
-    /*  Scene‑state machine                                                  */
+    /*  Project                                                              */
+    /* --------------------------------------------------------------------- */
+
+    val project = ProjectManager.open(Path.of("TestProject"))
+
+    /* --------------------------------------------------------------------- */
+    /*  Scene state machine                                                  */
     /* --------------------------------------------------------------------- */
 
     private sealed interface SceneState {
@@ -111,6 +120,7 @@ class EditorLayer : Layer("Sandbox2D") {
 
     private var sceneHierarchyPanel: SceneHierarchyPanel = SceneHierarchyPanel(activeScene)
     private var contentBrowserPanel: ContentBrowserPanel = ContentBrowserPanel()
+    private var rendererManagerPanel: RendererManagerPanel = RendererManagerPanel(activeScene)
 
     /* --------------------------------------------------------------------- */
     /*  Misc                                                                 */
@@ -118,16 +128,28 @@ class EditorLayer : Layer("Sandbox2D") {
     val editorCamera = EditorCamera(30f, 1778f, 0.1f, 1000f)
     private var gizmoType = -1
     private var hoveredEntity: Entity? = null
-    private var showColliders: Boolean = false
+    private var showColliders: ImBoolean = ImBoolean(false)
 
     // TODO: remove this lmao -> see [[ContentBrowserPanel.kt]]
     private val assetsDirectory: String = "assets"
 
 
     override fun onAttach() {
+        println(project.resolve("mesh://Zelda"))
         //! TEMP
         activeScene.createEntity("Zelda").apply {
             with(activeScene.world) { configure { it += StaticMeshComponent(MeshImporter.importStaticMesh("totk/zelda_search.dae")) } }//"Zelda/Zelda.dae"
+        }
+        activeScene.createEntity("Zelda 2").apply {
+            with(activeScene.world) {
+                configure {
+                    it += StaticMeshComponent(MeshImporter.importStaticMesh("Zelda/Zelda.dae"))
+                    get(TransformComponent).translation.z = -1f
+                }
+            }
+        }
+        activeScene.createEntity("Light").apply {
+            with(activeScene.world) { configure { it += DirectionalLightComponent() }}
         }
 //        activeScene.createEntity("Dempsey").apply {
 //            with(activeScene.world) { configure { it += StaticMeshComponent(MeshImporter.importStaticMesh("dempsey/dempsey_playermodel.dae")) } }
@@ -310,7 +332,7 @@ class EditorLayer : Layer("Sandbox2D") {
             } ?: return
 
             Renderer.beginScene(camera, cameraTransform)
-            if (showColliders) drawColliders()
+            if (showColliders.get()) drawColliders()
             Renderer2D.endScene()
         }
     }
@@ -418,6 +440,7 @@ class EditorLayer : Layer("Sandbox2D") {
 
         sceneHierarchyPanel.onImGuiRender()
         contentBrowserPanel.onImGuiRender()
+        rendererManagerPanel.onImGuiRender()
 
         ImGui.begin("Stats")
 
@@ -440,9 +463,7 @@ class EditorLayer : Layer("Sandbox2D") {
 
         ImGui.begin("Settings")
 
-        val oldC = showColliders
-        if (ImGui.checkbox("Show physics colliders", oldC))
-            showColliders = !oldC
+        ImGui.checkbox("Show physics colliders", showColliders)
 
         ImGui.end()
 

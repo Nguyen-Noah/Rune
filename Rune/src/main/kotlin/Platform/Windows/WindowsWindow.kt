@@ -52,6 +52,9 @@ class WindowsWindow(props: WindowProps) : Window {
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE)
 
+        // TODO: this makes the default framebuffer sRGB-capable
+        //glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE)
+
         // create the GLFW window
         windowHandle = glfwCreateWindow(
             props.width,

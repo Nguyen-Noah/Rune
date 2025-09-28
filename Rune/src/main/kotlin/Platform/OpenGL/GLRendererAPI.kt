@@ -1,7 +1,6 @@
 package rune.platforms.opengl
 
 import glm_.mat4x4.Mat4
-import glm_.vec3.Vec3
 import glm_.vec4.Vec4
 import org.lwjgl.opengl.GL45.*
 import org.lwjgl.system.MemoryUtil
@@ -38,6 +37,9 @@ class GLRendererAPI : RendererAPI {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
         glEnable(GL_DEPTH_TEST)
+
+        // TODO: linear -> sRGB on write
+        // glEnable(GL_FRAMEBUFFER_SRGB)
     }
 
     override fun setClearColor(color: Vec4) {

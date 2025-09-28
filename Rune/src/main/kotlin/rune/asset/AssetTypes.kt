@@ -1,5 +1,8 @@
 package rune.asset
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class AssetType {
     None,
     Scene,
@@ -7,5 +10,6 @@ enum class AssetType {
     StaticMesh,
     Material,
     Texture,
-    Script
+    Script,
+    Shader
 }

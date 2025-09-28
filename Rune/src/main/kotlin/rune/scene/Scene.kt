@@ -3,11 +3,15 @@ package rune.scene
 import com.badlogic.gdx.math.Vector2
 import com.github.quillraven.fleks.*
 import ktx.box2d.*
+import org.lwjgl.system.MemoryUtil
+import rune.asset.AssetRegistry
 import rune.components.*
 import rune.core.Logger
 import rune.core.UUID
 import rune.renderer.EditorCamera
 import rune.renderer.Renderer
+import rune.renderer.gpu.U_RENDERER_SETTINGS
+import rune.renderer.gpu.UniformBuffer
 import rune.renderer.renderer2d.Renderer2D
 import rune.scene.systems.ScriptSystem
 
@@ -27,6 +31,19 @@ class Scene {
     }
 
     private var physicsWorld: PhysicsWorld2D = PhysicsWorld2D()
+
+
+    // TODO: this will probably balloon as the renderer grows, so maybe put this into a different class with extended functionality
+    data class RendererSettings(
+        var flags: Int = 0,
+        var tonemap: Int = 1,
+        var exposure: Float = 1.0f,
+        var gamma: Float = 2.2f,
+        var bloomIntensity: Float = 0.0f,
+        var vignetteStrength: Float = 0.0f
+    )
+    private val renderSettingsBuffer = UniformBuffer.create(32, U_RENDERER_SETTINGS, "Renderer-settings")
+    val renderSettings = RendererSettings()
 
     fun destroyEntity(entity: Entity) = with(world) { entity.remove() }
 
@@ -159,6 +176,26 @@ class Scene {
     /*  Helpers                                                           */
     /* ------------------------------------------------------------------ */
 
+    // TODO: maybe just stick this all in RendererManagerPanel.kt
+    fun pushRenderSettings() {
+        // TODO: save this to a file and compile the shader with these values injected in RuneProjects
+        MemoryUtil.memAlloc(renderSettingsBuffer.size).apply {
+            putInt(renderSettings.flags) // flags
+            putInt(renderSettings.tonemap) // tonemapper
+            putFloat(renderSettings.exposure) // exposure
+            putFloat(renderSettings.gamma) // gamma
+            putFloat(renderSettings.bloomIntensity) // bloomIntensity
+            putFloat(renderSettings.vignetteStrength) // vignetteStrength
+
+            putInt(0)
+            putInt(0)
+
+            flip()
+            renderSettingsBuffer.setData(this)
+            MemoryUtil.memFree(this)
+        }
+    }
+
     private fun syncPhysicsToTransforms(dt: Float) {
         physicsWorld.onUpdate(dt)
 
@@ -190,6 +227,7 @@ class Scene {
 //        }
 //
 //        lightEnvironment.bake()
+        pushRenderSettings()
         drawRenderables()
 
         Renderer.endScene()
@@ -229,7 +267,7 @@ class Scene {
 
             newScene.world = newWorld
 
-            // a whole lot of code duplication here -> probably find a better way in the future
+            // TODO: a whole lot of code duplication here -> probably find a better way in the future
             other.world.family { all(TagComponent) }.forEach { src ->
                 val id = src[IDComponent].id
                 val tag = src[TagComponent].tag

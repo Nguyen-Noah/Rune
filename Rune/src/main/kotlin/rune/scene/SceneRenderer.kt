@@ -29,8 +29,8 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
         attachments {
             color(AttachmentFormat.RGBA16F)   // position
             color(AttachmentFormat.RGBA16F)   // normal
-            color(AttachmentFormat.SRGBA8)    // albedo
-            color(AttachmentFormat.SRGBA8)    // material data
+            color(AttachmentFormat.RGBA8)     // albedo
+            color(AttachmentFormat.RGBA8)     // material data
             depth(AttachmentFormat.DEPTH24STENCIL8)
         }
     })
@@ -111,14 +111,15 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
     fun render(dt: Float) {
         //computePass()
         //Renderer.createEnvironmentMap("citrus_orchard_puresky_4k.hdr")
+
         renderGeometry()
         lightingPass()
 
-        try {
-            exposureHistogram.update(dt, framebuffer.getColorAttachment(), scene.viewportWidth, scene.viewportHeight)
-        } catch (_: IndexOutOfBoundsException) {
-
-        }
+//        try {
+//            exposureHistogram.update(dt, framebuffer.getColorAttachment(), scene.viewportWidth, scene.viewportHeight)
+//        } catch (_: IndexOutOfBoundsException) {
+//
+//        }
 
     }
 

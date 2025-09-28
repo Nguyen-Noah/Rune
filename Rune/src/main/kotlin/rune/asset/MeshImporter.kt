@@ -9,7 +9,9 @@ import org.lwjgl.assimp.AIMaterial
 import org.lwjgl.assimp.AIMesh
 import org.lwjgl.assimp.AIString
 import org.lwjgl.assimp.Assimp
+import rune.project.ProjectManager
 import rune.core.Logger
+import rune.core.UUID
 import rune.renderer.Renderer
 import rune.renderer.TextureType
 import rune.renderer.gpu.*
@@ -21,15 +23,16 @@ import java.util.EnumMap
 
 object MeshImporter {
 
-    private val assetPath = "assets/meshes"
+    //private val assetPath = "assets/meshes"
+    private val assetPath = ProjectManager.current.meshes
 
-    fun importStaticMesh(fileName: String): Model {
+    fun importStaticMesh(fileName: String, flipUVs: Boolean = false): Model {
         val resourcePath = fileName.split("/").first()
         val flags = Assimp.aiProcess_Triangulate or
-                    //Assimp.aiProcess_FlipUVs or
                     Assimp.aiProcess_GenNormals or
                     Assimp.aiProcess_OptimizeMeshes or
-                    Assimp.aiProcess_SortByPType
+                    Assimp.aiProcess_SortByPType or
+                   (Assimp.aiProcess_FlipUVs.takeIf { flipUVs } ?: 0)
 
         // variables
         val scene = Assimp.aiImportFile("$assetPath/$fileName", flags)!!

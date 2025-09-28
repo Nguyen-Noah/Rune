@@ -1,0 +1,7 @@
+{
+    "assets": "assets",
+    "meshes": "assets/meshes",
+    "scenes": "assets/scenes",
+    "shaders": "assets/shaders",
+    "textures": "assets/textures"
+}

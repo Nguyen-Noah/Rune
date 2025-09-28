@@ -35,8 +35,6 @@ dependencies {
 
     // Physics  TODO: dont expose this to the client
     implementation("io.github.libktx:ktx-box2d:$ktxVersion")
-
-    implementation(project(":Rune"))
 }
 
 application {

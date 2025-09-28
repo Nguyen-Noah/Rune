@@ -8,15 +8,12 @@ import rune.renderer.gpu.UniformBuffer
 import rune.renderer.renderer2d.FLOAT_MAT4_SIZE
 import java.nio.ByteBuffer
 
-class GLUniformBuffer(private val size: Int, private val binding: Int, private val name: String) : UniformBuffer {
+class GLUniformBuffer(override val size: Int, private val binding: Int, private val name: String) : UniformBuffer {
     private var rendererId: Int = -1
 
     init {
-        val n = if (name.isNotEmpty()) {
-            "[$name]"
-        } else {
-            ""
-        }
+        val n = if (name.isNotEmpty()) "[$name]" else ""
+
         SubmitRender("GLUbo$n-init") {
             rendererId = glCreateBuffers().also { id ->
                 glNamedBufferData(id, size.toLong(), GL_DYNAMIC_DRAW)
@@ -30,11 +27,8 @@ class GLUniformBuffer(private val size: Int, private val binding: Int, private v
     }
 
     override fun setData(data: Mat4, offset: Int) {
-        val n = if (name.isNotEmpty()) {
-            "[$name]"
-        } else {
-            ""
-        }
+        val n = if (name.isNotEmpty()) "[$name]" else ""
+
         SubmitRender("GLUbo$n-setData") {
             MemoryUtil.memAlloc(FLOAT_MAT4_SIZE).apply {
                 data to this

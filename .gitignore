@@ -49,3 +49,6 @@ bin/
 
 ### Meshes ###
 /Runestone/assets/meshes/
+
+### RenderDoc ###
+/Runestone/renderdoc.cap

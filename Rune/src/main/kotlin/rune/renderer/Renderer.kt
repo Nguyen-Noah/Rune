@@ -54,6 +54,7 @@ object Renderer {
     //*///////////////////////////////////////////////////////////////*//
     val shaderLib: ShaderLibrary = ShaderLibrary()
 
+    // TODO: move this to a config or something
     private fun initShaders() {
         with(shaderLib) {
             // Compute
@@ -100,7 +101,6 @@ object Renderer {
         cameraBuffer.viewProjection = camera.projection * glm.inverse(transform)
         cameraBuffer.skyProjection = camera.projection
         cameraUniformBuffer.setData(cameraBuffer.viewProjection)
-        println(cameraBuffer.skyProjection)
         cameraUniformBuffer.setData(cameraBuffer.skyProjection, FLOAT_MAT4_SIZE)
 
         Renderer2D.beginScene()

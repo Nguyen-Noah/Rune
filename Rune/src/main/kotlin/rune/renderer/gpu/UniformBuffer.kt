@@ -16,6 +16,8 @@ enum class UType(val bytes: Int, val align: Int) {
 }
 
 interface UniformBuffer {
+    val size: Int
+
     fun setData(data: ByteBuffer, offset: Int = 0)
     fun setData(data: Mat4, offset: Int = 0)
 

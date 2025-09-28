@@ -53,6 +53,19 @@ layout(std140, binding = 5) uniform PBRMaterial {
     Material mat;
 } m_Params;
 
+layout(std140, binding = 7) uniform RendererSettings {
+    int aaMethod;   // 0=None, 1=FXAA, 2=TAA
+    int toneMapper; // 0=Off, 1=ACES, 2=Reinhard
+
+    float exposure;
+    float gamma;
+    float bloomIntensity;
+    float vignetteStrength;
+
+    int _pad0;
+    int _pad1;
+} u_Settings;
+
 vec3 aces_tonemap(vec3 color) {
     mat3 m1 = mat3(
         0.59719, 0.07600, 0.02840,
@@ -71,13 +84,23 @@ vec3 aces_tonemap(vec3 color) {
     return pow(clamp(m2 * (a / b), 0.0, 1.0), vec3(1.0 / 2.2));
 }
 
+vec3 applyTonemap(vec3 color, int tm, float exposure) {
+    color *= exposure;
+    if (tm == 1) return aces_tonemap(color);
+    if (tm == 2) return color / (1.0 + color);
+    return color;
+}
+
+vec3 maybeBloom(vec3 color, vec3 bloom, float bloomIntensity, bool on) {
+    return mix(color, color + bloomIntensity * bloom, on ? 1.0 : 0.0);
+}
+
 void main() {
     vec3 fragPos = texture(u_PositionTex, v_TexCoords).xyz;
-    //vec3 normal = normalize(texture(u_NormalTex, v_TexCoords).xyz);
-    vec3 n = texture(u_NormalTex, v_TexCoords).xyz * 2.0 - 1.0;
-    vec3 normal = normalize(n);
+    vec3 normal = normalize(texture(u_NormalTex, v_TexCoords).xyz * 2.0 - 1.0);
     vec3 albedo = texture(u_AlbedoSpecTex, v_TexCoords).rgb;
     float specMask = texture(u_AlbedoSpecTex, v_TexCoords).a;
+    float d = texture(u_DepthTex, v_TexCoords).r;
 
     vec3 ambientColor = u_DirLight.dirLight.color * m_Params.mat.Diffuse.rgb * albedo;
 
@@ -85,10 +108,20 @@ void main() {
     float NdotL = max(dot(normal, L), 0.0);
     vec3 diffuse = u_DirLight.dirLight.color * u_DirLight.dirLight.diffuseIntensity * albedo * NdotL;
 
-    o_Color = vec4(ambientColor + diffuse, 1.0);
-    float d = texture(u_DepthTex, v_TexCoords).r;
-    if (d >= 0.9999) {
-        vec3 c = texture(u_Texture, v_SkyboxPos).rgb;
-        o_Color = vec4(aces_tonemap(c), 1.0);
-    }
+    // sky sample
+    vec3 skyDir = normalize(v_SkyboxPos);
+    vec3 skyColor = texture(u_Texture, skyDir).rgb;
+
+    float hasGeom = step(d, 0.9999);
+    vec3 sceneLinear = mix(skyColor, ambientColor + diffuse, hasGeom);
+
+    vec3 mapped = aces_tonemap(sceneLinear);
+    vec3 gamma = pow(mapped, vec3(1.0/2.22));
+//    if (u_Settings.toneMapper == 1) {
+//        o_Color = vec4(gamma, 1.0);
+//    } else {
+//        o_Color = vec4(sceneLinear, 1.0);
+//    }
+    o_Color = vec4(applyTonemap(sceneLinear, u_Settings.toneMapper, u_Settings.exposure), 1.0);
+    //o_Color = vec4(aces_tonemap(sceneLinear), 1.0);
 }
