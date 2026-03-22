@@ -35,7 +35,7 @@ class WindowsWindow(props: WindowProps) : Window {
         data.width = props.width
         data.height = props.height
 
-        println("Creating window ${props.title} (${props.width}, ${props.height})")
+        Logger.info("Creating window ${props.title} (${props.width}, ${props.height})")
 
         // if GLFW isn't initialized, do it now
         if (!glfwInit()) {
@@ -43,7 +43,7 @@ class WindowsWindow(props: WindowProps) : Window {
             require(success) { "Could not initialize GLFW" }
 
             glfwSetErrorCallback { error, description ->
-                println("GLFW Error ($error): $description")
+                Logger.error("GLFW Error ($error): $description")
             }
         }
 
