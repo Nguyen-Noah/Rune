@@ -31,6 +31,23 @@ data class UniformInfo(
     val binding: Int
 )
 
+data class SamplerInfo(
+    val name:    String,
+    val binding: Int,
+    val set:     Int
+)
+
+data class SsboInfo(
+    val name:    String,
+    val binding: Int
+)
+
+data class ShaderReflection(
+    val ubos:    Map<String, UniformInfo> = emptyMap(),
+    val samplers: Map<String, SamplerInfo> = emptyMap(),
+    val ssbos:   Map<String, SsboInfo>    = emptyMap()
+)
+
 class OpenGLShader private constructor(
     private val name: String,
     private val filePath: String,
@@ -52,7 +69,7 @@ class OpenGLShader private constructor(
         preprocess(File(filePath).readText())
     )
 
-    // ────────────────────────── public API ─────────────────────────────────
+    // public API ----------------------------------------
     override fun getName() = name
     override fun bind() {
         // avoids unnecessary binding
@@ -67,25 +84,30 @@ class OpenGLShader private constructor(
         SubmitRender { glUseProgram(0) }
     }
 
+    fun uboBinding(name: String) = _reflection.ubos[name]?.binding ?: error("Shader '${getName()}': no UBO named $name")
+    fun samplerBinding(name: String) = _reflection.samplers[name]?.binding ?: error("Shader '${getName()}': no sampler named $name")
+    fun ssboBinding(name: String) = _reflection.ssbos[name]?.binding ?: error("Shader '${getName()}': no SSBO named $name")
+
     // ────────────────────────── impl details ───────────────────────────────
     private var rendererID = -1
-    private val vulkanSpv = HashMap<Int, ByteBuffer>()
-    private val openGlSpv = HashMap<Int, ByteBuffer>()
+    private val vulkanSpv = LinkedHashMap<Int, ByteBuffer>()
+    private val openGlSpv = LinkedHashMap<Int, ByteBuffer>()
+    private var _reflection = ShaderReflection()
 
     private val enableCache = false
     private val timer: Timer = Timer()
     private var optimize = true
 
     init {
-        // runs at most 2 times so its fine, future me
-        stages.values.forEach {
-            if ("compute" in it.type())
-                optimize = false
-        }
+        optimize = stages.values.none { "compute" in it.type() }
 
         compileOrGetVulkanBinaries()
         compileOrGetOpenGLBinaries()
         createProgram()
+        vulkanSpv.values.forEach { MemoryUtil.memFree(it) }
+        openGlSpv.values.forEach { MemoryUtil.memFree(it) }
+        vulkanSpv.clear()
+        openGlSpv.clear()
         Logger.warn("Shader [${getName()}] compilation took ${timer.elapsedMillis()} ms.")
     }
 
@@ -93,140 +115,146 @@ class OpenGLShader private constructor(
         // initialize the compiler and options
         val compiler = shaderc_compiler_initialize()
         val options = shaderc_compile_options_initialize()
+        try {
+            shaderc_compile_options_set_target_env(options, shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_2)
+            /**
+             * This will force object names to be retained during reflection,
+             * results in larger .spv files. If shipping .spv,
+             * do second compilation pass for these names and reflect them before compilation
+             */
+            shaderc_compile_options_set_generate_debug_info(options)
+            if (optimize)
+                shaderc_compile_options_set_optimization_level(options, shaderc_optimization_level_performance)
 
-        // set the compile version to Vulkan 1.2
-        shaderc_compile_options_set_target_env(options, shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_2)
-        if (optimize)
-            shaderc_compile_options_set_optimization_level(options, shaderc_optimization_level_performance)
-
-        for ((stage, shader) in stages) {
-            val source = shader.source()
-
-            val cached = cachePath(stage, vulkan = true)
-            vulkanSpv[stage] = if (enableCache && Files.exists(cached)) {      // TODO: do we need the spv in memory?
-                // the binary was found, so read the cached version
-                val bytes = Files.readAllBytes(cached)
-                MemoryUtil.memAlloc(bytes.size).put(bytes).flip() as ByteBuffer
-            } else {
-                // compile with shaderc
-                val module = shaderc_compile_into_spv(
-                    compiler, source, glStageToShaderc(stage),
-                    filePath, "main", options
+            for ((stage, shader) in stages) {
+                vulkanSpv[stage] = compileOrLoad(
+                    shader.source(),
+                    stage,
+                    compiler,
+                    options,
+                    true
                 )
-                println(shaderc_result_get_error_message(module))
-                require(shaderc_result_get_compilation_status(module) == shaderc_compilation_status_success)
-
-                val size = shaderc_result_get_length(module).toInt()
-                val copy = MemoryUtil.memAlloc(size)
-                    .put(shaderc_result_get_bytes(module))
-                    .flip() as ByteBuffer
-
-                // cache to disk
-                if (enableCache) {
-                    Files.createDirectories(cached.parent)
-                    Files.write(cached, ByteArray(size).also { copy.get(it) })
-                }
-
-                copy.rewind()
-
-                shaderc_result_release(module)
-                copy
             }
+        } finally {
+            shaderc_compile_options_release(options)
+            shaderc_compiler_release(compiler)
         }
-        shaderc_compile_options_release(options)
-        shaderc_compiler_release(compiler)
 
+        // Reflect
+        val mergedUbos    = LinkedHashMap<String, UniformInfo>()
+        val mergedSamplers = LinkedHashMap<String, SamplerInfo>()
+        val mergedSsbos   = LinkedHashMap<String, SsboInfo>()
         for ((stage, sprv) in vulkanSpv) {
-            reflect(stage, sprv)
+            reflect(stage, sprv, mergedUbos, mergedSamplers, mergedSsbos)
         }
+        _reflection = ShaderReflection(mergedUbos, mergedSamplers, mergedSsbos)
     }
 
     private fun compileOrGetOpenGLBinaries() {
-        // If the driver can consume SPIR‑V directly there is nothing to do.
         val caps = GL.getCapabilities()
+        // If the driver can specialize SPIR-V natively, we still need the
+        // OpenGL-target SPIR-V (different entry-point decoration).
+        // OPTIMIZATION: check caps once and reuse.
+        @Suppress("UNUSED_VARIABLE")
         val canSpecialize = caps.OpenGL46 || caps.GL_ARB_gl_spirv
 
         val compiler = shaderc_compiler_initialize()
         val options = shaderc_compile_options_initialize()
+        try {
+            shaderc_compile_options_set_target_env(options, shaderc_target_env_opengl, shaderc_env_version_opengl_4_5)
+            shaderc_compile_options_set_optimization_level(options, shaderc_optimization_level_zero)
 
-        shaderc_compile_options_set_target_env(options, shaderc_target_env_opengl, shaderc_env_version_opengl_4_5)
-        shaderc_compile_options_set_optimization_level(options, shaderc_optimization_level_zero) // no aggressive passes
+            for ((stage, vSpv) in vulkanSpv) {
+                val cached = cachePath(stage, vulkan = false)
+                if (enableCache && Files.exists(cached)) {
+                    val bytes = Files.readAllBytes(cached)
+                    openGlSpv[stage] = MemoryUtil.memAlloc(bytes.size).put(bytes).flip() as ByteBuffer
+                    continue
+                }
 
-        for ((stage, vSpv) in vulkanSpv) {
-            val cached = cachePath(stage, vulkan = false)
-            if (enableCache && Files.exists(cached)) {
-                // cached bin found, read from it
-                val bytes = Files.readAllBytes(cached)
-                openGlSpv[stage] = MemoryUtil.memAlloc(bytes.size).put(bytes).flip() as ByteBuffer
-                continue
+                val oglGlsl = crossCompileToGlsl(vSpv)
+
+                val module =
+                    shaderc_compile_into_spv(compiler, oglGlsl, glStageToShaderc(stage), filePath, "main", options)
+                try {
+                    if (shaderc_result_get_compilation_status(module) != shaderc_compilation_status_success) {
+                        Logger.error(
+                            "OpenGL-target compilation failed for stage $stage:\n {${
+                                shaderc_result_get_error_message(
+                                    module
+                                )?.let { memUTF8(it) }
+                            }"
+                        )
+                        continue
+                    }
+
+                    val size = shaderc_result_get_length(module).toInt()
+                    val spv = MemoryUtil.memAlloc(size).put(shaderc_result_get_bytes(module)).flip() as ByteBuffer
+                    openGlSpv[stage] = spv
+                    if (enableCache) {
+                        Files.createDirectories(cached.parent)
+                        Files.write(cached, ByteArray(size).also { copy -> spv.get(copy); spv.rewind() })
+                    }
+                } finally {
+                    shaderc_result_release(module)
+                }
+            }
+        } finally {
+            shaderc_compile_options_release(options)
+            shaderc_compiler_release(compiler)
+        }
+    }
+
+    private fun compileOrLoad(
+        source: String,
+        stage: Int,
+        compiler: Long,
+        options: Long,
+        vulkan: Boolean
+    ): ByteBuffer {
+        val cached = cachePath(stage, vulkan)
+        if (enableCache && Files.exists(cached)) {
+            val bytes = Files.readAllBytes(cached)
+            return MemoryUtil.memAlloc(bytes.size).put(bytes).flip() as ByteBuffer
+        }
+
+        val module = shaderc_compile_into_spv(compiler, source, glStageToShaderc(stage), filePath, "main", options)
+        try {
+            val status = shaderc_result_get_compilation_status(module)
+            if (status != shaderc_compilation_status_success) {
+                val errMsg = shaderc_result_get_error_message(module)
+                if (errMsg != null) Logger.error(memUTF8(errMsg).toString())
             }
 
-            // ── 1. VULKAN‑SPIR‑V ➜ GLSL (Spirv‑Cross) ────────────────────
-            val oglGlsl: String = MemoryStack.stackPush().use { stack ->
-                val ctxPtr = stack.mallocPointer(1)
-                check(spvc_context_create(ctxPtr) == SPVC_SUCCESS)
-                val ctx = ctxPtr[0]
-
-                val irPtr = stack.mallocPointer(1)
-                check(spvc_context_parse_spirv(ctx, vSpv.asIntBuffer(), (vSpv.remaining() / 4).toLong(), irPtr) == SPVC_SUCCESS)
-                val ir = irPtr[0]
-
-                val compPtr = stack.mallocPointer(1)
-                check(spvc_context_create_compiler(ctx, SPVC_BACKEND_GLSL, ir, SPVC_CAPTURE_MODE_COPY, compPtr) == SPVC_SUCCESS)
-                val glslComp = compPtr[0]
-
-                val optPtr = stack.mallocPointer(1)
-                check(spvc_compiler_create_compiler_options(glslComp, optPtr) == SPVC_SUCCESS)
-                val opts = optPtr[0]
-                spvc_compiler_options_set_uint(opts, SPVC_COMPILER_OPTION_GLSL_VERSION, 450)
-                spvc_compiler_install_compiler_options(glslComp, opts)
-
-                val glslSrcPtr = stack.mallocPointer(1)
-                spvc_compiler_compile(glslComp, glslSrcPtr)
-                memUTF8(glslSrcPtr[0]) // <-- returned Kotlin String lives on the heap
-            }
-
-            // ── 2. GLSL ➜ OPENGL‑SPIR‑V (shaderc) ────────────────────────
-            val module = shaderc_compile_into_spv(
-                compiler,
-                oglGlsl,
-                glStageToShaderc(stage),
-                filePath,
-                "main",
-                options
-            )
-            if (shaderc_result_get_compilation_status(module) != shaderc_compilation_status_success) {
-                Logger.error("OpenGL‑target compilation failed for stage $stage:\n " + shaderc_result_get_error_message(module)?.let { memUTF8(it) })
-                shaderc_result_release(module)
-                continue
+            require(shaderc_result_get_compilation_status(module) == shaderc_compilation_status_success) {
+                "Vulkan SPIR-V compilation failed for stage $stage"
             }
 
             val size = shaderc_result_get_length(module).toInt()
-            val spv = MemoryUtil.memAlloc(size).put(shaderc_result_get_bytes(module)).flip() as ByteBuffer
-            openGlSpv[stage] = spv
+            val copy = MemoryUtil.memAlloc(size).put(shaderc_result_get_bytes(module)).flip() as ByteBuffer
 
             if (enableCache) {
                 Files.createDirectories(cached.parent)
-                Files.write(cached, ByteArray(size).also { spv.get(it) })
-                spv.rewind()
+                Files.write(cached, ByteArray(size).also { copy.get(it) })
+
+                copy.rewind()
             }
+
+            return copy
+        } finally {
             shaderc_result_release(module)
         }
-
-        shaderc_compile_options_release(options)
-        shaderc_compiler_release(compiler)
     }
 
     private fun createProgram() {
         val program = glCreateProgram()
         // create an array with size same as openGLSpv to hold the IDs of shader programs
-        val shaderIDs = arrayOfNulls<Int>(openGlSpv.size)
+        val shaderIDs = ArrayList<Int>(openGlSpv.size)
 
         // TODO: move this to OpenGLCaps.kt
         val caps = GL.getCapabilities()
         val canSpecialize = caps.OpenGL46 || caps.GL_ARB_gl_spirv
 
-        var i = 0
         for ((stage, spirv) in openGlSpv) {
             if (canSpecialize) {
                 // GPU can use GL46
@@ -250,93 +278,149 @@ class OpenGLShader private constructor(
                 }
                 // move out once fallback is implemented
                 glAttachShader(program, shaderID)
-                shaderIDs[i++] = shaderID
+                shaderIDs += shaderID
             } else {
                 // fallback option -> convert back to GLSL and compile
                 Logger.error("Error compiling shader")
             }
         }
-        // TODO: check link
         glLinkProgram(program)
 
+        if (glGetProgrami(program, GL_LINK_STATUS) == GL_FALSE) {
+            Logger.error("Program link failed for shader '${getName()}':\n${glGetProgramInfoLog(program)}")
+        }
+
         for (id in shaderIDs) {
-            if (id != null) {
-                glDetachShader(program, id)
-                glDeleteShader(id)
-            }
+            glDetachShader(program, id)
+            glDeleteShader(id)
         }
 
         rendererID = program
     }
 
-    fun reflect(stage: Int, spirv: ByteBuffer) = MemoryStack.stackPush().use { s ->
-        /* ---- context + compiler ------------------------------------------------ */
-        val ctx = s.mallocPointer(1)
-            .also { check(spvc_context_create(it) == SPVC_SUCCESS) }
-            .first()
+    private fun crossCompileToGlsl(vSpv: ByteBuffer): String =
+        MemoryStack.stackPush().use { stack ->
+            val ctx = stack.mallocPointer(1)
+                .also { check(spvc_context_create(it) == SPVC_SUCCESS) }
+                .first()
 
-        val ir = s.mallocPointer(1)
-            .also { check(spvc_context_parse_spirv(ctx,
-                spirv.asIntBuffer(), (spirv.remaining() / 4).toLong(), it) == SPVC_SUCCESS) }
-            .first()
+            val ir = stack.mallocPointer(1)
+                .also {
+                    check(spvc_context_parse_spirv(ctx, vSpv.asIntBuffer(), (vSpv.remaining() / 4).toLong(), it) == SPVC_SUCCESS)
+                }.first()
 
-        val compiler = s.mallocPointer(1)
-            .also { check(spvc_context_create_compiler(ctx, SPVC_BACKEND_NONE,
-                ir, SPVC_CAPTURE_MODE_COPY, it) == SPVC_SUCCESS) }
-            .first()
+            val comp = stack.mallocPointer(1)
+                .also {
+                    check(
+                        spvc_context_create_compiler(ctx, SPVC_BACKEND_GLSL, ir, SPVC_CAPTURE_MODE_COPY, it)
+                                == SPVC_SUCCESS
+                    )
+                }.first()
 
-        /* ---- resource list ----------------------------------------------------- */
-        val res = s.mallocPointer(1)
-            .also { check(spvc_compiler_create_shader_resources(compiler, it) == SPVC_SUCCESS) }
-            .first()
+            val opts = stack.mallocPointer(1)
+                .also { check(spvc_compiler_create_compiler_options(comp, it) == SPVC_SUCCESS) }.first()
 
-        val listPtr = s.mallocPointer(1)   // out: const SpvcReflectedResource*
-        val cntPtr  = s.mallocPointer(1)   // out: size_t*
-        check(spvc_resources_get_resource_list_for_type(
-            res, SPVC_RESOURCE_TYPE_UNIFORM_BUFFER, listPtr, cntPtr) == SPVC_SUCCESS)
+            spvc_compiler_options_set_uint(opts, SPVC_COMPILER_OPTION_GLSL_VERSION, 450)
+            spvc_compiler_install_compiler_options(comp, opts)
 
-        val count = cntPtr[0].toInt()
-        if (count == 0) return@use
+            val glslSrcPtr = stack.mallocPointer(1)
+            spvc_compiler_compile(comp, glslSrcPtr)
+            val result = memUTF8(glslSrcPtr.first())
 
-        // listPtr[0] points to the first struct in a row of `count` structs
+            spvc_context_destroy(ctx)
+            result
+        }
+
+    /**
+     * Reflects all resource types from one SPIR-V stage and merges the results
+     * into the caller-supplied maps.  Using SPVC_BACKEND_NONE means we get the
+     * raw Vulkan decoration values (binding, set) with no backend-specific
+     * remapping.
+     *
+     * Binding collisions across stages (e.g., vertex + fragment sharing a UBO
+     * at the same slot) are silently de-duplicated; the last stage wins, which
+     * is fine because the binding number must be identical in both stages for a
+     * valid Vulkan/GL program.
+     */
+    private fun reflect(
+        stage:          Int,
+        spirv:          ByteBuffer,
+        ubos:           MutableMap<String, UniformInfo>,
+        samplers:       MutableMap<String, SamplerInfo>,
+        ssbos:          MutableMap<String, SsboInfo>
+    ) = MemoryStack.stackPush().use { stack ->
+        val ctx = stack.mallocPointer(1)
+            .also { check(spvc_context_create(it) == SPVC_SUCCESS) }.first()
+
+        val ir = stack.mallocPointer(1)
+            .also {
+                check(
+                    spvc_context_parse_spirv(ctx, spirv.asIntBuffer(), (spirv.remaining() / 4).toLong(), it)
+                            == SPVC_SUCCESS
+                )
+            }.first()
+
+        val compiler = stack.mallocPointer(1)
+            .also {
+                check(
+                    spvc_context_create_compiler(ctx, SPVC_BACKEND_NONE, ir, SPVC_CAPTURE_MODE_COPY, it)
+                            == SPVC_SUCCESS
+                )
+            }.first()
+
+        val res = stack.mallocPointer(1)
+            .also { check(spvc_compiler_create_shader_resources(compiler, it) == SPVC_SUCCESS) }.first()
+
+        // ubos
+        forEachResource(compiler, res, SPVC_RESOURCE_TYPE_UNIFORM_BUFFER, stack) { r, binding, name ->
+            val typeHandle = spvc_compiler_get_type_handle(compiler, r.base_type_id())
+            val size = stack.mallocPointer(1)
+                .also { check(spvc_compiler_get_declared_struct_size(compiler, typeHandle, it) == SPVC_SUCCESS) }
+                .first().toInt()
+            ubos[name] = UniformInfo(name, size, binding)
+            Logger.trace("UBO  [$stage] $name  size=$size  binding=$binding")
+        }
+
+        // samplers
+        forEachResource(compiler, res, SPVC_RESOURCE_TYPE_SAMPLED_IMAGE, stack) { r, binding, name ->
+            val set = spvc_compiler_get_decoration(compiler, r.id(), 2 /* SPVC_DECORATION_DESCRIPTOR_SET */)
+            samplers[name] = SamplerInfo(name, binding, set)
+            Logger.trace("SAMPLER [$stage] $name  binding=$binding  set=$set")
+        }
+
+        // ssbos
+        forEachResource(compiler, res, SPVC_RESOURCE_TYPE_STORAGE_BUFFER, stack) { _, binding, name ->
+            ssbos[name] = SsboInfo(name, binding)
+            Logger.trace("SSBO [$stage] $name  binding=$binding")
+        }
+
+        spvc_context_destroy(ctx)
+    }
+
+    /**
+     * Iterates every resource of [resourceType] in [res] and invokes [block]
+     * for each one.  Keeps the raw pointer arithmetic in one place.
+     */
+    private inline fun forEachResource(
+        compiler:     Long,
+        res:          Long,
+        resourceType: Int,
+        stack:        MemoryStack,
+        block:        (resource: SpvcReflectedResource, binding: Int, name: String) -> Unit
+    ) {
+        val listPtr = stack.mallocPointer(1)
+        val cntPtr  = stack.mallocPointer(1)
+        check(spvc_resources_get_resource_list_for_type(res, resourceType, listPtr, cntPtr) == SPVC_SUCCESS)
+
+        val count    = cntPtr[0].toInt()
         val baseAddr = listPtr[0]
         val step     = SpvcReflectedResource.SIZEOF.toLong()
 
-        val uniforms = ArrayList<UniformInfo>(count)
         for (i in 0 until count) {
-            val resourceAddr = baseAddr + i * step
-            val resource     = SpvcReflectedResource.create(resourceAddr)
-
-            val name = resource.nameString()
-
-            // temp
-            val typeHandle = spvc_compiler_get_type_handle(compiler, resource.base_type_id())
-
-            val size = s.mallocPointer(1)
-                .also { check(spvc_compiler_get_declared_struct_size(
-                    compiler, typeHandle, it) == SPVC_SUCCESS) }
-                .first().toInt()
-
-            val binding = spvc_compiler_get_decoration(
-                compiler, resource.id(), SPVC_DECORATION_BINDING)
-
-            val memberCount = spvc_type_get_num_member_types(typeHandle)
-
-            uniforms += UniformInfo(name, size, binding)
+            val r       = SpvcReflectedResource.create(baseAddr + i * step)
+            val binding = spvc_compiler_get_decoration(compiler, r.id(), SPVC_DECORATION_BINDING)
+            block(r, binding, r.nameString())
         }
-
-        /* --- cleanup & logging --- */
-        spvc_context_destroy(ctx)
-        uniforms.forEach {
-            Logger.trace("UBO: ${it.name}  size=${it.size}  binding=${it.binding}")
-        }
-    }
-
-    // ───────────────────────── helpers ──────────────────────────────────────
-
-    private inline fun intUniform1(name: String, block: (Int) -> Unit) {
-        val loc = glGetUniformLocation(rendererID, name)
-        if (loc != -1) block(loc)
     }
 
     private fun cachePath(stage: Int, vulkan: Boolean): Path {
@@ -383,8 +467,6 @@ class OpenGLShader private constructor(
             return map
         }
     }
-
-
 }
 
 // helpful extensions
