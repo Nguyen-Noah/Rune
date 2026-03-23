@@ -15,7 +15,6 @@ import imgui.extension.imguizmo.flag.Operation
 import imgui.flag.*
 import imgui.type.ImBoolean
 import org.lwjgl.opengl.GL11.GL_LINEAR
-import rune.project.Project
 import rune.project.ProjectManager
 import rune.asset.MeshImporter
 import rune.components.*
@@ -31,6 +30,7 @@ import rune.scene.Scene
 import rune.scene.SceneRenderer
 import rune.scene.SceneRendererSpec
 import rune.scene.serialization.SceneSerializer
+import rune.utils.FileDialog
 import rune.utils.decomposeTransform
 import runestone.panels.ContentBrowserPanel
 import runestone.panels.RendererManagerPanel
@@ -48,6 +48,7 @@ class EditorLayer : Layer("Sandbox2D") {
     /* --------------------------------------------------------------------- */
 
     val project = ProjectManager.open(Path.of("TestProject"))
+    val assetManager = ProjectManager.getEditorAssetManager()
 
     /* --------------------------------------------------------------------- */
     /*  Scene state machine                                                  */
@@ -180,7 +181,7 @@ class EditorLayer : Layer("Sandbox2D") {
     }
 
     private fun openScene() {
-        rune.utils.FileDialog().openFile()
+        FileDialog().openFile()
             .takeIf { it.isNotEmpty() }
             ?.let { openScene(Paths.get(it)) }
     }

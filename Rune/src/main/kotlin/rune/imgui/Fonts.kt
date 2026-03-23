@@ -3,6 +3,7 @@ package rune.imgui
 import imgui.ImFont
 import imgui.ImGui
 import rune.core.Logger
+import java.io.File
 
 data class FontConfiguration(
     val fontName: String,
@@ -19,12 +20,16 @@ object RuneFonts {
             return
         }
 
-        val io = ImGui.getIO()
-        val font: ImFont = io.fonts.addFontFromFileTTF(config.filePath.toString(), config.size)
-        fonts[config.fontName] = font
+        if (File(config.filePath.toString()).exists()) {
+            val io = ImGui.getIO()
+            val font: ImFont = io.fonts.addFontFromFileTTF(config.filePath.toString(), config.size)
+            fonts[config.fontName] = font
 
-        if (isDefault)
-            io.fontDefault = font
+            if (isDefault)
+                io.fontDefault = font
+        } else {
+            Logger.warn("Unable to find font at path: ${config.filePath}.")
+        }
     }
 
     fun get(fontName: String): ImFont? {

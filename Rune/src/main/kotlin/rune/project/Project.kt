@@ -11,9 +11,14 @@ import java.nio.file.Files
 import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.util.*
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.io.path.*
+import kotlin.io.path.createDirectories
+import kotlin.io.path.exists
+import kotlin.io.path.isDirectory
+import kotlin.io.path.name
+import kotlin.io.path.readText
+import kotlin.io.path.writeText
 
 /**
  * When making changes to this file, such as adding asset types, add the new asset to the following:
@@ -195,11 +200,14 @@ object ProjectManager {
 
     fun open(root: Path): Project {
         val p = try {
+            Logger.info("Loaded project $root.")
             Project.load(root)
         } catch (e: NoSuchFileException) {
+            Logger.warn("Project $root not found. Creating new project.")
             Project.init(root)
         }
         ref.set(p)
+        assetManager.loadAssetRegistry()
         return p
     }
 

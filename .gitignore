@@ -46,9 +46,11 @@ bin/
 
 ### Cache ###
 /Runestone/assets/cache/
+/Sandbox/assets/cache/
 
 ### Meshes ###
 /Runestone/assets/meshes/
+/Sandbox/assets/meshes/
 
 ### RenderDoc ###
 /Runestone/renderdoc.cap

@@ -12,3 +12,4 @@ pluginManagement {
 rootProject.name = "Rune3D"
 include("Rune")
 include("Runestone")
+include("Sandbox")

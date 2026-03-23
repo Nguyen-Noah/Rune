@@ -81,10 +81,7 @@ object Renderer {
             // Runestone
             load("assets/shaders/Grid.glsl")
         }
-
-        println(shaderLib)
     }
-
 
     val stats = Statistics()
 

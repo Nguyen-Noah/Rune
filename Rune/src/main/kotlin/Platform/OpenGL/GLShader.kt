@@ -15,8 +15,8 @@ import org.lwjgl.util.spvc.Spvc.*
 import org.lwjgl.util.spvc.SpvcReflectedResource
 import rune.core.Logger
 import rune.core.Timer
-import rune.renderer.gpu.Shader
 import rune.renderer.SubmitRender
+import rune.renderer.gpu.*
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.LongBuffer
@@ -24,29 +24,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 const val SPVC_DECORATION_BINDING = 33    // couldnt find this in Spvc.* for some reason
-
-data class UniformInfo(
-    val name:    String,
-    val size:    Int,
-    val binding: Int
-)
-
-data class SamplerInfo(
-    val name:    String,
-    val binding: Int,
-    val set:     Int
-)
-
-data class SsboInfo(
-    val name:    String,
-    val binding: Int
-)
-
-data class ShaderReflection(
-    val ubos:    Map<String, UniformInfo> = emptyMap(),
-    val samplers: Map<String, SamplerInfo> = emptyMap(),
-    val ssbos:   Map<String, SsboInfo>    = emptyMap()
-)
 
 class OpenGLShader private constructor(
     private val name: String,
@@ -84,11 +61,10 @@ class OpenGLShader private constructor(
         SubmitRender { glUseProgram(0) }
     }
 
-    fun uboBinding(name: String) = _reflection.ubos[name]?.binding ?: error("Shader '${getName()}': no UBO named $name")
-    fun samplerBinding(name: String) = _reflection.samplers[name]?.binding ?: error("Shader '${getName()}': no sampler named $name")
-    fun ssboBinding(name: String) = _reflection.ssbos[name]?.binding ?: error("Shader '${getName()}': no SSBO named $name")
+    override val reflection: ShaderReflection
+        get() = _reflection
 
-    // ────────────────────────── impl details ───────────────────────────────
+    // impl
     private var rendererID = -1
     private val vulkanSpv = LinkedHashMap<Int, ByteBuffer>()
     private val openGlSpv = LinkedHashMap<Int, ByteBuffer>()
