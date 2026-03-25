@@ -54,32 +54,19 @@ object Renderer {
     //*///////////////////////////////////////////////////////////////*//
     val shaderLib: ShaderLibrary = ShaderLibrary()
 
-    // TODO: move this to a config or something
     private fun initShaders() {
+        EngineShaders.root()
         with(shaderLib) {
-            // Compute
-            load("assets/shaders/EquirectangularToSkybox.glsl")
-
-            // Skybox
-            load("assets/shaders/Skybox.glsl")
-
-            // Deferred Shading
-            load("assets/shaders/Geometry.glsl")
-            load("assets/shaders/Rune_PBR.glsl")
-
-            // Renderer2D
-            load("assets/shaders/Renderer2D_Quad.glsl")
-            load("assets/shaders/Renderer2D_Circle.glsl")
-            load("assets/shaders/Renderer2D_Line.glsl")
-
-            // Renderer3D
-            load("assets/shaders/StaticMesh.glsl")
-
-            // Post Processing
-            load("assets/shaders/AutoExposure.glsl")
-
-            // Runestone
-            load("assets/shaders/Grid.glsl")
+            load(EngineShaders.pathFor("EquirectangularToSkybox.glsl"))
+            load(EngineShaders.pathFor("Skybox.glsl"))
+            load(EngineShaders.pathFor("Geometry.glsl"))
+            load(EngineShaders.pathFor("Rune_PBR.glsl"))
+            load(EngineShaders.pathFor("Renderer2D_Quad.glsl"))
+            load(EngineShaders.pathFor("Renderer2D_Circle.glsl"))
+            load(EngineShaders.pathFor("Renderer2D_Line.glsl"))
+            load(EngineShaders.pathFor("StaticMesh.glsl"))
+            load(EngineShaders.pathFor("AutoExposure.glsl"))
+            load(EngineShaders.pathFor("Grid.glsl"))
         }
     }
 

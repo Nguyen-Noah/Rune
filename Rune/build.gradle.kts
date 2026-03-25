@@ -50,8 +50,8 @@ dependencies {
     implementation("org.lwjgl:lwjgl-stb")
     implementation("org.lwjgl:lwjgl-vulkan")
 
-    // imgui
-    implementation("io.github.spair:imgui-java-app:$imguiVersion")
+    // imgui (api: apps may use ImGui types alongside RuneGui)
+    api("io.github.spair:imgui-java-app:$imguiVersion")
 
     // glm
     implementation("io.github.kotlin-graphics:glm:$glmVersion")

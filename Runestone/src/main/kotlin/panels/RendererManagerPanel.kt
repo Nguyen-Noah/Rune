@@ -5,7 +5,7 @@ import imgui.type.ImFloat
 import imgui.type.ImInt
 import rune.renderer.RenderSettings
 import rune.scene.Scene
-import runestone.utils.dragFloat
+import rune.imgui.dragFloat
 import java.util.*
 
 class RendererManagerPanel(private var scene: Scene) {

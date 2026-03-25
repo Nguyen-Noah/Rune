@@ -16,6 +16,7 @@ import imgui.flag.*
 import imgui.type.ImBoolean
 import org.lwjgl.opengl.GL11.GL_LINEAR
 import rune.project.ProjectManager
+import rune.project.ProjectRoots
 import rune.asset.MeshImporter
 import rune.components.*
 import rune.core.*
@@ -47,7 +48,7 @@ class EditorLayer : Layer("Sandbox2D") {
     /*  Project                                                              */
     /* --------------------------------------------------------------------- */
 
-    val project = ProjectManager.open(Path.of("TestProject"))
+    val project = ProjectManager.open(ProjectRoots.resolve("TestProject"))
     val assetManager = ProjectManager.getEditorAssetManager()
 
     /* --------------------------------------------------------------------- */

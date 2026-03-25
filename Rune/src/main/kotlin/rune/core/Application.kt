@@ -97,7 +97,6 @@ abstract class Application {
     fun getFPS(): Double = timer.fps
     fun getImGuiLayer(): ImguiLayer = imGuiLayer
 
-    // TODO: TEMP
     fun close() { running = false }
 
     companion object {

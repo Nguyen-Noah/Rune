@@ -11,6 +11,9 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.system.MemoryUtil.memUTF8
 import org.lwjgl.util.shaderc.Shaderc.*
+import org.lwjgl.util.shaderc.ShadercIncludeResolve
+import org.lwjgl.util.shaderc.ShadercIncludeResult
+import org.lwjgl.util.shaderc.ShadercIncludeResultRelease
 import org.lwjgl.util.spvc.Spvc.*
 import org.lwjgl.util.spvc.SpvcReflectedResource
 import rune.core.Logger
@@ -22,6 +25,8 @@ import java.nio.ByteBuffer
 import java.nio.LongBuffer
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
+import kotlin.io.path.absolute
 
 const val SPVC_DECORATION_BINDING = 33    // couldnt find this in Spvc.* for some reason
 
@@ -87,10 +92,54 @@ class OpenGLShader private constructor(
         Logger.warn("Shader [${getName()}] compilation took ${timer.elapsedMillis()} ms.")
     }
 
+    private fun setIncludeCallbacks(options: Long, baseDir: File) {
+        println(Paths.get(filePath).toAbsolutePath())
+        val resolve = ShadercIncludeResolve.create { userData, requestedSource, type, requestingSource, includeDepth ->
+            println("Include found")
+            val requested = memUTF8(requestedSource)
+            val requesting = memUTF8(requestingSource)
+
+            val parentDir = if (requesting.isNotEmpty()) {
+                File(requesting).parentFile ?: baseDir
+            } else {
+                baseDir
+            }
+            val file = parentDir.resolve(requested).canonicalFile
+
+            val result = ShadercIncludeResult.calloc()
+            if (file.exists()) {
+                val content = file.readText()
+                    .replace("\r", "")
+                    .trimEnd()
+                    .plus("\n")
+                val clean = if (content.startsWith("\uFEFF")) content.removePrefix("\uFEFF") else content
+
+                result.source_name(memUTF8(file.absolutePath, false))
+                result.content(memUTF8(clean, false))
+            } else {
+                val err = "Include not found: $requested (resolved from $requesting)"
+                Logger.error(err)
+                result.source_name(memUTF8("", true))
+                result.content(memUTF8(err, true))
+            }
+            result.address()
+        }
+
+        val release = ShadercIncludeResultRelease.create { userData, resultPtr ->
+            val result = ShadercIncludeResult.create(resultPtr)
+            MemoryUtil.nmemFree(MemoryUtil.memAddress(result.source_name()))
+            MemoryUtil.nmemFree(MemoryUtil.memAddress(result.content()))
+            result.free()
+        }
+
+        shaderc_compile_options_set_include_callbacks(options, resolve, release, 0L)
+    }
+
     private fun compileOrGetVulkanBinaries() {
         // initialize the compiler and options
         val compiler = shaderc_compiler_initialize()
         val options = shaderc_compile_options_initialize()
+        setIncludeCallbacks(options, File(filePath).canonicalFile.parentFile)
         try {
             shaderc_compile_options_set_target_env(options, shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_2)
             /**
@@ -136,6 +185,7 @@ class OpenGLShader private constructor(
 
         val compiler = shaderc_compiler_initialize()
         val options = shaderc_compile_options_initialize()
+        setIncludeCallbacks(options, File(filePath).canonicalFile.parentFile)
         try {
             shaderc_compile_options_set_target_env(options, shaderc_target_env_opengl, shaderc_env_version_opengl_4_5)
             shaderc_compile_options_set_optimization_level(options, shaderc_optimization_level_zero)
@@ -199,7 +249,7 @@ class OpenGLShader private constructor(
             val status = shaderc_result_get_compilation_status(module)
             if (status != shaderc_compilation_status_success) {
                 val errMsg = shaderc_result_get_error_message(module)
-                if (errMsg != null) Logger.error(memUTF8(errMsg).toString())
+                if (errMsg != null) Logger.error(errMsg)
             }
 
             require(shaderc_result_get_compilation_status(module) == shaderc_compilation_status_success) {

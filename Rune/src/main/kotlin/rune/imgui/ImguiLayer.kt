@@ -15,6 +15,8 @@ import rune.events.Event
 import rune.events.EventCategory
 
 class ImguiLayer : Layer("ImGuiLayer") {
+    var showDemoWindow: Boolean = true
+
     private var imGuiGlfw: ImGuiImplGlfw = ImGuiImplGlfw()
     private var imGuiGl3: ImGuiImplGl3 = ImGuiImplGl3()
     private var blockEvents: Boolean = false
@@ -82,7 +84,7 @@ class ImguiLayer : Layer("ImGuiLayer") {
     }
 
     override fun onImGuiRender() {
-        ImGui.showDemoWindow()
+        if (showDemoWindow) ImGui.showDemoWindow()
     }
 
     fun blockEvents(block: Boolean) { blockEvents = block }

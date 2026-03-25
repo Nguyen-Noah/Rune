@@ -4,6 +4,7 @@ import glm_.mat4x4.Mat4
 import glm_.vec4.Vec4
 import org.lwjgl.opengl.GL45.*
 import org.lwjgl.system.MemoryUtil
+import rune.project.ProjectManager
 import rune.renderer.Renderer
 import rune.renderer.RendererAPI
 import rune.renderer.gpu.*
@@ -147,7 +148,12 @@ class GLRendererAPI : RendererAPI {
             filter = Filter.LINEAR
         )
         val envMap = TextureCube.create(spec)
-        val srcTex = Texture2D.create("assets/skyboxes/$file")
+        val hdrPath = if (ProjectManager.isOpen) {
+            ProjectManager.current.skyboxes.resolve(file).toString()
+        } else {
+            "assets/skyboxes/$file"
+        }
+        val srcTex = Texture2D.create(hdrPath)
 
         val pipeline = ComputePipeline.create(shader)
 

@@ -3,15 +3,12 @@ package rune.asset
 import glm_.vec2.Vec2
 import glm_.vec3.Vec3
 import glm_.vec4.Vec4
-import org.lwjgl.assimp.AIColor3D
 import org.lwjgl.assimp.AIColor4D
 import org.lwjgl.assimp.AIMaterial
 import org.lwjgl.assimp.AIMesh
 import org.lwjgl.assimp.AIString
 import org.lwjgl.assimp.Assimp
 import rune.project.ProjectManager
-import rune.core.Logger
-import rune.core.UUID
 import rune.renderer.Renderer
 import rune.renderer.TextureType
 import rune.renderer.gpu.*
@@ -19,12 +16,10 @@ import rune.renderer.renderer3d.*
 import rune.renderer.renderer3d.mesh.Vertex
 import java.nio.FloatBuffer
 import java.nio.IntBuffer
-import java.util.EnumMap
 
 object MeshImporter {
 
-    //private val assetPath = "assets/meshes"
-    private val assetPath = ProjectManager.current.meshes
+    private val meshPath = ProjectManager.current.meshes
 
     fun importStaticMesh(fileName: String, flipUVs: Boolean = false): Model {
         val resourcePath = fileName.split("/").first()
@@ -35,7 +30,7 @@ object MeshImporter {
                    (Assimp.aiProcess_FlipUVs.takeIf { flipUVs } ?: 0)
 
         // variables
-        val scene = Assimp.aiImportFile("$assetPath/$fileName", flags)!!
+        val scene = Assimp.aiImportFile("$meshPath/$fileName", flags)!!
         val vertices = mutableListOf<Vertex>()
         val indices  = mutableListOf<Int>()
         val subs     = mutableListOf<SubMesh>()
@@ -166,7 +161,7 @@ object MeshImporter {
 
             textures[texType.ordinal] = Texture2D.run {
                 if (hasTex) {
-                    create("$assetPath/$resourcePath/${path.dataString()}")
+                    create("$meshPath/$resourcePath/${path.dataString()}")
                 } else {
                     create(1, 1).apply { setData(0xffffffff.toInt(), 4) }
                 }

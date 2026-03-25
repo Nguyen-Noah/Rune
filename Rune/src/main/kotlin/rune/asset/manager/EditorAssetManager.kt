@@ -8,6 +8,7 @@ import rune.asset.AssetRegistry
 import rune.core.Logger
 import rune.core.UUID
 import rune.project.ProjectManager
+import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -25,7 +26,6 @@ class EditorAssetManager {
         Logger.info("Loading Asset Registry")
 
         val assetRegistryPath = ProjectManager.getAssetRegistryPath()
-        println(ProjectManager.getAssetRegistryPath())
         if (Files.notExists(assetRegistryPath)) {
             Logger.warn("Asset Registry Path not found")
             return

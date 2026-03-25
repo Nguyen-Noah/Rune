@@ -60,6 +60,13 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
         initPasses()
     }
 
+    fun resizeViewport(width: Int, height: Int) {
+        if (width <= 0 || height <= 0) return
+        if (width == framebuffer.spec.width && height == framebuffer.spec.height) return
+        gBuffer.resize(width, height)
+        framebuffer.resize(width, height)
+    }
+
     private fun initPasses() {
 
         //* Environment Pass
