@@ -48,7 +48,7 @@ interface Texture2D : Texture {
 interface TextureCube : Texture {
     companion object {
         fun create(spec: TextureSpec): Texture {
-            return when(RendererAPI.getAPI()) {
+            return when(Renderer.getAPI()) {
                 RendererPlatform.OpenGL -> GLTextureCube(spec)
                 RendererPlatform.None -> TODO()
             }

@@ -1,6 +1,5 @@
 package rune.core
 
-import org.lwjgl.glfw.GLFW.glfwGetTime
 import rune.events.Event
 import rune.events.EventDispatcher
 import rune.events.WindowCloseEvent

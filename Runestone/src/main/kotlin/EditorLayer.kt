@@ -142,14 +142,6 @@ class EditorLayer : Layer("Sandbox2D") {
         activeScene.createEntity("Zelda").apply {
             with(activeScene.world) { configure { it += StaticMeshComponent(MeshImporter.importStaticMesh("totk/zelda_search.dae")) } }//"Zelda/Zelda.dae"
         }
-        activeScene.createEntity("Zelda 2").apply {
-            with(activeScene.world) {
-                configure {
-                    it += StaticMeshComponent(MeshImporter.importStaticMesh("Zelda/Zelda.dae"))
-                    get(TransformComponent).translation.z = -1f
-                }
-            }
-        }
         activeScene.createEntity("Light").apply {
             with(activeScene.world) { configure { it += DirectionalLightComponent() }}
         }
@@ -168,7 +160,7 @@ class EditorLayer : Layer("Sandbox2D") {
         // clear entity ID attachment to -1
 
         state.onUpdate(this, dt)
-        vRenderer.render(dt)
+        vRenderer.render(dt, editorCamera)
 
         //updateMousePicking()
         //renderOverlays()
@@ -299,10 +291,10 @@ class EditorLayer : Layer("Sandbox2D") {
     private fun resizeIfNeeded() {
         val w = viewportSize.x.toInt()
         val h = viewportSize.y.toInt()
-        val fbo = vRenderer.framebuffer
+        val fbo = vRenderer.finalFramebuffer
 
         if (w > 0 && h > 0 && (w != fbo.spec.width || h != fbo.spec.height)) {
-            fbo.resize(w, h)
+            vRenderer.resizeViewport(w, h)
             editorCamera.setViewportSize(w.toFloat(), h.toFloat())
             activeScene.onViewportResize(w, h)
         }
@@ -490,7 +482,7 @@ class EditorLayer : Layer("Sandbox2D") {
         viewportSize = Vec2(viewportPanelSize.x, viewportPanelSize.y)
 
         ImGui.image(
-            vRenderer.framebuffer.getColorAttachment().toLong(),
+            vRenderer.finalFramebuffer.getColorAttachment().toLong(),
             //gPass.colorAttachmentRendererID(0).toLong(),
             ImVec2(viewportSize.x, viewportSize.y),
             ImVec2(0f, 1f),

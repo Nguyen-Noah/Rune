@@ -1,7 +1,6 @@
 package rune.platforms.opengl
 
 import org.lwjgl.opengl.GL33.*
-import rune.renderer.SubmitRender
 import rune.renderer.gpu.IndexBuffer
 import rune.rhi.IndexType
 

@@ -18,7 +18,6 @@ import org.lwjgl.util.spvc.Spvc.*
 import org.lwjgl.util.spvc.SpvcReflectedResource
 import rune.core.Logger
 import rune.core.Timer
-import rune.renderer.SubmitRender
 import rune.renderer.gpu.*
 import java.io.File
 import java.nio.ByteBuffer
@@ -56,14 +55,14 @@ class OpenGLShader private constructor(
     override fun bind() {
         // avoids unnecessary binding
         if (currentProgram != rendererID) {
-            SubmitRender("GLShader-bind") { glUseProgram(rendererID) }
+            RenderCommandQueue.enqueue("GLShader-bind") { glUseProgram(rendererID) }
             currentProgram = rendererID
         }
     }
     override fun unbind() {
         if (currentProgram == rendererID)
             return
-        SubmitRender { glUseProgram(0) }
+        RenderCommandQueue.enqueue("GLShader-unbind") { glUseProgram(0) }
     }
 
     override val reflection: ShaderReflection
@@ -93,7 +92,6 @@ class OpenGLShader private constructor(
     }
 
     private fun setIncludeCallbacks(options: Long, baseDir: File) {
-        println(Paths.get(filePath).toAbsolutePath())
         val resolve = ShadercIncludeResolve.create { userData, requestedSource, type, requestingSource, includeDepth ->
             println("Include found")
             val requested = memUTF8(requestedSource)

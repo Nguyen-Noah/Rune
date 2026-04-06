@@ -2,6 +2,7 @@ package rune.renderer.gpu
 
 import glm_.mat4x4.Mat4
 import rune.platforms.opengl.GLUniformBuffer
+import rune.renderer.Renderer
 import rune.renderer.RendererAPI
 import rune.renderer.RendererPlatform
 import java.nio.ByteBuffer
@@ -23,7 +24,7 @@ interface UniformBuffer {
 
     companion object {
         fun create(size: Int, binding: Int, name: String = ""): UniformBuffer {
-            return when (RendererAPI.getAPI()) {
+            return when (Renderer.getAPI()) {
                 RendererPlatform.OpenGL -> GLUniformBuffer(size, binding, name)
                 RendererPlatform.None -> TODO()
             }

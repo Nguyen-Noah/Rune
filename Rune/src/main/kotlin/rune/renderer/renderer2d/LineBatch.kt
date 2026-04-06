@@ -2,8 +2,10 @@ package rune.renderer.renderer2d
 
 import glm_.vec3.Vec3
 import glm_.vec4.Vec4
-import rune.renderer.*
+import rune.platforms.opengl.RenderCommandQueue
+import rune.renderer.Renderer
 import rune.renderer.gpu.*
+import rune.rhi.DepthState
 import rune.rhi.pipeline
 import rune.rhi.renderPass
 
@@ -25,6 +27,7 @@ class LineBatch(
         debugName = "Line-Renderer2D"
         shader = Renderer.getShader("Renderer2D_Line")
         layout = this@LineBatch.layout
+        depth = DepthState(test = false, write = false)
     }
 
     private val linePass = renderPass {
@@ -50,7 +53,7 @@ class LineBatch(
         if (verts == 0) return
         shader.bind()
 
-        SubmitRender("Line-flush") {
+        RenderCommandQueue.enqueue("Line-flush") {
             pipeline.bind()
 
             vbo.setData(writer.slice())

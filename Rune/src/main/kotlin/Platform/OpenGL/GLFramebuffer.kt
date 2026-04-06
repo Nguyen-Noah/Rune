@@ -5,7 +5,6 @@ import org.lwjgl.system.MemoryStack
 import rune.renderer.gpu.AttachmentSpec
 import rune.renderer.gpu.Framebuffer
 import rune.renderer.gpu.FramebufferSpecification
-import rune.renderer.SubmitRender
 import rune.rhi.AttachmentFormat
 import java.nio.IntBuffer
 
@@ -61,48 +60,45 @@ class GLFramebuffer(override val spec: FramebufferSpecification) : Framebuffer {
     }
 
     override fun invalidate() {
-        SubmitRender("GLFbo-invalidate") {
-            destroy()
+        // Must run immediately: bind() can happen before any [flushDeferredCommands] (e.g. Renderer2D.endScene
+        // during Scene.renderScene before SceneRenderer / Renderer.render in the same frame).
+        destroy()
 
-            rendererId = glCreateFramebuffers()
-            glBindFramebuffer(GL_FRAMEBUFFER, rendererId)
+        rendererId = glCreateFramebuffers()
+        glBindFramebuffer(GL_FRAMEBUFFER, rendererId)
 
-            val ms = spec.samples > 1
+        val ms = spec.samples > 1
 
-            // Color attachments
-            spec.attachments
-                .filterNot { it.format.isDepth }
-                .forEachIndexed { i, texSpec ->
-                    val id = glGenTextures()
-                    colorAttachments += id
-                    bindTexture(ms, id)
-                    attachTexture(id, spec.samples, texSpec.format, spec.width, spec.height, GL_COLOR_ATTACHMENT0 + i)
-                }
-
-            // Depth attachment
-            spec.attachments
-                .firstOrNull { it.format.isDepth }
-                ?.let { att ->
-                    depthAttachment = glGenTextures()
-                    bindTexture(ms, depthAttachment)
-                    attachTexture(depthAttachment, spec.samples, att.format, spec.width, spec.height, att.format.depthAttachPoint)
-                }
-
-            // MRT draw-buffer setup
-            when (colorAttachments.size) {
-                0 -> glDrawBuffer(GL_NONE)
-                1 -> glDrawBuffer(GL_COLOR_ATTACHMENT0)
-                else -> {
-                    require(colorAttachments.size <= 4)
-                    glDrawBuffers(IntArray(colorAttachments.size) { GL_COLOR_ATTACHMENT0 + it })
-                }
+        spec.attachments
+            .filterNot { it.format.isDepth }
+            .forEachIndexed { i, texSpec ->
+                val id = glGenTextures()
+                colorAttachments += id
+                bindTexture(ms, id)
+                attachTexture(id, spec.samples, texSpec.format, spec.width, spec.height, GL_COLOR_ATTACHMENT0 + i)
             }
 
-            check(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) {
-                "Framebuffer is incomplete!"
+        spec.attachments
+            .firstOrNull { it.format.isDepth }
+            ?.let { att ->
+                depthAttachment = glGenTextures()
+                bindTexture(ms, depthAttachment)
+                attachTexture(depthAttachment, spec.samples, att.format, spec.width, spec.height, att.format.depthAttachPoint)
             }
-            glBindFramebuffer(GL_FRAMEBUFFER, 0)
+
+        when (colorAttachments.size) {
+            0 -> glDrawBuffer(GL_NONE)
+            1 -> glDrawBuffer(GL_COLOR_ATTACHMENT0)
+            else -> {
+                require(colorAttachments.size <= 4)
+                glDrawBuffers(IntArray(colorAttachments.size) { GL_COLOR_ATTACHMENT0 + it })
+            }
         }
+
+        check(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) {
+            "Framebuffer is incomplete!"
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
     }
 
     override fun readPixel(attachmentIndex: Int, x: Int, y: Int): Int {
@@ -126,26 +122,45 @@ class GLFramebuffer(override val spec: FramebufferSpecification) : Framebuffer {
     }
 
     override fun bind() {
-        SubmitRender("GLFbo-bind") {
-            glBindFramebuffer(GL_FRAMEBUFFER, rendererId)
-            glViewport(0, 0, spec.width, spec.height)
-        }
+        glBindFramebuffer(GL_FRAMEBUFFER, rendererId)
+        glViewport(0, 0, spec.width, spec.height)
     }
 
     override fun unbind() {
-        SubmitRender("GLFbo-unbind") { glBindFramebuffer(GL_FRAMEBUFFER, 0) }
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
     }
 
     override fun clearAttachment(attachmentIndex: Int, value: Int) {
         val fmt = colorFormats[attachmentIndex]
         val g = fmt.gl
+        val id = colorAttachments[attachmentIndex]
 
-        MemoryStack.stackPush().use { stack ->
-            SubmitRender("GLFbo-clearAttachment") {
+        RenderCommandQueue.enqueue("GLFbo-clearAttachment") {
+            MemoryStack.stackPush().use { stack ->
                 if (fmt.isInteger) {
-                    glClearTexImage(colorAttachments[attachmentIndex], 0, g.base, GL_INT, stack.ints(value))
+                    glClearTexImage(id, 0, g.base, GL_INT, stack.ints(value))
                 } else {
-                    glClearTexImage(colorAttachments[attachmentIndex], 0, g.base, GL_FLOAT, stack.floats(value.toFloat()))
+                    when (g.type) {
+                        GL_UNSIGNED_BYTE -> {
+                            val buf = stack.malloc(4)
+                            buf.put(0).put(0).put(0).put(0)
+                            buf.flip()
+                            glClearTexImage(id, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf)
+                        }
+                        GL_HALF_FLOAT -> {
+                            val buf = stack.mallocShort(4)
+                            repeat(4) { buf.put(0.toShort()) }
+                            buf.flip()
+                            glClearTexImage(id, 0, g.base, GL_HALF_FLOAT, buf)
+                        }
+                        GL_FLOAT -> {
+                            val buf = stack.mallocFloat(4)
+                            buf.put(0f).put(0f).put(0f).put(0f)
+                            buf.flip()
+                            glClearTexImage(id, 0, g.base, GL_FLOAT, buf)
+                        }
+                        else -> error("clearAttachment: unsupported color type ${g.type} for format $fmt")
+                    }
                 }
             }
         }
@@ -155,7 +170,10 @@ class GLFramebuffer(override val spec: FramebufferSpecification) : Framebuffer {
     override fun getColorAttachments(): List<AttachmentSpec> = spec.attachments
 
     override fun bindAttachment(index: Int) {
-        glBindTextureUnit(index, colorAttachments[index])
+        RenderCommandQueue.enqueue("GLFramebuffer-bindAttachment") {
+            glBindTextureUnit(index, colorAttachments[index])
+        }
+
     }
 
     override fun bindDepth(unit: Int) {

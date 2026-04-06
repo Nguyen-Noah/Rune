@@ -1,7 +1,6 @@
 package rune.platforms.opengl
 
 import org.lwjgl.opengl.GL45.*
-import rune.renderer.SubmitRender
 import rune.renderer.gpu.VertexBuffer
 import rune.rhi.Pipeline
 import rune.rhi.PipelineSpec
@@ -33,12 +32,11 @@ class GLPipeline(override val spec: PipelineSpec) : Pipeline {
     }
 
     override fun unbind() {
-        //shader.unbind()
         glBindVertexArray(0)
     }
 
     fun invalidate() {
-        SubmitRender("GLPipeline-invalidate") {
+        RenderCommandQueue.enqueue("GLPipeline-invalidate") {
             if (vao == -1)
                 glDeleteVertexArrays(vao)
 
@@ -80,7 +78,7 @@ class GLPipeline(override val spec: PipelineSpec) : Pipeline {
     }
 
     internal fun attachVertexBuffer(vboId: Int) {
-        SubmitRender("GLPipeline-attachVBO") { glVertexArrayVertexBuffer(vao, 0, vboId, 0L, layout.stride) }
+        RenderCommandQueue.enqueue("GLPipeline-attachVBO") { glVertexArrayVertexBuffer(vao, 0, vboId, 0L, layout.stride) }
     }
 
 }

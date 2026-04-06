@@ -12,13 +12,16 @@ object EngineShaders {
         "EquirectangularToSkybox.glsl",
         "Skybox.glsl",
         "Geometry.glsl",
+        "Terrain.glsl",
         "Rune_PBR.glsl",
         "Renderer2D_Quad.glsl",
         "Renderer2D_Circle.glsl",
         "Renderer2D_Line.glsl",
         "StaticMesh.glsl",
         "AutoExposure.glsl",
-        "Grid.glsl"
+        "Grid.glsl",
+        "Tonemap.glsl",
+        "Composite2D.glsl"
     )
 
     private var root: Path? = null
@@ -39,6 +42,7 @@ object EngineShaders {
             }
         }
         root = dir
+        println(root)
         return dir
     }
 

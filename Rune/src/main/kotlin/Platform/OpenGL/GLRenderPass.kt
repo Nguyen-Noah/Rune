@@ -16,6 +16,9 @@ data class GLRenderPass(override val spec: RenderPassSpec) : RenderPass {
     override fun bind() {
         spec.pipeline.bind()
         fbo.bind()
+        if (spec.drawOnlyFirstColorAttachment) {
+            glDrawBuffer(GL_COLOR_ATTACHMENT0)
+        }
     }
     override fun unbind() {
         spec.pipeline.unbind()

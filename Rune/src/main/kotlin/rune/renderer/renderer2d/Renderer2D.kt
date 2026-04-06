@@ -7,6 +7,7 @@ import glm_.vec3.Vec3
 import glm_.vec4.Vec4
 import rune.components.CircleRendererComponent
 import rune.components.SpriteRendererComponent
+import rune.platforms.opengl.RenderCommandQueue
 import rune.renderer.Renderer
 import rune.renderer.gpu.Framebuffer
 import rune.renderer.gpu.Shader
@@ -37,16 +38,25 @@ object Renderer2D {
         lineBatch = LineBatch(shader = Renderer.getShader("Renderer2D_Line"))
     }
 
+    fun resize(width: Int, height: Int) {
+        framebuffer.resize(width, height)
+    }
+
     fun beginScene() {
         startBatch()
     }
 
     fun endScene() {
-        framebuffer.bind()
+        //framebuffer.clearAttachment(0, 0)
+        //framebuffer.clearAttachment(1, -1)
+
+        // this is correct
+        RenderCommandQueue.enqueue("Renderer2D-fbo-bind") { framebuffer.bind() }
+
         quadBatch.flush()
-        //circleBatch.flush()
-        //lineBatch.flush()
-        framebuffer.unbind()
+        circleBatch.flush()
+        lineBatch.flush()
+        RenderCommandQueue.enqueue("Renderer2D-fbo-unbind") { framebuffer.unbind() }
     }
 
     private fun startBatch() {

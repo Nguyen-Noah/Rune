@@ -3,7 +3,6 @@ package rune.platforms.opengl
 import kool.BYTES
 import org.lwjgl.opengl.GL45.*
 import rune.renderer.StorageBuffer
-import rune.renderer.SubmitRender
 import java.nio.ByteBuffer
 import java.nio.IntBuffer
 
@@ -13,7 +12,7 @@ class GLStorageBuffer(
     override var rendererId: Int = -1
 
     init {
-        SubmitRender("SSBO-init") {
+        RenderCommandQueue.enqueue("SSBO-init") {
             rendererId = glCreateBuffers()
             glNamedBufferData(rendererId, size * Int.BYTES.toLong(), GL_DYNAMIC_COPY)
         }
@@ -29,6 +28,6 @@ class GLStorageBuffer(
 
     override fun setData(data: ByteBuffer, offset: Int, name: String) {
         val tag = if (name.isNotEmpty()) "[$name]" else ""
-        SubmitRender("GLSSBO$tag-setData") { glNamedBufferSubData(rendererId, offset.toLong(), data) }
+        RenderCommandQueue.enqueue("GLSSBO$tag-setData") { glNamedBufferSubData(rendererId, offset.toLong(), data) }
     }
 }

@@ -2,8 +2,10 @@ package rune.renderer.renderer2d
 
 import glm_.mat4x4.Mat4
 import glm_.vec4.Vec4
-import rune.renderer.*
+import rune.platforms.opengl.RenderCommandQueue
+import rune.renderer.Renderer
 import rune.renderer.gpu.*
+import rune.rhi.DepthState
 import rune.rhi.pipeline
 import rune.rhi.renderPass
 
@@ -19,6 +21,7 @@ class CircleBatch(
     private val pipeline = pipeline {
         debugName = "Circle-Renderer2D"
         shader = Renderer.getShader("Renderer2D_Circle")
+        depth = DepthState(test = false, write = false)
         layout =  VertexLayout.build {
             attr(0, BufferType.Float3)  // worldPosition
             attr(1, BufferType.Float3)  // localPosition
@@ -41,7 +44,7 @@ class CircleBatch(
     private val vbo = VertexBuffer.create(maxVertices * pipeline.spec.layout.stride)
 
     init {
-        SubmitRender("CircleBatch-init") {
+        RenderCommandQueue.enqueue("CircleBatch-init") {
             pipeline.bind()
 
             pipeline.attachVBO(vbo)
@@ -64,7 +67,7 @@ class CircleBatch(
         if (indices == 0) return
         shader.bind()
 
-        SubmitRender("Circle-flush") {
+        RenderCommandQueue.enqueue("Circle-flush") {
             vbo.setData(writer.slice())
             Renderer.drawIndexed(circlePass, indices)
         }

@@ -115,6 +115,13 @@ class EditorCamera(private val fov: Float = 45f,
 
     fun getViewProjection() = projection * viewMatrix
 
+    fun getViewProjection2D(): Mat4 {
+        val aspect = viewportWidth / viewportHeight
+        val halfH = 10f
+        val ortho = glm.ortho(-halfH * aspect, halfH * aspect, -halfH, halfH, -1000f, 1000f)
+        return ortho * viewMatrix
+    }
+
     fun setViewportSize(width: Float, height: Float) {
         viewportWidth = width
         viewportHeight = height

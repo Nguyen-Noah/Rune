@@ -4,30 +4,26 @@ import glm_.glm
 import glm_.mat4x4.Mat4
 import glm_.vec4.Vec4
 import rune.platforms.opengl.GLRendererAPI
+import rune.platforms.opengl.RenderCommandQueue
 import rune.renderer.gpu.*
 import rune.renderer.renderer2d.FLOAT_MAT4_SIZE
 import rune.renderer.renderer2d.Renderer2D
 import rune.renderer.renderer3d.Mesh
 import rune.rhi.Pipeline
+import rune.rhi.PolygonMode
 import rune.rhi.RenderPass
-
-data class RenderTask(
-    val name: String,
-    val exec: () -> Unit
-) {
-    override fun toString(): String {
-        return name
-    }
-}
-
-private val renderQueue: MutableList<RenderTask> = mutableListOf()
 
 object Renderer {
 
-    private val rendererAPI = when(RendererAPI.getAPI()) {
-        RendererPlatform.OpenGL -> GLRendererAPI()
-        RendererPlatform.None -> TODO()
-    }
+    data class Config(
+        val platform: RendererPlatform = RendererPlatform.OpenGL,
+        /** Optional explicit backend instance (useful for tests, alternate backends, or custom wiring). */
+        val backend: RendererAPI? = null
+    )
+
+    private var initialized: Boolean = false
+    private lateinit var rendererAPI: RendererAPI
+    private var platform: RendererPlatform = RendererPlatform.None
 
     data class CameraData(
         var viewProjection: Mat4 = Mat4(1f),
@@ -41,12 +37,29 @@ object Renderer {
     }
 
     private val cameraBuffer: CameraData = CameraData()
-    private val cameraUniformBuffer: UniformBuffer = UniformBuffer.create(FLOAT_MAT4_SIZE * 2, U_CAMERA, name = "Camera")
+    private lateinit var cameraUniformBuffer: UniformBuffer
 
-    fun init() {
+    /**
+     * Initialize the renderer and select the backend.
+     *
+     * Must be called before creating GPU resources via `*.create(...)` factory methods.
+     */
+    fun init(config: Config = Config()) {
+        if (initialized) return
+
+        platform = config.platform
+        rendererAPI = config.backend ?: when (platform) {
+            RendererPlatform.OpenGL -> GLRendererAPI()
+            RendererPlatform.None -> error("Renderer platform not configured.")
+        }
+
+        rendererAPI.init()
+
         initShaders()
 
+        cameraUniformBuffer = UniformBuffer.create(FLOAT_MAT4_SIZE * 2, U_CAMERA, name = "Camera")
         Renderer2D.init()
+        initialized = true
     }
 
     //*///////////////////////////////////////////////////////////////*//
@@ -60,6 +73,7 @@ object Renderer {
             load(EngineShaders.pathFor("EquirectangularToSkybox.glsl"))
             load(EngineShaders.pathFor("Skybox.glsl"))
             load(EngineShaders.pathFor("Geometry.glsl"))
+            load(EngineShaders.pathFor("Terrain.glsl"))
             load(EngineShaders.pathFor("Rune_PBR.glsl"))
             load(EngineShaders.pathFor("Renderer2D_Quad.glsl"))
             load(EngineShaders.pathFor("Renderer2D_Circle.glsl"))
@@ -67,6 +81,8 @@ object Renderer {
             load(EngineShaders.pathFor("StaticMesh.glsl"))
             load(EngineShaders.pathFor("AutoExposure.glsl"))
             load(EngineShaders.pathFor("Grid.glsl"))
+            load(EngineShaders.pathFor("Tonemap.glsl"))
+            load(EngineShaders.pathFor("Composite2D.glsl"))
         }
     }
 
@@ -79,7 +95,13 @@ object Renderer {
 
 
 
-    fun getAPI() = RendererAPI.getAPI()
+    fun getAPI(): RendererPlatform = platform
+
+    internal fun requireInitialized() {
+        check(initialized) {
+            "Renderer is not initialized. Call Renderer.init() before creating GPU resources."
+        }
+    }
 
     fun beginScene(camera: RuneCamera, transform: Mat4) {
         cameraBuffer.viewProjection = camera.projection * glm.inverse(transform)
@@ -90,8 +112,8 @@ object Renderer {
         Renderer2D.beginScene()
     }
 
+    // TODO: this should be type [RuneCamera] instead
     fun beginScene(camera: EditorCamera) {
-        // setting the uniform buffer
         cameraBuffer.viewProjection = camera.getViewProjection()
         cameraBuffer.skyProjection = camera.getSkyViewProjection()
         cameraUniformBuffer.setData(cameraBuffer.viewProjection)
@@ -100,8 +122,16 @@ object Renderer {
         Renderer2D.beginScene()
     }
 
-    fun endScene() {
-        Renderer2D.endScene()
+    /** Replaces only `u_ViewProjection` (first mat4) in the camera UBO; leaves sky projection unchanged. */
+    fun uploadViewProjection(viewProjection: Mat4) {
+        cameraBuffer.viewProjection = viewProjection
+        cameraUniformBuffer.setData(cameraBuffer.viewProjection, 0)
+    }
+
+    fun endScene(flushRenderer2D: Boolean = true) {
+        if (flushRenderer2D) {
+            Renderer2D.endScene()
+        }
     }
 
     fun beginRenderPass(pass: RenderPass, clear: Boolean = false) {
@@ -117,10 +147,7 @@ object Renderer {
     }
 
     fun render() {
-        renderQueue.forEach { task ->
-            task.exec()
-        }
-        renderQueue.clear()
+        RenderCommandQueue.flush()
     }
 
     fun getShader(name: String): Shader = shaderLib.get(name)
@@ -156,8 +183,8 @@ object Renderer {
     fun submitFullscreenQuad(pipeline: Pipeline) {
         rendererAPI.submitFullscreenQuad(pipeline)
     }
-}
 
-fun SubmitRender(name: String = "Unnamed task", exec: () -> Unit) {
-    renderQueue += RenderTask(name, exec)
+    fun toggleWireframe(mode: PolygonMode) {
+        rendererAPI.toggleWireframe(mode)
+    }
 }

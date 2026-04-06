@@ -2,7 +2,7 @@ package rune.rhi
 
 import rune.platforms.opengl.GLCommandEncoder
 import rune.platforms.opengl.GLDevice
-import rune.renderer.RendererAPI
+import rune.renderer.Renderer
 import rune.renderer.RendererPlatform
 
 interface CommandEncoder {
@@ -16,7 +16,7 @@ interface CommandEncoder {
 
     companion object {
         fun create(device: Device): CommandEncoder {
-            return when(RendererAPI.getAPI()) {
+            return when(Renderer.getAPI()) {
                 RendererPlatform.OpenGL -> GLCommandEncoder(device as GLDevice)
                 RendererPlatform.None -> TODO()
             }

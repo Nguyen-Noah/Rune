@@ -1,6 +1,7 @@
 package rune.rhi
 
 import rune.platforms.opengl.GLRenderPass
+import rune.renderer.Renderer
 import rune.renderer.RendererAPI
 import rune.renderer.RendererPlatform
 import rune.renderer.gpu.Framebuffer
@@ -11,7 +12,9 @@ data class RenderPassSpec(
     val targetFramebuffer: Framebuffer,
     val pipeline: Pipeline,
     val depthStencilAttachment: AttachmentFormat? = null,
-    val debugName: String = "Unnamed-Pass"
+    val debugName: String = "Unnamed-Pass",
+    /** When true, only [GL_COLOR_ATTACHMENT0] receives fragment output (needed for MRT FBOs with a single-output shader). */
+    val drawOnlyFirstColorAttachment: Boolean = false,
 )
 
 class RenderPassSpecBuilder {
@@ -19,16 +22,18 @@ class RenderPassSpecBuilder {
     var pipeline: Pipeline? = null
     var depthStencilAttachment: AttachmentFormat? = null
     var debugName: String = "Unnamed-Pass"
+    var drawOnlyFirstColorAttachment: Boolean = false
 
     fun build(): RenderPass {
         val spec = RenderPassSpec(
             targetFramebuffer = targetFramebuffer!!,
             pipeline = pipeline!!,
             depthStencilAttachment = depthStencilAttachment,
-            debugName = debugName
+            debugName = debugName,
+            drawOnlyFirstColorAttachment = drawOnlyFirstColorAttachment,
         )
 
-        return when(RendererAPI.getAPI()) {
+        return when(Renderer.getAPI()) {
             RendererPlatform.OpenGL -> GLRenderPass(spec)
             RendererPlatform.None -> TODO()
         }

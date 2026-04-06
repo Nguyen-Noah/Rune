@@ -3,6 +3,7 @@ package rune.rhi
 import rune.platforms.opengl.GLPipeline
 import rune.renderer.Renderer
 import rune.renderer.RendererPlatform
+import rune.renderer.gpu.IndexBuffer
 import rune.renderer.gpu.Shader
 import rune.renderer.gpu.VertexBuffer
 import rune.renderer.gpu.VertexLayout

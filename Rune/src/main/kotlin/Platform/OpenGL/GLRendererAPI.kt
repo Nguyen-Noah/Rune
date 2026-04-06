@@ -10,7 +10,6 @@ import rune.renderer.RendererAPI
 import rune.renderer.gpu.*
 import rune.renderer.renderer2d.FLOAT_MAT4_SIZE
 import rune.renderer.renderer3d.Mesh
-import rune.renderer.SubmitRender
 import rune.rhi.*
 
 class GLRendererAPI : RendererAPI {
@@ -52,7 +51,7 @@ class GLRendererAPI : RendererAPI {
     }
 
     override fun drawIndexed(pass: RenderPass, indexCount: Int) {
-        pass.spec.pipeline.bind()
+        pass.bind()
         glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0L)
     }
 
@@ -98,7 +97,7 @@ class GLRendererAPI : RendererAPI {
                 MemoryUtil.memFree(this)
             }
 
-            SubmitRender("GLAPI-RenderStaticMesh") {
+            RenderCommandQueue.enqueue("GLAPI-RenderStaticMesh") {
                 pipeline.bind()
                 pipeline.attachVBO(mesh.buffers.vbo)
                 mesh.buffers.ibo.bind()
@@ -120,11 +119,13 @@ class GLRendererAPI : RendererAPI {
 
     override fun beginRenderPass(pass: RenderPass, clear: Boolean) {
         activePass = pass
-        //pass.spec.targetFramebuffer.bind()
-        pass.bind()
-
+        // Bind/clear must be deferred like draw commands: sync bind + deferred draws would leave
+        // the default framebuffer bound when flush runs after endRenderPass unbinds.
+        RenderCommandQueue.enqueue("GLAPI-BeginPass-Bind") {
+            pass.bind()
+        }
         if (clear) {
-            SubmitRender("GLAPI-BeginPass-Clear") {
+            RenderCommandQueue.enqueue("GLAPI-BeginPass-Clear") {
                 Renderer.setClearColor(Vec4(0.0f, 0.0f, 0.0f, 1.0f))   // TODO: put this in the pass
                 Renderer.clear()
             }
@@ -132,8 +133,11 @@ class GLRendererAPI : RendererAPI {
     }
 
     override fun endRenderPass() {
-        require(activePass != null)
-        activePass!!.unbind()
+        val pass = activePass ?: error("endRenderPass without matching beginRenderPass")
+        activePass = null
+        RenderCommandQueue.enqueue("GLAPI-EndPass-Unbind") {
+            pass.unbind()
+        }
     }
 
     override fun createEnvironmentMap(file: String): Texture {
@@ -158,7 +162,7 @@ class GLRendererAPI : RendererAPI {
         val pipeline = ComputePipeline.create(shader)
 
         pipeline.begin()
-        SubmitRender("GLAPI-EnvMapBind") {
+        RenderCommandQueue.enqueue("GLAPI-EnvMapBind") {
             srcTex.bind(1)
             (envMap as GLTextureCube).open()
             pipeline.dispatch(groupsX = size / 8, groupsY = size / 4, groupsZ = 6)
@@ -170,7 +174,7 @@ class GLRendererAPI : RendererAPI {
 
     override fun renderSkybox(pass: RenderPass, envMap: Texture) {
 
-        SubmitRender("GLAPI-bindSkybox") {
+        RenderCommandQueue.enqueue("GLAPI-bindSkybox") {
             pass.spec.pipeline.bind()
             pass.spec.pipeline.attachVBO(fullscreenQuad.vbo)
             fullscreenQuad.ibo.bind()
@@ -178,7 +182,7 @@ class GLRendererAPI : RendererAPI {
         pass.spec.pipeline.spec.shader.bind()
 
 
-        SubmitRender("Render-Skybox") {
+        RenderCommandQueue.enqueue("Render-Skybox") {
             glDepthFunc(GL_LEQUAL)
             glDepthMask(false)
 
@@ -191,15 +195,20 @@ class GLRendererAPI : RendererAPI {
     }
 
     override fun submitFullscreenQuad(pipeline: Pipeline) {
-        SubmitRender("GLAPI-FullscreenQuadPrep") {
-            pipeline.bind()
+        val pass = activePass ?: error("submitFullscreenQuad requires an active render pass (call beginRenderPass first)")
+        RenderCommandQueue.enqueue("GLAPI-FullscreenQuadPrep") {
+            pass.bind()
             pipeline.attachVBO(fullscreenQuad.vbo)
             fullscreenQuad.ibo.bind()
         }
         pipeline.spec.shader.bind()
 
-        SubmitRender("GPLAPI-SubmitFullscreenQuad") {
+        RenderCommandQueue.enqueue("GLAPI-SubmitFullscreenQuad") {
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0)
         }
+    }
+
+    override fun toggleWireframe(mode: PolygonMode) {
+        RenderCommandQueue.enqueue { glPolygonMode(GL_FRONT_AND_BACK, mode.gl) }
     }
 }

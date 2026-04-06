@@ -1,18 +1,19 @@
 package rune.scene
 
-import rune.components.DirectionalLightComponent
-import rune.components.StaticMeshComponent
-import rune.components.TransformComponent
-import rune.renderer.AutoExposure
+import rune.components.*
+import rune.platforms.opengl.RenderCommandQueue
+import rune.renderer.EditorCamera
 import rune.renderer.Renderer
-import rune.renderer.SubmitRender
+import rune.renderer.RendererAPI
+import rune.renderer.RuneCamera
 import rune.renderer.gpu.*
+import rune.renderer.renderer2d.Renderer2D
 import rune.rhi.*
+import rune.terrain.TerrainRenderer
 
 data class SceneRendererSpec(
     val viewportWidth: Int,
     val viewportHeight: Int,
-
 )
 
 class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
@@ -35,7 +36,15 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
         }
     })
 
-    val framebuffer = Framebuffer.create(framebuffer {
+    val lightingBuffer = Framebuffer.create(framebuffer {
+        width = 1280; height = 720
+
+        attachments {
+            color(AttachmentFormat.RGBA16F)
+        }
+    })
+
+    val finalFramebuffer = Framebuffer.create(framebuffer {
         width = 1280; height = 720
 
         attachments {
@@ -46,15 +55,14 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
     })
 
     //! Temp
-    //private var envMap: Texture = Renderer.createEnvironmentMap("qwantani_noon_4k.hdr")
     private var envMap: Texture = Renderer.createEnvironmentMap("citrus_orchard_puresky_4k.hdr")
-    //private var envMap: Texture = Renderer.createEnvironmentMap("symmetrical_garden_02_4k.hdr")
 
     private lateinit var skyBoxPass: RenderPass
     private lateinit var geometryPass: RenderPass
+    private lateinit var terrainPipeline: Pipeline
     private lateinit var lightingPass: RenderPass
-
-    private val exposureHistogram = AutoExposure()
+    private lateinit var tonemapPass: RenderPass
+    private lateinit var composite2DPass: RenderPass
 
     init {
         initPasses()
@@ -62,9 +70,11 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
 
     fun resizeViewport(width: Int, height: Int) {
         if (width <= 0 || height <= 0) return
-        if (width == framebuffer.spec.width && height == framebuffer.spec.height) return
+        if (width == finalFramebuffer.spec.width && height == finalFramebuffer.spec.height) return
         gBuffer.resize(width, height)
-        framebuffer.resize(width, height)
+        lightingBuffer.resize(width, height)
+        finalFramebuffer.resize(width, height)
+        Renderer2D.resize(width, height)
     }
 
     private fun initPasses() {
@@ -72,7 +82,7 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
         //* Environment Pass
         skyBoxPass = renderPass {
             debugName = "Skybox"
-            targetFramebuffer = framebuffer
+            targetFramebuffer = lightingBuffer
             pipeline = pipeline {
                 debugName = "Skybox"
                 shader = Renderer.getShader("Skybox")
@@ -99,10 +109,20 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
             }
         }
 
+        terrainPipeline = pipeline {
+            debugName = "Terrain-GBuffer"
+            shader = Renderer.getShader("Terrain")
+            layout = VertexLayout.build {
+                attr(0, BufferType.Float3)
+                attr(1, BufferType.Float3)
+                attr(2, BufferType.Float2)
+            }
+        }
+
         //* Lighting Pass
         lightingPass = renderPass {
             debugName = "Lighting-Pass"
-            targetFramebuffer = framebuffer
+            targetFramebuffer = lightingBuffer
             pipeline = pipeline {
                 debugName = "Lighting-Pass"
                 shader = Renderer.getShader("Rune_PBR")
@@ -112,26 +132,57 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
                 }
             }
         }
+
+        //* Final tonemap/gamma Pass
+        tonemapPass = renderPass {
+            debugName = "Tonemap-Pass"
+            targetFramebuffer = finalFramebuffer
+            drawOnlyFirstColorAttachment = true
+            pipeline = pipeline {
+                debugName = "Tonemap-Pass"
+                shader = Renderer.getShader("Tonemap")
+                depth = DepthState(test = false, write = false)
+                layout = VertexLayout.build {
+                    attr(0, BufferType.Float3)
+                    attr(1, BufferType.Float2)
+                }
+            }
+        }
+
+        composite2DPass = renderPass {
+            debugName = "Composite2D-Pass"
+            targetFramebuffer = finalFramebuffer
+            drawOnlyFirstColorAttachment = true
+            pipeline = pipeline {
+                debugName = "Composite2D-Pass"
+                shader = Renderer.getShader("Composite2D")
+                depth = DepthState(test = false, write = false)
+                layout = VertexLayout.build {
+                    attr(0, BufferType.Float3)
+                    attr(1, BufferType.Float2)
+                }
+            }
+        }
     }
 
 
-    fun render(dt: Float) {
-        //computePass()
-        //Renderer.createEnvironmentMap("citrus_orchard_puresky_4k.hdr")
+    fun render(dt: Float, camera: EditorCamera, debugRender: Boolean) {
+        Renderer.beginScene(camera)
 
-        renderGeometry()
+        renderGeometry(debugRender)
         lightingPass()
+        tonemapPass()
+        test()
+        Renderer.endScene()
 
-//        try {
-//            exposureHistogram.update(dt, framebuffer.getColorAttachment(), scene.viewportWidth, scene.viewportHeight)
-//        } catch (_: IndexOutOfBoundsException) {
-//
-//        }
-
+        composite2DPass()
     }
 
-    private fun renderGeometry() {
+    private fun renderGeometry(debugRender: Boolean = false) {
         Renderer.beginRenderPass(geometryPass, clear = true)
+
+        if (debugRender)
+            Renderer.toggleWireframe(PolygonMode.LINE)
 
         // TODO: s_DrawList?
         scene.world.family { all(StaticMeshComponent, TransformComponent) }.forEach {
@@ -143,21 +194,22 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
             }
         }
 
+        TerrainRenderer.render(scene, terrainPipeline)
+
+        if (debugRender)
+            Renderer.toggleWireframe(PolygonMode.FILL)
+
         Renderer.endRenderPass()
     }
 
     private fun lightingPass() {
         Renderer.beginRenderPass(lightingPass, clear = true)
 
-        // 1. bind the attachments from the gBuffer
-        SubmitRender("SceneRenderer-bindAttachment") {
-            gBuffer.bindAttachment(0)   // position
-            gBuffer.bindAttachment(1)   // normal
-            gBuffer.bindAttachment(2)   // specular/albedo
-            gBuffer.bindDepth(3)         // depth
-
-            envMap.bind(4)               // cube map
-        }
+        gBuffer.bindAttachment(0)
+        gBuffer.bindAttachment(1)
+        gBuffer.bindAttachment(2)
+        gBuffer.bindDepth(3)
+        envMap.bind(4)
 
         // 2. get the lights
         // TODO: Renderer.submitDirectionalLight, Renderer.submitSpotLight
@@ -180,7 +232,32 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
         Renderer.endRenderPass()
     }
 
-    private fun render2D() {
+    private fun tonemapPass() {
+        Renderer.beginRenderPass(tonemapPass)
 
+        lightingBuffer.bindAttachment(0)
+
+        Renderer.submitFullscreenQuad(tonemapPass.spec.pipeline)
+
+        Renderer.endRenderPass()
+    }
+
+    private fun composite2DPass() {
+        Renderer.beginRenderPass(composite2DPass, clear = false)
+
+        Renderer2D.framebuffer.bindAttachment(0)
+
+        Renderer.submitFullscreenQuad(composite2DPass.spec.pipeline)
+
+        Renderer.endRenderPass()
+    }
+
+    private fun test() {
+        scene.world.family { all(SpriteRendererComponent, TransformComponent) }.forEach {
+            Renderer2D.drawSprite(it[TransformComponent].getTransform(), it[SpriteRendererComponent], it.id)
+        }
+        scene.world.family { all(CircleRendererComponent, TransformComponent) }.forEach {
+            Renderer2D.drawCircle(it[TransformComponent].getTransform(), it[CircleRendererComponent], it.id)
+        }
     }
 }

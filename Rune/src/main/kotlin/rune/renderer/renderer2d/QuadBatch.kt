@@ -4,8 +4,10 @@ import glm_.mat4x4.Mat4
 import glm_.vec2.Vec2
 import glm_.vec4.Vec4
 import rune.core.Logger
-import rune.renderer.*
+import rune.platforms.opengl.RenderCommandQueue
+import rune.renderer.Renderer
 import rune.renderer.gpu.*
+import rune.rhi.DepthState
 import rune.rhi.Pipeline
 import rune.rhi.pipeline
 import rune.rhi.renderPass
@@ -35,6 +37,7 @@ class QuadBatch(
         debugName = "Quad-Renderer2D"
         shader = Renderer.getShader("Renderer2D_Quad")
         layout = this@QuadBatch.layout
+        depth = DepthState(test = false, write = false)
     }
 
     private val quadPass = renderPass {
@@ -52,7 +55,7 @@ class QuadBatch(
     private var texSlotIdx = 1
 
     init {
-        SubmitRender("QuadBatch-init") {
+        RenderCommandQueue.enqueue("QuadBatch-init") {
             pipeline.bind()
 
             pipeline.attachVBO(vbo)
@@ -76,8 +79,7 @@ class QuadBatch(
         if (indices == 0) return
         shader.bind()
 
-
-        SubmitRender("Quad-flush") {
+        RenderCommandQueue.enqueue("Quad-flush") {
             vbo.setData(writer.slice())
             textureSlots.forEachIndexed { i, tex -> tex?.bind(i) }
             Renderer.drawIndexed(quadPass, indices)

@@ -10,7 +10,10 @@ import rune.imgui.RuneGui
 import rune.asset.MeshImporter
 import rune.components.DirectionalLightComponent
 import rune.components.StaticMeshComponent
+import rune.components.TerrainComponent
 import rune.components.TransformComponent
+import rune.terrain.ProceduralTerrainParams
+import rune.terrain.TerrainSystem
 import rune.core.Application
 import rune.core.Input
 import rune.core.Key
@@ -25,6 +28,9 @@ import rune.renderer.Renderer
 import rune.scene.Scene
 import rune.scene.SceneRenderer
 import rune.scene.SceneRendererSpec
+import sandbox.panels.IrisSettings
+import sandbox.panels.SceneHierarchyPanel
+
 class SceneLayer : Layer("Scene") {
 
     val project = ProjectManager.open(ProjectRoots.resolve("SandboxProject"))
@@ -38,6 +44,9 @@ class SceneLayer : Layer("Scene") {
 
     private var viewportSize = Vec2(1280f, 720f)
 
+    private val irisSettings = IrisSettings()
+    private val sceneHierarchyPanel = SceneHierarchyPanel(scene)
+
     override fun onAttach() {
         val w = Application.get().getWindow().width
         val h = Application.get().getWindow().height
@@ -50,6 +59,34 @@ class SceneLayer : Layer("Scene") {
             with(scene.world) {
                 configure {
                     it += StaticMeshComponent(MeshImporter.importStaticMesh("totk/zelda_search.dae"))
+                    it += TransformComponent()
+                }
+            }
+        }
+
+        val grid = 48
+        val procedural = ProceduralTerrainParams(
+            seed = 91421L,
+            frequency = 0.038f,
+            octaves = 6,
+            persistence = 0.52f,
+            lacunarity = 2.1f,
+            heightScale = 14f,
+        )
+        val terrainConfig = TerrainSystem.createProceduralConfig(
+            gridX = grid,
+            gridZ = grid,
+            sizeX = 48f,
+            sizeZ = 48f,
+            params = procedural,
+            meshName = "SandboxTerrain",
+        )
+        val terrainModel = TerrainSystem.createModel(terrainConfig)
+        scene.createEntity("Terrain").apply {
+            with(scene.world) {
+                configure {
+                    it += TerrainComponent(terrainModel)
+                    it += TransformComponent()
                 }
             }
         }
@@ -69,11 +106,12 @@ class SceneLayer : Layer("Scene") {
 
     override fun onUpdate(dt: Float) {
         resizeIfNeeded()
+        irisSettings.pushRenderSettings()
 
         camera.onUpdate(dt)
         Renderer.resetStats()
         scene.onUpdateEditor(dt, camera)
-        vRenderer.render(dt)
+        vRenderer.render(dt, camera, irisSettings.renderSettings.renderWireframe)
     }
 
     override fun onEvent(e: Event) {
@@ -92,7 +130,7 @@ class SceneLayer : Layer("Scene") {
     private fun resizeIfNeeded() {
         val w = viewportSize.x.toInt()
         val h = viewportSize.y.toInt()
-        if (w > 0 && h > 0 && (w != vRenderer.framebuffer.spec.width || h != vRenderer.framebuffer.spec.height)) {
+        if (w > 0 && h > 0 && (w != vRenderer.finalFramebuffer.spec.width || h != vRenderer.finalFramebuffer.spec.height)) {
             vRenderer.resizeViewport(w, h)
             camera.setViewportSize(viewportSize.x, viewportSize.y)
             scene.onViewportResize(w, h)
@@ -122,7 +160,7 @@ class SceneLayer : Layer("Scene") {
                     viewportSize = Vec2(panel.x, panel.y)
 
                     RuneGui.image(
-                        vRenderer.framebuffer.getColorAttachment().toLong(),
+                        vRenderer.finalFramebuffer.getColorAttachment().toLong(),
                         ImVec2(panel.x, panel.y),
                         ImVec2(0f, 1f),
                         ImVec2(1f, 0f)
@@ -131,6 +169,7 @@ class SceneLayer : Layer("Scene") {
             }
         }
 
-        Application.get().getImGuiLayer().blockEvents(!RuneGui.isWindowHovered())
+        irisSettings.onImGuiRender()
+        sceneHierarchyPanel.onImGuiRender()
     }
 }

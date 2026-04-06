@@ -32,19 +32,6 @@ class Scene {
 
     private var physicsWorld: PhysicsWorld2D = PhysicsWorld2D()
 
-
-    // TODO: this will probably balloon as the renderer grows, so maybe put this into a different class with extended functionality
-    data class RendererSettings(
-        var flags: Int = 0,
-        var tonemap: Int = 1,
-        var exposure: Float = 1.0f,
-        var gamma: Float = 2.2f,
-        var bloomIntensity: Float = 0.0f,
-        var vignetteStrength: Float = 0.0f
-    )
-    private val renderSettingsBuffer = UniformBuffer.create(32, U_RENDERER_SETTINGS, "Renderer-settings")
-    val renderSettings = RendererSettings()
-
     fun destroyEntity(entity: Entity) = with(world) { entity.remove() }
 
     fun createEntity(name: String? = null, uuid: UUID = UUID()): Entity {
@@ -141,9 +128,6 @@ class Scene {
 
     fun onUpdateSimulation(dt: Float, camera: EditorCamera) {
         syncPhysicsToTransforms(dt)
-
-        // render
-        renderScene(camera)
     }
 
     fun onUpdateRuntime(dt: Float) {
@@ -165,7 +149,7 @@ class Scene {
     }
 
     fun onUpdateEditor(dt: Float, camera: EditorCamera) {
-        renderScene(camera)
+
     }
 
     fun onRenderEditor(renderer: SceneRenderer, dt: Float, camera: EditorCamera) {
@@ -175,26 +159,6 @@ class Scene {
     /* ------------------------------------------------------------------ */
     /*  Helpers                                                           */
     /* ------------------------------------------------------------------ */
-
-    // TODO: maybe just stick this all in RendererManagerPanel.kt
-    fun pushRenderSettings() {
-        // TODO: save this to a file and compile the shader with these values injected in RuneProjects
-        MemoryUtil.memAlloc(renderSettingsBuffer.size).apply {
-            putInt(renderSettings.flags) // flags
-            putInt(renderSettings.tonemap) // tonemapper
-            putFloat(renderSettings.exposure) // exposure
-            putFloat(renderSettings.gamma) // gamma
-            putFloat(renderSettings.bloomIntensity) // bloomIntensity
-            putFloat(renderSettings.vignetteStrength) // vignetteStrength
-
-            putInt(0)
-            putInt(0)
-
-            flip()
-            renderSettingsBuffer.setData(this)
-            MemoryUtil.memFree(this)
-        }
-    }
 
     private fun syncPhysicsToTransforms(dt: Float) {
         physicsWorld.onUpdate(dt)
@@ -208,29 +172,6 @@ class Scene {
                 transform.rotation.z = body.angle
             }
         }
-    }
-
-    // TODO: SceneRenderer.kt
-    private fun renderScene(camera: EditorCamera) {
-        Renderer.beginScene(camera)
-
-        //! LIGHTS
-//        world.family { all(DirectionalLightComponent, TransformComponent) }.forEach {
-//            // only supports a single light rn
-//            val dLight = it[DirectionalLightComponent]
-//
-//            lightEnvironment.light = DirectionalLight(
-//                dLight.color,
-//                dLight.diffuseIntensity,
-//                dLight.direction
-//            )
-//        }
-//
-//        lightEnvironment.bake()
-        pushRenderSettings()
-        drawRenderables()
-
-        Renderer.endScene()
     }
 
     private fun drawRenderables() {
@@ -305,6 +246,7 @@ fun World.copyComponentsToEntity(entity: Entity, components: List<Component<*>>)
 
                     // 3d
                     is StaticMeshComponent          -> entity += comp.copy()
+                    is TerrainComponent             -> entity += comp.copy()
 
                     // lights
                     is DirectionalLightComponent    -> entity += comp.copy()

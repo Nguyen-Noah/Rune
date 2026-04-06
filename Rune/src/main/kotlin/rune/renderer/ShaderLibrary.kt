@@ -23,7 +23,7 @@ class ShaderLibrary {
         }
 
         fun get(name: String): Shader {
-            require(exists(name)) { "Shader not found!" }
+            require(exists(name)) { "Shader not found: $name" }
             return shaders[name]!!
         }
 

@@ -1,6 +1,7 @@
 package rune.rhi
 
 import rune.platforms.opengl.GLDevice
+import rune.renderer.Renderer
 import rune.renderer.RendererAPI
 import rune.renderer.RendererPlatform
 import rune.renderer.renderer3d.mesh.Vertex
@@ -28,7 +29,7 @@ interface Device {
 
     companion object {
         fun create(): Device {
-            return when(RendererAPI.getAPI()) {
+            return when(Renderer.getAPI()) {
                 RendererPlatform.OpenGL -> GLDevice()
                 RendererPlatform.None -> TODO()
             }

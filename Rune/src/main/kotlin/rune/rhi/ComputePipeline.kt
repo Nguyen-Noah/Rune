@@ -1,6 +1,7 @@
 package rune.rhi
 
 import rune.platforms.opengl.GLComputePipeline
+import rune.renderer.Renderer
 import rune.renderer.RendererAPI
 import rune.renderer.RendererPlatform
 import rune.renderer.gpu.Shader
@@ -12,7 +13,7 @@ interface ComputePipeline {
 
     companion object {
         fun create(computeShader: Shader): ComputePipeline {
-            return when(RendererAPI.getAPI()) {
+            return when(Renderer.getAPI()) {
                 RendererPlatform.OpenGL -> GLComputePipeline(computeShader)
                 RendererPlatform.None -> TODO()
             }
