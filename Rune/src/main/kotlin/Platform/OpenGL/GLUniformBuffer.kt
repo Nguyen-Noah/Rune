@@ -1,10 +1,12 @@
 package rune.platforms.opengl
 
 import glm_.mat4x4.Mat4
+import glm_.vec3.Vec3
 import org.lwjgl.opengl.GL45.*
 import org.lwjgl.system.MemoryUtil
 import rune.renderer.gpu.UniformBuffer
 import rune.renderer.renderer2d.FLOAT_MAT4_SIZE
+import rune.renderer.renderer2d.FLOAT_VEC3_SIZE
 import java.nio.ByteBuffer
 
 class GLUniformBuffer(override val size: Int, private val binding: Int, private val name: String) : UniformBuffer {
@@ -30,6 +32,18 @@ class GLUniformBuffer(override val size: Int, private val binding: Int, private 
 
         RenderCommandQueue.enqueue("GLUbo$n-setData") {
             MemoryUtil.memAlloc(FLOAT_MAT4_SIZE).apply {
+                data to this
+                setData(this, offset)
+                MemoryUtil.memFree(this)
+            }
+        }
+    }
+
+    override fun setData(data: Vec3, offset: Int) {
+        val n = if (name.isNotEmpty()) "[$name]" else ""
+
+        RenderCommandQueue.enqueue("GLUbo$n-setData") {
+            MemoryUtil.memAlloc(FLOAT_VEC3_SIZE).apply {
                 data to this
                 setData(this, offset)
                 MemoryUtil.memFree(this)

@@ -1,6 +1,7 @@
 package rune.renderer.gpu
 
 import glm_.mat4x4.Mat4
+import glm_.vec3.Vec3
 import rune.platforms.opengl.GLUniformBuffer
 import rune.renderer.Renderer
 import rune.renderer.RendererAPI
@@ -21,6 +22,7 @@ interface UniformBuffer {
 
     fun setData(data: ByteBuffer, offset: Int = 0)
     fun setData(data: Mat4, offset: Int = 0)
+    fun setData(data: Vec3, offset: Int = 0)
 
     companion object {
         fun create(size: Int, binding: Int, name: String = ""): UniformBuffer {

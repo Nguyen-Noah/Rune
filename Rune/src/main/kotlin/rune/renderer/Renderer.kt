@@ -2,11 +2,13 @@ package rune.renderer
 
 import glm_.glm
 import glm_.mat4x4.Mat4
+import glm_.vec3.Vec3
 import glm_.vec4.Vec4
 import rune.platforms.opengl.GLRendererAPI
 import rune.platforms.opengl.RenderCommandQueue
 import rune.renderer.gpu.*
 import rune.renderer.renderer2d.FLOAT_MAT4_SIZE
+import rune.renderer.renderer2d.FLOAT_VEC3_SIZE
 import rune.renderer.renderer2d.Renderer2D
 import rune.renderer.renderer3d.Mesh
 import rune.rhi.Pipeline
@@ -25,9 +27,11 @@ object Renderer {
     private lateinit var rendererAPI: RendererAPI
     private var platform: RendererPlatform = RendererPlatform.None
 
+    // TODO: this should probably not live in Renderer.kt
     data class CameraData(
         var viewProjection: Mat4 = Mat4(1f),
-        var skyProjection: Mat4 = Mat4(1f)
+        var skyProjection: Mat4 = Mat4(1f),
+        var viewPosition: Vec3 = Vec3(1f)
     )
 
     //! STATISTICS
@@ -57,7 +61,7 @@ object Renderer {
 
         initShaders()
 
-        cameraUniformBuffer = UniformBuffer.create(FLOAT_MAT4_SIZE * 2, U_CAMERA, name = "Camera")
+        cameraUniformBuffer = UniformBuffer.create(FLOAT_MAT4_SIZE * 2 + FLOAT_VEC3_SIZE, U_CAMERA, name = "Camera")
         Renderer2D.init()
         initialized = true
     }
@@ -71,7 +75,6 @@ object Renderer {
         EngineShaders.root()
         with(shaderLib) {
             load(EngineShaders.pathFor("EquirectangularToSkybox.glsl"))
-            load(EngineShaders.pathFor("Skybox.glsl"))
             load(EngineShaders.pathFor("Geometry.glsl"))
             load(EngineShaders.pathFor("Terrain.glsl"))
             load(EngineShaders.pathFor("Rune_PBR.glsl"))
@@ -93,8 +96,6 @@ object Renderer {
         stats.drawCalls = 0
     }
 
-
-
     fun getAPI(): RendererPlatform = platform
 
     internal fun requireInitialized() {
@@ -106,18 +107,21 @@ object Renderer {
     fun beginScene(camera: RuneCamera, transform: Mat4) {
         cameraBuffer.viewProjection = camera.projection * glm.inverse(transform)
         cameraBuffer.skyProjection = camera.projection
+        cameraBuffer.viewPosition = camera.position
         cameraUniformBuffer.setData(cameraBuffer.viewProjection)
         cameraUniformBuffer.setData(cameraBuffer.skyProjection, FLOAT_MAT4_SIZE)
+        cameraUniformBuffer.setData(cameraBuffer.viewPosition, FLOAT_MAT4_SIZE * 2)
 
         Renderer2D.beginScene()
     }
 
-    // TODO: this should be type [RuneCamera] instead
-    fun beginScene(camera: EditorCamera) {
+    fun beginScene(camera: SceneViewportCamera) {
         cameraBuffer.viewProjection = camera.getViewProjection()
         cameraBuffer.skyProjection = camera.getSkyViewProjection()
+        cameraBuffer.viewPosition = camera.position
         cameraUniformBuffer.setData(cameraBuffer.viewProjection)
         cameraUniformBuffer.setData(cameraBuffer.skyProjection, FLOAT_MAT4_SIZE)
+        cameraUniformBuffer.setData(cameraBuffer.viewPosition, FLOAT_MAT4_SIZE * 2)
 
         Renderer2D.beginScene()
     }

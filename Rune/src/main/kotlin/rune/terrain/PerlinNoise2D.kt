@@ -28,8 +28,8 @@ class PerlinNoise2D(seed: Long) {
     fun noise(x: Float, y: Float): Float {
         val xi = floor(x).toInt() and 255
         val yi = floor(y).toInt() and 255
-        val xf = x - floor(x).toFloat()
-        val yf = y - floor(y).toFloat()
+        val xf = x - floor(x)
+        val yf = y - floor(y)
 
         val u = fade(xf)
         val v = fade(yf)

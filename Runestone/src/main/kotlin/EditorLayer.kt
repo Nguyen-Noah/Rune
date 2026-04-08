@@ -137,7 +137,6 @@ class EditorLayer : Layer("Sandbox2D") {
 
 
     override fun onAttach() {
-        println(project.resolve("mesh://Zelda"))
         //! TEMP
         activeScene.createEntity("Zelda").apply {
             with(activeScene.world) { configure { it += StaticMeshComponent(MeshImporter.importStaticMesh("totk/zelda_search.dae")) } }//"Zelda/Zelda.dae"
@@ -160,7 +159,7 @@ class EditorLayer : Layer("Sandbox2D") {
         // clear entity ID attachment to -1
 
         state.onUpdate(this, dt)
-        vRenderer.render(dt, editorCamera)
+        vRenderer.render(dt, editorCamera, false)
 
         //updateMousePicking()
         //renderOverlays()

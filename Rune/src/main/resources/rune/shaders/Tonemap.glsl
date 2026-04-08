@@ -14,24 +14,13 @@ void main() {
 #type fragment
 #version 450 core
 
+#include "common.glsl"
+
 layout(binding = 0) uniform sampler2D v_hdrTex;
 
 layout(location = 0) in vec2 v_TexCoords;
 
 layout(location = 0) out vec4 o_Color;
-
-layout(std140, binding = 7) uniform RendererSettings {
-    int aaMethod;   // 0=None, 1=FXAA, 2=TAA
-    int toneMapper; // 0=Off, 1=ACES, 2=Reinhard
-
-    float exposure;
-    float gamma;
-    float bloomIntensity;
-    float vignetteStrength;
-
-    int _pad0;
-    int _pad1;
-} u_Settings;
 
 vec3 reinhard(vec3 v) {
     return v / (1.0f + v);
@@ -62,6 +51,18 @@ vec3 aces(vec3 color) {
 
 void main() {
     vec3 c = texture(v_hdrTex, v_TexCoords).rgb;
-    o_Color = vec4(clamp(c, 0.0, 1.0), 1.0);
+
+//    switch(u_Settings.toneMapper) {
+//        case 0:
+//            c.x += 0.5;
+//            break;
+//        case 1:
+//            c.y += 0.5;
+//            break;
+//        case 2:
+//            c.z += 0.5;
+//            break;
+//    }
+
     o_Color = vec4(aces(c), 1.0);
 }

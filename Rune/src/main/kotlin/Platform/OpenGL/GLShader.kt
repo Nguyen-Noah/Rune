@@ -32,12 +32,14 @@ const val SPVC_DECORATION_BINDING = 33    // couldnt find this in Spvc.* for som
 class OpenGLShader private constructor(
     private val name: String,
     private val filePath: String,
+    private val shaderRoot: Path?,
     private val stages: Map<Int, Pair<String, String>>
 ) : Shader() {
     constructor(name: String, vertexSrc: String, fragmentSrc: String) :
             this(
                 name,
                 "<memory>",
+                null,
                 mapOf(
                     GL_VERTEX_SHADER   to Pair(vertexSrc, "vertex"),
                     GL_FRAGMENT_SHADER to Pair(fragmentSrc, "fragment")
@@ -47,6 +49,7 @@ class OpenGLShader private constructor(
     constructor(filePath: String) : this(
         extractName(filePath),
         filePath,
+        Path.of(filePath).parent,
         preprocess(File(filePath).readText())
     )
 
@@ -91,28 +94,30 @@ class OpenGLShader private constructor(
         Logger.warn("Shader [${getName()}] compilation took ${timer.elapsedMillis()} ms.")
     }
 
-    private fun setIncludeCallbacks(options: Long, baseDir: File) {
+    private fun setIncludeCallbacks(options: Long, root: Path) {
         val resolve = ShadercIncludeResolve.create { userData, requestedSource, type, requestingSource, includeDepth ->
-            println("Include found")
             val requested = memUTF8(requestedSource)
             val requesting = memUTF8(requestingSource)
 
             val parentDir = if (requesting.isNotEmpty()) {
-                File(requesting).parentFile ?: baseDir
+                Path.of(requesting).parent ?: root
             } else {
-                baseDir
+                root
             }
-            val file = parentDir.resolve(requested).canonicalFile
+
+            // Try parent-relative first, then search from root recursively
+            val file = parentDir.resolve(requested).normalize().takeIf { Files.exists(it) }
+                ?: findInTree(root, requested)
 
             val result = ShadercIncludeResult.calloc()
-            if (file.exists()) {
-                val content = file.readText()
+            if (file != null) {
+                val content = Files.readString(file)
                     .replace("\r", "")
                     .trimEnd()
                     .plus("\n")
                 val clean = if (content.startsWith("\uFEFF")) content.removePrefix("\uFEFF") else content
 
-                result.source_name(memUTF8(file.absolutePath, false))
+                result.source_name(memUTF8(file.toString(), false))
                 result.content(memUTF8(clean, false))
             } else {
                 val err = "Include not found: $requested (resolved from $requesting)"
@@ -120,6 +125,7 @@ class OpenGLShader private constructor(
                 result.source_name(memUTF8("", true))
                 result.content(memUTF8(err, true))
             }
+            Logger.trace("Include resolve: '$requested' -> ${file?.absolute()}")
             result.address()
         }
 
@@ -137,7 +143,7 @@ class OpenGLShader private constructor(
         // initialize the compiler and options
         val compiler = shaderc_compiler_initialize()
         val options = shaderc_compile_options_initialize()
-        setIncludeCallbacks(options, File(filePath).canonicalFile.parentFile)
+        shaderRoot?.let { setIncludeCallbacks(options, it) }
         try {
             shaderc_compile_options_set_target_env(options, shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_2)
             /**
@@ -183,7 +189,7 @@ class OpenGLShader private constructor(
 
         val compiler = shaderc_compiler_initialize()
         val options = shaderc_compile_options_initialize()
-        setIncludeCallbacks(options, File(filePath).canonicalFile.parentFile)
+        shaderRoot?.let { setIncludeCallbacks(options, it) }
         try {
             shaderc_compile_options_set_target_env(options, shaderc_target_env_opengl, shaderc_env_version_opengl_4_5)
             shaderc_compile_options_set_optimization_level(options, shaderc_optimization_level_zero)
@@ -445,6 +451,23 @@ class OpenGLShader private constructor(
             val binding = spvc_compiler_get_decoration(compiler, r.id(), SPVC_DECORATION_BINDING)
             block(r, binding, r.nameString())
         }
+    }
+
+    private fun findInTree(root: Path, name: String): Path? {
+        // First try root-relative (handles "include/common.glsl")
+        val direct = root.resolve(name).normalize()
+        if (Files.exists(direct)) return direct
+
+        // Prioritize the include directory
+        val includeDir = root.resolve("include").resolve(name).normalize()
+        if (Files.exists(includeDir)) return includeDir
+
+        // Then search subdirectories for the filename
+        val fileName = Path.of(name).fileName.toString()
+        return Files.walk(root)
+            .filter { Files.isRegularFile(it) && it.fileName.toString() == fileName }
+            .findFirst()
+            .orElse(null)
     }
 
     private fun cachePath(stage: Int, vulkan: Boolean): Path {

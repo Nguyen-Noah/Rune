@@ -5,10 +5,7 @@ layout(location = 0) in vec3 a_Position;
 layout(location = 1) in vec3 a_Normal;
 layout(location = 2) in vec2 a_TexCoords;
 
-layout(std140, binding = 0) uniform Camera {
-    mat4 u_ViewProjection;
-    mat4 u_SkyboxProjection;
-};
+#include "common.glsl"
 
 layout(std140, binding = 1) uniform Transform {
     mat4 u_ModelTransform;
@@ -24,15 +21,11 @@ void main() {
     v_Position = (u_ModelTransform * vec4(a_Position, 1.0)).xyz;
 
     //f_EntityID = a_EntityID;
-    gl_Position = u_ViewProjection * u_ModelTransform * vec4(a_Position, 1.0);
+    gl_Position = u_Camera.u_ViewProjection * u_ModelTransform * vec4(a_Position, 1.0);
 }
 
 #type fragment
 #version 450 core
-
-//layout(location = 0) out vec3 o_Position;
-//layout(location = 1) out vec3 o_Normal;
-//layout(location = 2) out vec4 o_AlbedoSpec;
 
 layout(location = 0) out vec4 o_Position;
 layout(location = 1) out vec4 o_Normal;

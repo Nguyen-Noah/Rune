@@ -2,10 +2,9 @@ package rune.scene
 
 import rune.components.*
 import rune.platforms.opengl.RenderCommandQueue
-import rune.renderer.EditorCamera
+import rune.renderer.SceneViewportCamera
 import rune.renderer.Renderer
 import rune.renderer.RendererAPI
-import rune.renderer.RuneCamera
 import rune.renderer.gpu.*
 import rune.renderer.renderer2d.Renderer2D
 import rune.rhi.*
@@ -22,6 +21,7 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
         var meshes: Int = 0,
         var totalGPUTime: Float = 0.0f
     )
+
     val stats = Statistics()
 
     val gBuffer = Framebuffer.create(framebuffer {
@@ -57,7 +57,6 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
     //! Temp
     private var envMap: Texture = Renderer.createEnvironmentMap("citrus_orchard_puresky_4k.hdr")
 
-    private lateinit var skyBoxPass: RenderPass
     private lateinit var geometryPass: RenderPass
     private lateinit var terrainPipeline: Pipeline
     private lateinit var lightingPass: RenderPass
@@ -78,20 +77,6 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
     }
 
     private fun initPasses() {
-
-        //* Environment Pass
-        skyBoxPass = renderPass {
-            debugName = "Skybox"
-            targetFramebuffer = lightingBuffer
-            pipeline = pipeline {
-                debugName = "Skybox"
-                shader = Renderer.getShader("Skybox")
-                layout = VertexLayout.build {
-                    attr(0, BufferType.Float3)
-                    attr(1, BufferType.Float2)
-                }
-            }
-        }
 
         //* Geometry Pass
         geometryPass = renderPass {
@@ -166,16 +151,14 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
     }
 
 
-    fun render(dt: Float, camera: EditorCamera, debugRender: Boolean) {
+    fun render(dt: Float, camera: SceneViewportCamera, debugRender: Boolean) {
         Renderer.beginScene(camera)
 
         renderGeometry(debugRender)
         lightingPass()
         tonemapPass()
-        test()
+        //celPass()
         Renderer.endScene()
-
-        composite2DPass()
     }
 
     private fun renderGeometry(debugRender: Boolean = false) {
@@ -250,14 +233,5 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
         Renderer.submitFullscreenQuad(composite2DPass.spec.pipeline)
 
         Renderer.endRenderPass()
-    }
-
-    private fun test() {
-        scene.world.family { all(SpriteRendererComponent, TransformComponent) }.forEach {
-            Renderer2D.drawSprite(it[TransformComponent].getTransform(), it[SpriteRendererComponent], it.id)
-        }
-        scene.world.family { all(CircleRendererComponent, TransformComponent) }.forEach {
-            Renderer2D.drawCircle(it[TransformComponent].getTransform(), it[CircleRendererComponent], it.id)
-        }
     }
 }

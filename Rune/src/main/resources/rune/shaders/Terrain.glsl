@@ -49,7 +49,7 @@ void main() {
     float elevation = v_Position.y;
     float t = clamp(elevation * 0.08 + 0.35, 0.0, 1.0);
     vec3 lowland = vec3(0.12, 0.38, 0.14);
-    vec3 highland = vec3(0.42, 0.36, 0.28);
+    vec3 highland = vec3(0.62, 0.56, 0.48);
     vec3 terrainTint = mix(lowland, highland, t);
     o_AlbedoSpec.rgb = albedoSample * terrainTint;
     o_AlbedoSpec.a = texture(u_Specular, v_TexCoords).r;

@@ -16,8 +16,7 @@ class EditorCamera(private val fov: Float = 45f,
                    private var aspectRatio: Float = 1.778f,
                    private val nearClip: Float = 0.1f,
                    private val farClip: Float = 1000f
-) : RuneCamera(glm.perspective(glm.radians(fov), aspectRatio, nearClip, farClip)) {
-    private var position: Vec3 = Vec3(0f)
+) : RuneCamera(glm.perspective(glm.radians(fov), aspectRatio, nearClip, farClip)), SceneViewportCamera {
     private var focalPoint: Vec3 = Vec3(0f)
 
     private var initialMousePosition: Vec2 = Vec2(0f)
@@ -29,7 +28,7 @@ class EditorCamera(private val fov: Float = 45f,
     private var viewportWidth = 1280f
     private var viewportHeight = 720f
 
-    lateinit var viewMatrix: Mat4
+    override lateinit var viewMatrix: Mat4
 
     init {
         updateView()
@@ -64,7 +63,7 @@ class EditorCamera(private val fov: Float = 45f,
         return (d * d).coerceAtMost(100f)
     }
 
-    fun onUpdate(dt: Float) {
+    override fun onUpdate(dt: Float) {
         if (Input.isKeyPressed(Key.Space)) {
             val mouse = Vec2(Input.getMouseX(), Input.getMouseY())
             val delta = (mouse - initialMousePosition) * 0.003f
@@ -79,7 +78,7 @@ class EditorCamera(private val fov: Float = 45f,
         updateView()
     }
 
-    fun onEvent(e: rune.events.Event) {
+    override fun onEvent(e: rune.events.Event) {
         EventDispatcher(e).dispatch<MouseScrolledEvent> { onMouseScroll(it) }
     }
 
@@ -113,7 +112,7 @@ class EditorCamera(private val fov: Float = 45f,
         }
     }
 
-    fun getViewProjection() = projection * viewMatrix
+    override fun getViewProjection() = projection * viewMatrix
 
     fun getViewProjection2D(): Mat4 {
         val aspect = viewportWidth / viewportHeight
@@ -122,13 +121,13 @@ class EditorCamera(private val fov: Float = 45f,
         return ortho * viewMatrix
     }
 
-    fun setViewportSize(width: Float, height: Float) {
+    override fun setViewportSize(width: Float, height: Float) {
         viewportWidth = width
         viewportHeight = height
         updateProjection()
     }
 
-    fun getSkyViewProjection(): Mat4 {
+    override fun getSkyViewProjection(): Mat4 {
         val rot3x3 = Mat3(viewMatrix)
 
         val rotView = Mat4(rot3x3)

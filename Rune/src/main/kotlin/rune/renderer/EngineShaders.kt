@@ -10,7 +10,6 @@ object EngineShaders {
 
     private val names = listOf(
         "EquirectangularToSkybox.glsl",
-        "Skybox.glsl",
         "Geometry.glsl",
         "Terrain.glsl",
         "Rune_PBR.glsl",
@@ -18,10 +17,10 @@ object EngineShaders {
         "Renderer2D_Circle.glsl",
         "Renderer2D_Line.glsl",
         "StaticMesh.glsl",
-        "AutoExposure.glsl",
-        "Grid.glsl",
         "Tonemap.glsl",
-        "Composite2D.glsl"
+        "Composite2D.glsl",
+
+        "common.glsl"
     )
 
     private var root: Path? = null
@@ -32,18 +31,57 @@ object EngineShaders {
 
         val dir = Path.of(System.getProperty("java.io.tmpdir"), "rune3d-engine-shaders")
         Files.createDirectories(dir)
+
         val loader = EngineShaders::class.java.classLoader
-        for (name in names) {
-            val resource = "$RESOURCE_PREFIX/$name"
-            val stream = loader.getResourceAsStream(resource)
-                ?: error("Missing engine shader resource: $resource")
-            stream.use {
-                Files.copy(it, dir.resolve(name), StandardCopyOption.REPLACE_EXISTING)
+        val resources = loader.getResources(RESOURCE_PREFIX)
+
+        for (url in resources.asSequence()) {
+            when (url.protocol) {
+                "file" -> extractFromFileSystem(Path.of(url.toURI()), dir)
+                "jar" -> extractFromJar(url, dir)
             }
         }
+
         root = dir
-        println(root)
         return dir
+    }
+
+    private fun extractFromFileSystem(resourceDir: Path, targetDir: Path) {
+        Files.walk(resourceDir)
+            .filter { Files.isRegularFile(it) && it.toString().endsWith(".glsl") }
+            .forEach { file ->
+                val relative = resourceDir.relativize(file)
+                val target = targetDir.resolve(relative.toString())
+                Files.createDirectories(target.parent)
+                Files.copy(file, target, StandardCopyOption.REPLACE_EXISTING)
+            }
+    }
+
+    /**
+     * Once packaged as a JAR, searching the filesystem for shaders will not work, so we
+     * need to store them in a temporary directory, usually
+     * C://Users/{user}/AppData/Local/temp
+     */
+    private fun extractFromJar(url: java.net.URL, targetDir: Path) {
+        // url looks like jar:file:/path/to.jar!/rune/shaders
+        val jarUri = java.net.URI("jar", url.toString().substringBefore("!"), null)
+        val env = mapOf<String, String>()
+
+        val fs = try {
+            java.nio.file.FileSystems.newFileSystem(jarUri, env)
+        } catch (_: java.nio.file.FileSystemAlreadyExistsException) {
+            java.nio.file.FileSystems.getFileSystem(jarUri)
+        }
+
+        val shaderRoot = fs.getPath(RESOURCE_PREFIX)
+        Files.walk(shaderRoot)
+            .filter { Files.isRegularFile(it) && it.toString().endsWith(".glsl") }
+            .forEach { file ->
+                val relative = shaderRoot.relativize(file).toString()
+                val target = targetDir.resolve(relative)
+                Files.createDirectories(target.parent)
+                Files.copy(file, target, StandardCopyOption.REPLACE_EXISTING)
+            }
     }
 
     fun pathFor(fileName: String): String = root().resolve(fileName).toString()

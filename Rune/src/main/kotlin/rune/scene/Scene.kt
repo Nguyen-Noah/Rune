@@ -8,7 +8,7 @@ import rune.asset.AssetRegistry
 import rune.components.*
 import rune.core.Logger
 import rune.core.UUID
-import rune.renderer.EditorCamera
+import rune.renderer.SceneViewportCamera
 import rune.renderer.Renderer
 import rune.renderer.gpu.U_RENDERER_SETTINGS
 import rune.renderer.gpu.UniformBuffer
@@ -126,7 +126,7 @@ class Scene {
     /*  Update loops                                                      */
     /* ------------------------------------------------------------------ */
 
-    fun onUpdateSimulation(dt: Float, camera: EditorCamera) {
+    fun onUpdateSimulation(dt: Float, camera: SceneViewportCamera) {
         syncPhysicsToTransforms(dt)
     }
 
@@ -148,11 +148,11 @@ class Scene {
         Renderer.endScene()
     }
 
-    fun onUpdateEditor(dt: Float, camera: EditorCamera) {
+    fun onUpdateEditor(dt: Float, camera: SceneViewportCamera) {
 
     }
 
-    fun onRenderEditor(renderer: SceneRenderer, dt: Float, camera: EditorCamera) {
+    fun onRenderEditor(renderer: SceneRenderer, dt: Float, camera: SceneViewportCamera) {
 
     }
 

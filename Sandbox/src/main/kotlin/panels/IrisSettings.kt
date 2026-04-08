@@ -17,8 +17,10 @@ class IrisSettings {
         var bloomIntensity: Float = 0.0f,
         var vignetteStrength: Float = 0.0f,
 
+        var enableCelShading: Boolean = true,
+
         // cpu-side
-        var renderWireframe: Boolean = true
+        var renderWireframe: Boolean = false
     )
     private val renderSettingsBuffer = UniformBuffer.create(32, U_RENDERER_SETTINGS, "Renderer-settings")
     val renderSettings = RendererSettings()
@@ -33,7 +35,7 @@ class IrisSettings {
             putFloat(renderSettings.bloomIntensity) // bloomIntensity
             putFloat(renderSettings.vignetteStrength) // vignetteStrength
 
-            putInt(0)
+            putInt(renderSettings.enableCelShading.toInt())
             putInt(0)
 
             flip()
@@ -60,5 +62,4 @@ class IrisSettings {
     }
 }
 
-
-
+private fun Boolean.toInt() = if (this) 1 else 0

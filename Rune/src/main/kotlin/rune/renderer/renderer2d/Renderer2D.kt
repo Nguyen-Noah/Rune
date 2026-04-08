@@ -15,7 +15,9 @@ import rune.renderer.gpu.Texture2D
 import rune.renderer.gpu.framebuffer
 import rune.rhi.AttachmentFormat
 
+// TODO: move these out of here or find a better way of doing this
 const val FLOAT_MAT4_SIZE = 16 * 4
+const val FLOAT_VEC3_SIZE = 16 // 12 + 4 bytes to accommodate for std140 byte padding
 
 object Renderer2D {
     private lateinit var quadBatch: QuadBatch
