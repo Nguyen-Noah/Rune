@@ -8,7 +8,6 @@ import rune.project.ProjectManager
 import rune.renderer.Renderer
 import rune.renderer.RendererAPI
 import rune.renderer.gpu.*
-import rune.renderer.renderer2d.FLOAT_MAT4_SIZE
 import rune.renderer.renderer3d.Mesh
 import rune.rhi.*
 
@@ -27,8 +26,8 @@ class GLRendererAPI : RendererAPI {
     )
 
     // TODO: find a better place for this (maybe per model)
-    private val transformBuf: UniformBuffer = UniformBuffer.create(FLOAT_MAT4_SIZE, U_TRANSFORM, "Transform")
-    private val matBuf: UniformBuffer = UniformBuffer.create(48, U_MATERIAL, "Material")
+    private val transformBuf: UniformBuffer = UniformBuffer.create(Std140Layouts.Transform, U_TRANSFORM, "Transform")
+    private val matBuf: UniformBuffer = UniformBuffer.create(Std140Layouts.PbrMaterial, U_MATERIAL, "Material")
 
     private var activePass: RenderPass? = null
 
@@ -72,11 +71,11 @@ class GLRendererAPI : RendererAPI {
         // TODO: redo this -> maybe make the model own its own pipeline
         //(pipeline as GLPipeline).attachVertexBuffer(mesh.buffers.vbo.rendererID)
 
-        transformBuf.setData(transform)
+        transformBuf.setData(transform, Std140Layouts.Transform, "u_ModelTransform")
         pipeline.shader.bind()
         mesh.subMeshes.forEach { sm ->
 
-            MemoryUtil.memAlloc(48).apply {
+            MemoryUtil.memAlloc(matBuf.size).apply {
                 putFloat(sm.material.ambient.r)
                 putFloat(sm.material.ambient.g)
                 putFloat(sm.material.ambient.b)

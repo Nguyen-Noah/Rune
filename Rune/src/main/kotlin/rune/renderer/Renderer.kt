@@ -7,8 +7,6 @@ import glm_.vec4.Vec4
 import rune.platforms.opengl.GLRendererAPI
 import rune.platforms.opengl.RenderCommandQueue
 import rune.renderer.gpu.*
-import rune.renderer.renderer2d.FLOAT_MAT4_SIZE
-import rune.renderer.renderer2d.FLOAT_VEC3_SIZE
 import rune.renderer.renderer2d.Renderer2D
 import rune.renderer.renderer3d.Mesh
 import rune.rhi.Pipeline
@@ -61,7 +59,7 @@ object Renderer {
 
         initShaders()
 
-        cameraUniformBuffer = UniformBuffer.create(FLOAT_MAT4_SIZE * 2 + FLOAT_VEC3_SIZE, U_CAMERA, name = "Camera")
+        cameraUniformBuffer = UniformBuffer.create(Std140Layouts.Camera, U_CAMERA, name = "Camera")
         Renderer2D.init()
         initialized = true
     }
@@ -108,9 +106,9 @@ object Renderer {
         cameraBuffer.viewProjection = camera.projection * glm.inverse(transform)
         cameraBuffer.skyProjection = camera.projection
         cameraBuffer.viewPosition = camera.position
-        cameraUniformBuffer.setData(cameraBuffer.viewProjection)
-        cameraUniformBuffer.setData(cameraBuffer.skyProjection, FLOAT_MAT4_SIZE)
-        cameraUniformBuffer.setData(cameraBuffer.viewPosition, FLOAT_MAT4_SIZE * 2)
+        cameraUniformBuffer.setData(cameraBuffer.viewProjection, Std140Layouts.Camera, "u_ViewProjection")
+        cameraUniformBuffer.setData(cameraBuffer.skyProjection, Std140Layouts.Camera, "u_SkyProjection")
+        cameraUniformBuffer.setData(cameraBuffer.viewPosition, Std140Layouts.Camera, "u_CameraPos")
 
         Renderer2D.beginScene()
     }
@@ -119,9 +117,9 @@ object Renderer {
         cameraBuffer.viewProjection = camera.getViewProjection()
         cameraBuffer.skyProjection = camera.getSkyViewProjection()
         cameraBuffer.viewPosition = camera.position
-        cameraUniformBuffer.setData(cameraBuffer.viewProjection)
-        cameraUniformBuffer.setData(cameraBuffer.skyProjection, FLOAT_MAT4_SIZE)
-        cameraUniformBuffer.setData(cameraBuffer.viewPosition, FLOAT_MAT4_SIZE * 2)
+        cameraUniformBuffer.setData(cameraBuffer.viewProjection, Std140Layouts.Camera, "u_ViewProjection")
+        cameraUniformBuffer.setData(cameraBuffer.skyProjection, Std140Layouts.Camera, "u_SkyProjection")
+        cameraUniformBuffer.setData(cameraBuffer.viewPosition, Std140Layouts.Camera, "u_CameraPos")
 
         Renderer2D.beginScene()
     }
@@ -129,7 +127,7 @@ object Renderer {
     /** Replaces only `u_ViewProjection` (first mat4) in the camera UBO; leaves sky projection unchanged. */
     fun uploadViewProjection(viewProjection: Mat4) {
         cameraBuffer.viewProjection = viewProjection
-        cameraUniformBuffer.setData(cameraBuffer.viewProjection, 0)
+        cameraUniformBuffer.setData(cameraBuffer.viewProjection, Std140Layouts.Camera, "u_ViewProjection")
     }
 
     fun endScene(flushRenderer2D: Boolean = true) {

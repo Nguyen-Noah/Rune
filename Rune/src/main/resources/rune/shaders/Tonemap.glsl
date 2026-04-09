@@ -52,17 +52,18 @@ vec3 aces(vec3 color) {
 void main() {
     vec3 c = texture(v_hdrTex, v_TexCoords).rgb;
 
-//    switch(u_Settings.toneMapper) {
-//        case 0:
-//            c.x += 0.5;
-//            break;
-//        case 1:
-//            c.y += 0.5;
-//            break;
-//        case 2:
-//            c.z += 0.5;
-//            break;
-//    }
+    vec3 finalColor;
+    switch(u_Settings.toneMapper) {
+        case 0:
+            finalColor = c;
+            break;
+        case 1:
+            finalColor = aces(c);
+            break;
+        case 2:
+            c.z += 0.5;
+            break;
+    }
 
-    o_Color = vec4(aces(c), 1.0);
+    o_Color = vec4(finalColor, 1.0);
 }

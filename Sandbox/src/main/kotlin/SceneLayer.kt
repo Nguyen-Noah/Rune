@@ -73,14 +73,14 @@ class SceneLayer : Layer("Scene") {
             }
         }
 
-//        scene.createEntity("BOTW-Zelda").apply {
-//            with(scene.world) {
-//                configure {
-//                    it += StaticMeshComponent(MeshImporter.importStaticMesh("VahRuta/Ruta.dae"))
-//                    it += TransformComponent()
-//                }
-//            }
-//        }
+        scene.createEntity("Vah Ruta").apply {
+            with(scene.world) {
+                configure {
+                    it += StaticMeshComponent(MeshImporter.importStaticMesh("VahRuta/Ruta.dae"))
+                    it += TransformComponent()
+                }
+            }
+        }
 
         val grid = 200
         val procedural = ProceduralTerrainParams(

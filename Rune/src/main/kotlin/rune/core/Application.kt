@@ -8,8 +8,8 @@ import rune.imgui.ImguiLayer
 import rune.renderer.Renderer
 import kotlin.system.exitProcess
 
-abstract class Application {
-    private val window = Window.create()
+abstract class Application(props: WindowProps = WindowProps()) {
+    private val window = Window.create(props)
     private var running = true
     private var minimized = false
     private val layerStack = LayerStack()

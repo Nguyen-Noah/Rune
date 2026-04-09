@@ -2,6 +2,7 @@ package rune.scene
 
 import glm_.vec3.Vec3
 import org.lwjgl.system.MemoryUtil
+import rune.renderer.gpu.Std140Layouts
 import rune.renderer.gpu.U_LIGHTS
 import rune.renderer.gpu.UniformBuffer
 
@@ -13,11 +14,11 @@ data class SceneLights(
     var maxDirectionalLight: Int = 4,
     val directionalLights: Array<DirectionalLight?> = arrayOfNulls(maxDirectionalLight),
     var light: DirectionalLight? = null,
-    private val lightBuffer: UniformBuffer = UniformBuffer.create(48, U_LIGHTS, name = "Lights")
+    private val lightBuffer: UniformBuffer = UniformBuffer.create(Std140Layouts.DirectionalLights, U_LIGHTS, name = "Lights")
     ) {
     fun bake() {
         light?.let {
-            MemoryUtil.memAlloc(48).apply {
+            MemoryUtil.memAlloc(lightBuffer.size).apply {
                 putFloat(it.color.r)
                 putFloat(it.color.g)
                 putFloat(it.color.b)

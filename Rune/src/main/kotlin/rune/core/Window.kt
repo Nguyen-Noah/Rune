@@ -28,7 +28,7 @@ interface Window {
 
     companion object{
         // return a Window reference
-        fun create(props: WindowProps = WindowProps()): Window {
+        fun create(props: WindowProps): Window {
             // change this later to check for platform instead of just returning windows
             return WindowsWindow(props)
         }

@@ -1,9 +1,11 @@
 package sandbox.panels
 
+import glm_.glm
 import imgui.ImGui
 import imgui.type.ImInt
 import org.lwjgl.system.MemoryUtil
 import rune.renderer.RenderSettings
+import rune.renderer.gpu.Std140Layouts
 import rune.renderer.gpu.U_RENDERER_SETTINGS
 import rune.renderer.gpu.UniformBuffer
 
@@ -17,12 +19,18 @@ class IrisSettings {
         var bloomIntensity: Float = 0.0f,
         var vignetteStrength: Float = 0.0f,
 
+        var specularBandWidth: Float = 0.97f,
+        var specularColorIntensity: Float = 0.11f,
+        var rimColorIntensity: Float = 0.23f,
+        var rimWidth: Float = 0.61f,
+        var rimIntensity: Float = 0.35f,
+
         var enableCelShading: Boolean = true,
 
         // cpu-side
         var renderWireframe: Boolean = false
     )
-    private val renderSettingsBuffer = UniformBuffer.create(32, U_RENDERER_SETTINGS, "Renderer-settings")
+    private val renderSettingsBuffer = UniformBuffer.create(Std140Layouts.RendererSettings, U_RENDERER_SETTINGS, "Renderer-settings")
     val renderSettings = RendererSettings()
 
     fun pushRenderSettings() {
@@ -36,7 +44,12 @@ class IrisSettings {
             putFloat(renderSettings.vignetteStrength) // vignetteStrength
 
             putInt(renderSettings.enableCelShading.toInt())
-            putInt(0)
+
+            putFloat(renderSettings.specularBandWidth)
+            putFloat(renderSettings.rimWidth)
+            putFloat(renderSettings.rimIntensity)
+            putFloat(renderSettings.specularColorIntensity)
+            putFloat(renderSettings.rimColorIntensity)
 
             flip()
             renderSettingsBuffer.setData(this)
@@ -58,8 +71,35 @@ class IrisSettings {
             renderSettings.renderWireframe = !renderSettings.renderWireframe
         }
 
+        if (ImGui.checkbox("Toon Shading", renderSettings.enableCelShading)) {
+            renderSettings.enableCelShading = !renderSettings.enableCelShading
+        }
+
+        // TODO: probably find a more memory-efficient way to do this
+        val temp = FloatArray(1)
+        temp[0] = renderSettings.specularBandWidth.inverse()
+        if (ImGui.dragFloat("Specular Band", temp, 0.01f, 0.01f, 1f))
+            renderSettings.specularBandWidth = temp.first().inverse()
+
+        temp[0] = renderSettings.specularColorIntensity
+        if (ImGui.dragFloat("Specular Color Intensity", temp, 0.01f, 0f, 1f))
+            renderSettings.specularColorIntensity = temp.first()
+
+        temp[0] = renderSettings.rimWidth.inverse()
+        if (ImGui.dragFloat("Rim Width", temp, 0.01f, 0f, 1f))
+            renderSettings.rimWidth = temp.first().inverse()
+
+        temp[0] = renderSettings.rimIntensity.inverse()
+        if (ImGui.dragFloat("Rim Intensity", temp, 0.01f, 0.01f, 1f))
+            renderSettings.rimIntensity = temp.first().inverse()
+
+        temp[0] = renderSettings.rimColorIntensity
+        if (ImGui.dragFloat("Rim Color Intensity", temp, 0.01f, 0f, 1f))
+            renderSettings.rimColorIntensity = temp.first()
+
         ImGui.end()
     }
 }
 
 private fun Boolean.toInt() = if (this) 1 else 0
+private fun Float.inverse() = 1 - this

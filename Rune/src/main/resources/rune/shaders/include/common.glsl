@@ -41,8 +41,12 @@ layout(std140, binding = 7) uniform RendererSettings {
     float bloomIntensity;
     float vignetteStrength;
 
-    int enableCelShading;
-    int _pad1;
+    bool enableCelShading;
+    float specularBandWidth;
+    float rimWidth;
+    float rimIntensity;
+    float specularColorIntensity;
+    float rimColorIntensity;
 } u_Settings;
 
 #endif

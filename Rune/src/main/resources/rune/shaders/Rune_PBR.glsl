@@ -37,7 +37,7 @@ void main() {
     DirectionalLight dLight = u_DirLight.dirLight;
 
     float diffuseFactor = dot(g.normal, normalize(-dLight.direction));
-    if (u_Settings.enableCelShading == 1) {
+    if (u_Settings.enableCelShading) {
         diffuseFactor = ceil(diffuseFactor * toonColorLevels) * toonScaleFactor;
     }
 
@@ -45,28 +45,30 @@ void main() {
     vec3 diffuse = calcDiffuse(dLight.color, dLight.diffuseIntensity, g.albedo, diffuseFactor);
     float specular = calcSpecular(u_Camera.u_CameraPos, g.normal, normalize(-dLight.direction));
 
-    vec4 finalColor = vec4(ambient + diffuse, 1.0);
-    if (u_Settings.enableCelShading == 0) {
+    vec3 finalColor = vec3(ambient + diffuse);
+    if (!u_Settings.enableCelShading) {
         finalColor.rgb += specular;
     } else {
-        float rimThreshold = 0.6;  // how wide the rim is
-        float rimAmount = 0.3;     // how bright
+        vec3 V = normalize(u_Camera.u_CameraPos - g.position);
+        vec3 H = normalize(-dLight.direction + V);
+        float NdotL = max(dot(g.normal, -dLight.direction), 0.0);
 
-        vec3 viewDirection = normalize(u_Camera.u_CameraPos - g.position);
-        float rim = 1.0 - max(dot(g.normal, viewDirection), 0.0);
+        // hard specular band
+        float NdotH = max(dot(g.normal, H), 0.0);
+        float specBand = ceil(NdotH - u_Settings.specularBandWidth); // 0.95 by default
+        finalColor += specBand * dLight.color * u_Settings.specularColorIntensity;
 
-        // optionally mask rim by light facing — avoids rim on the dark side
-        float NdotL = max(dot(g.normal, normalize(-dLight.direction)), 0.0);
-        rim *= ceil(NdotL * toonColorLevels) * toonScaleFactor;
-
-        vec3 rimColor = dLight.color * 0.3; // or a custom uniform
-        finalColor.rgb += rim * rimColor;
+        // subtle lit-side rim
+        float rim = 1.0 - max(dot(g.normal, V), 0.0);
+        rim = ceil(rim - u_Settings.rimWidth);
+        rim *= ceil(NdotL - u_Settings.rimIntensity);
+        finalColor += rim * dLight.color * u_Settings.rimColorIntensity;
     }
 
     // sky sample
     vec3 skyColor = sampleSkybox(v_SkyboxPos);
 
     float hasGeom = step(g.depth, 0.9999);
-    vec3 sceneLinear = mix(skyColor, finalColor.rgb, hasGeom);
+    vec3 sceneLinear = mix(skyColor, finalColor, hasGeom);
     o_Color = vec4(sceneLinear, 1.0);
 }
