@@ -35,6 +35,8 @@ import rune.project.ProjectManager
 import rune.project.ProjectRoots
 import rune.renderer.FlyCamera
 import rune.renderer.Renderer
+import rune.renderer.renderer3d.Mesh
+import rune.renderer.renderer3d.MeshType
 import rune.scene.Scene
 import rune.scene.SceneRenderer
 import rune.scene.SceneRendererSpec
@@ -84,29 +86,20 @@ class SceneLayer : Layer("Scene") {
         scene.onViewportResize(w, h)
         vRenderer.resizeViewport(w, h)
 
-//        scene.createEntity("Zelda").apply {
-//            with(scene.world) {
-//                configure {
-//                    it += StaticMeshComponent(MeshImporter.importStaticMesh("totk/zelda_search.dae"))
-//                    it += TransformComponent()
-//                }
-//            }
-//        }
-
-//        scene.createEntity("Vah Ruta").apply {
-//            with(scene.world) {
-//                configure {
-//                    it += StaticMeshComponent(MeshImporter.importStaticMesh("VahRuta/Ruta.dae"))
-//                    it += TransformComponent()
-//                }
-//            }
-//        }
+        scene.createEntity("Zelda").apply {
+            with(scene.world) {
+                configure {
+                    it += StaticMeshComponent(MeshImporter.importStaticMesh("totk/zelda_search.dae"))
+                    it += TransformComponent()
+                }
+            }
+        }
 
         scene.createEntity("Zelda").apply {
             with(scene.world) {
                 configure {
-                    it += StaticMeshComponent(MeshImporter.importStaticMesh("new-zelda-totk/Npc_Zelda_Search_Improve.fbx"))
-                    it += TransformComponent()
+                    it += StaticMeshComponent(MeshImporter.importAnimatedMesh("new-zelda-totk/Npc_Zelda_Search_Improve.fbx"))
+                    it += TransformComponent(translation = Vec3(1.5f, 0f, 0f))
                 }
             }
         }
@@ -196,6 +189,8 @@ class SceneLayer : Layer("Scene") {
                         ImVec2(0f, 1f),
                         ImVec2(1f, 0f)
                     )
+
+                    //ImGui.text(Application.get().getFPS().toString())
 
                     val selected = sceneHierarchyPanel.selectedEntity
                     if (selected != null) {

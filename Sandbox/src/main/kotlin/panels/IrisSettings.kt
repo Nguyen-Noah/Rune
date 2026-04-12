@@ -4,10 +4,12 @@ import glm_.glm
 import imgui.ImGui
 import imgui.type.ImInt
 import org.lwjgl.system.MemoryUtil
+import rune.core.Application
 import rune.renderer.RenderSettings
 import rune.renderer.gpu.Std140Layouts
 import rune.renderer.gpu.U_RENDERER_SETTINGS
 import rune.renderer.gpu.UniformBuffer
+import kotlin.math.round
 
 class IrisSettings {
     data class RendererSettings(
@@ -60,6 +62,8 @@ class IrisSettings {
     fun onImGuiRender() {
         ImGui.begin("Iris Settings")
 
+        ImGui.text("FPS: ${Application.get().getFPS().round(2)}")
+
         val current = RenderSettings.ToneMapper.fromIdx(renderSettings.tonemap)
         val toneRef = ImInt(RenderSettings.ToneMapper.uiIndexOf(current))
         if (ImGui.combo("Tone Map", toneRef, RenderSettings.ToneMapper.labelsArray)) {
@@ -103,3 +107,9 @@ class IrisSettings {
 
 private fun Boolean.toInt() = if (this) 1 else 0
 private fun Float.inverse() = 1 - this
+
+fun Double.round(decimals: Int): Double {
+    var multiplier = 1.0
+    repeat(decimals) { multiplier *= 10 }
+    return round(this * multiplier) / multiplier
+}

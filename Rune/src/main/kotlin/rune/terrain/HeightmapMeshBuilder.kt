@@ -54,7 +54,7 @@ object HeightmapMeshBuilder {
             localAABB = aabb,
         )
 
-        val mesh = Mesh(config.meshName, buffers, listOf(sub))
+        val mesh = Mesh.Static(config.meshName, buffers, listOf(sub))       // TODO: Mesh.Procedural
         return Model(mesh)
     }
 
