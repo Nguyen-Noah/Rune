@@ -4,14 +4,28 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 import rune.renderer.renderer3d.Model
+import rune.terrain.nodes.TerrainNode
+import rune.terrain.types.HeightField
 
 /**
- * Builds terrain meshes from height data and procedural generators.
+ * Builds terrain meshes from height data, [HeightField], or a [TerrainNode] graph.
  */
 object TerrainSystem {
 
     fun createModel(config: TerrainConfig): Model =
         HeightmapMeshBuilder.buildModel(config)
+
+    fun createModel(field: HeightField, meshName: String = "Terrain"): Model =
+        HeightmapMeshBuilder.buildModel(TerrainConfig.fromHeightField(field, meshName))
+
+    /**
+     * Evaluates the graph from [root] (must be a [rune.terrain.nodes.SourceNode] or chain ending in one)
+     * and builds a mesh from the resulting heights (masks do not affect the mesh yet).
+     */
+    fun createModel(root: TerrainNode, meshName: String = "Terrain"): Model =
+        createModel(root.evaluate(), meshName)
+
+    fun evaluate(root: TerrainNode): HeightField = root.evaluate()
 
     /**
      * Fills a height array using seeded Perlin FBM in world space (see [ProceduralTerrainParams]).
@@ -23,14 +37,14 @@ object TerrainSystem {
         sizeZ: Float,
         params: ProceduralTerrainParams = ProceduralTerrainParams(),
     ): FloatArray {
-        val w = gridX + 1
-        val d = gridZ + 1
-        val h = FloatArray(w * d)
+        val width = gridX + 1
+        val depth = gridZ + 1
+        val heights = FloatArray(width * depth)
         val noise = PerlinNoise2D(params.seed)
-        for (iz in 0 until d) {
-            for (ix in 0 until w) {
-                val wx = (ix.toFloat() / gridX - 0.5f) * sizeX + params.offsetX
-                val wz = (iz.toFloat() / gridZ - 0.5f) * sizeZ + params.offsetZ
+        for (row in 0 until depth) {
+            for (column in 0 until width) {
+                val wx = (column.toFloat() / gridX - 0.5f) * sizeX + params.offsetX
+                val wz = (row.toFloat() / gridZ - 0.5f) * sizeZ + params.offsetZ
                 val n = noise.fbm(
                     wx * params.frequency,
                     wz * params.frequency,
@@ -38,10 +52,10 @@ object TerrainSystem {
                     params.persistence,
                     params.lacunarity,
                 )
-                h[iz * w + ix] = n * params.heightScale
+                heights[row * width + column] = n * params.heightScale
             }
         }
-        return h
+        return heights
     }
 
     /** Builds a [TerrainConfig] with Perlin FBM heights. */

@@ -1,7 +1,10 @@
 package rune.terrain
 
+import rune.terrain.types.HeightField
+
 /**
  * Grid of height samples in model space: vertex [ix, iz] uses heights[iz * (gridX + 1) + ix].
+ * Use [fromHeightField] when the source of truth is a [HeightField] (vertex grid).
  */
 data class TerrainConfig(
     val gridX: Int,
@@ -39,5 +42,24 @@ data class TerrainConfig(
         result = 31 * result + meshName.hashCode()
         result = 31 * result + heights.contentHashCode()
         return result
+    }
+
+    companion object {
+        /**
+         * [HeightField] uses vertex counts (width × depth); [TerrainConfig] uses cell counts (gridX × gridZ).
+         */
+        fun fromHeightField(field: HeightField, meshName: String = "Terrain"): TerrainConfig {
+            require(field.width >= 2 && field.depth >= 2) {
+                "HeightField must be at least 2×2 vertices (1×1 cells)"
+            }
+            return TerrainConfig(
+                gridX = field.width - 1,
+                gridZ = field.depth - 1,
+                sizeX = field.sizeX,
+                sizeZ = field.sizeZ,
+                heights = field.heights,
+                meshName = meshName,
+            )
+        }
     }
 }

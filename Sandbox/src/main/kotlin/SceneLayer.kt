@@ -12,13 +12,14 @@ import imgui.extension.imguizmo.flag.Operation
 import imgui.flag.ImGuiCol
 import imgui.flag.ImGuiStyleVar
 import imgui.flag.ImGuiWindowFlags
+import imgui.type.ImBoolean
 import rune.imgui.RuneGui
 import rune.asset.MeshImporter
+import com.github.quillraven.fleks.Entity
 import rune.components.DirectionalLightComponent
 import rune.components.StaticMeshComponent
 import rune.components.TerrainComponent
 import rune.components.TransformComponent
-import rune.terrain.ProceduralTerrainParams
 import rune.terrain.TerrainSystem
 import rune.core.Application
 import rune.core.Input
@@ -39,6 +40,11 @@ import rune.scene.SceneRenderer
 import rune.scene.SceneRendererSpec
 import sandbox.panels.IrisSettings
 import sandbox.panels.SceneHierarchyPanel
+import sandbox.panels.TerrainGraphPanel
+import sandbox.panels.graph.Graph
+import sandbox.panels.graph.TerrainBakeSpec
+import sandbox.panels.graph.TerrainCompileOutcome
+import sandbox.panels.graph.TerrainGraphCompiler
 
 class SceneLayer : Layer("Scene") {
 
@@ -56,6 +62,20 @@ class SceneLayer : Layer("Scene") {
     private val irisSettings = IrisSettings()
     private val sceneHierarchyPanel = SceneHierarchyPanel(scene)
 
+
+    private val terrainGraphPanel = TerrainGraphPanel()
+    private val terrainGraph = Graph()
+    private val terrainBakeSpec = TerrainBakeSpec(
+        fieldWidth = 513,
+        fieldDepth = 513,
+        sizeX = 500f,
+        sizeZ = 500f,
+        meshName = "SandboxTerrain",
+    )
+    private lateinit var terrainEntity: Entity
+    private var terrainGraphError: String? = null
+
+
     override fun onAttach() {
         val w = Application.get().getWindow().width
         val h = Application.get().getWindow().height
@@ -64,50 +84,42 @@ class SceneLayer : Layer("Scene") {
         scene.onViewportResize(w, h)
         vRenderer.resizeViewport(w, h)
 
+//        scene.createEntity("Zelda").apply {
+//            with(scene.world) {
+//                configure {
+//                    it += StaticMeshComponent(MeshImporter.importStaticMesh("totk/zelda_search.dae"))
+//                    it += TransformComponent()
+//                }
+//            }
+//        }
+
+//        scene.createEntity("Vah Ruta").apply {
+//            with(scene.world) {
+//                configure {
+//                    it += StaticMeshComponent(MeshImporter.importStaticMesh("VahRuta/Ruta.dae"))
+//                    it += TransformComponent()
+//                }
+//            }
+//        }
+
         scene.createEntity("Zelda").apply {
             with(scene.world) {
                 configure {
-                    it += StaticMeshComponent(MeshImporter.importStaticMesh("totk/zelda_search.dae"))
+                    it += StaticMeshComponent(MeshImporter.importStaticMesh("new-zelda-totk/Npc_Zelda_Search_Improve.fbx"))
                     it += TransformComponent()
                 }
             }
         }
 
-        scene.createEntity("Vah Ruta").apply {
+        terrainEntity = scene.createEntity("Terrain").apply {
             with(scene.world) {
                 configure {
-                    it += StaticMeshComponent(MeshImporter.importStaticMesh("VahRuta/Ruta.dae"))
+                    it += TerrainComponent(null)
                     it += TransformComponent()
                 }
             }
         }
-
-        val grid = 200
-        val procedural = ProceduralTerrainParams(
-            seed = 91421L,
-            frequency = 0.038f,
-            octaves = 6,
-            persistence = 0.52f,
-            lacunarity = 2.1f,
-            heightScale = 14f,
-        )
-        val terrainConfig = TerrainSystem.createProceduralConfig(
-            gridX = grid,
-            gridZ = grid,
-            sizeX = 48f,
-            sizeZ = 48f,
-            params = procedural,
-            meshName = "SandboxTerrain",
-        )
-        val terrainModel = TerrainSystem.createModel(terrainConfig)
-        scene.createEntity("Terrain").apply {
-            with(scene.world) {
-                configure {
-                    it += TerrainComponent(terrainModel)
-                    it += TransformComponent()
-                }
-            }
-        }
+        rebuildTerrainFromGraph()
 
         scene.createEntity("Light").apply {
             with(scene.world) {
@@ -224,6 +236,25 @@ class SceneLayer : Layer("Scene") {
 
         irisSettings.onImGuiRender()
         sceneHierarchyPanel.onImGuiRender()
+        terrainGraphPanel.show(
+            ImBoolean(true),
+            terrainGraph,
+            onRebuild = ::rebuildTerrainFromGraph,
+            lastError = { terrainGraphError },
+        )
+    }
+
+    private fun rebuildTerrainFromGraph() {
+        when (val outcome = TerrainGraphCompiler.compile(terrainGraph, terrainBakeSpec)) {
+            is TerrainCompileOutcome.Ok -> {
+                terrainGraphError = null
+                val model = TerrainSystem.createModel(outcome.root, terrainBakeSpec.meshName)
+                with(scene.world) {
+                    terrainEntity[TerrainComponent].model = model
+                }
+            }
+            is TerrainCompileOutcome.Err -> terrainGraphError = outcome.message
+        }
     }
 }
 

@@ -183,6 +183,13 @@ class SceneHierarchyPanel(private var scene: Scene) {
                     }
                 }
 
+                if (!it.has(SpriteRendererComponent)) {
+                    if (ImGui.menuItem("Sprite Renderer")) {
+                        it += SpriteRendererComponent()
+                        ImGui.closeCurrentPopup()
+                    }
+                }
+
             }
             ImGui.endPopup()
         }
@@ -290,6 +297,34 @@ class SceneHierarchyPanel(private var scene: Scene) {
             drawComponent<TerrainComponent>(entity, TerrainComponent, "Terrain") { src ->
 
             }
+        }
+
+        drawComponent<SpriteRendererComponent>(entity, SpriteRendererComponent, "Sprite Renderer") { src ->
+            tmpColor[0] = src.color.r
+            tmpColor[1] = src.color.g
+            tmpColor[2] = src.color.b
+            tmpColor[3] = src.color.a
+            if (ImGui.colorEdit4("Color", tmpColor)) {
+                src.color.r = tmpColor[0]
+                src.color.g = tmpColor[1]
+                src.color.b = tmpColor[2]
+                src.color.a = tmpColor[3]
+            }
+
+            // texture
+            ImGui.button("Texture", ImVec2(100f, 0f))
+            if (ImGui.beginDragDropTarget()) {
+                val payload: String? = ImGui.acceptDragDropPayload("CONTENT_BROWSER_ITEM")
+                payload?.let {
+                    src.texture = Texture2D.create("$assetsDirectory/$payload")
+                }
+                ImGui.endDragDropTarget()
+            }
+
+            // tiling factor
+            tmpFloat = floatArrayOf(1f)
+            ImGui.dragFloat("Tiling Factor", tmpFloat, 0.1f, 0f, 100f)
+            src.tilingFactor = tmpFloat.first()
         }
     }
 

@@ -159,6 +159,8 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
         tonemapPass()
         //celPass()
         Renderer.endScene()
+
+        composite2DPass()
     }
 
     private fun renderGeometry(debugRender: Boolean = false) {

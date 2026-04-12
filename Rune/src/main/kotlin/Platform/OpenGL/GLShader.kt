@@ -49,7 +49,7 @@ class OpenGLShader private constructor(
     constructor(filePath: String) : this(
         extractName(filePath),
         filePath,
-        Path.of(filePath).parent,
+        findShaderRoot(Path.of(filePath)),
         preprocess(File(filePath).readText())
     )
 
@@ -483,6 +483,16 @@ class OpenGLShader private constructor(
     }
 
     companion object {
+        private fun findShaderRoot(shaderPath: Path): Path {
+            var dir = shaderPath.parent
+            while (dir != null) {
+                // If this directory contains an "include" subdirectory, it's our root
+                if (Files.isDirectory(dir.resolve("include"))) return dir
+                dir = dir.parent
+            }
+            return shaderPath.parent  // fallback
+        }
+
         private fun glStageToShaderc(stage: Int) = when (stage) {
             GL_VERTEX_SHADER   -> shaderc_glsl_vertex_shader
             GL_FRAGMENT_SHADER -> shaderc_glsl_fragment_shader
