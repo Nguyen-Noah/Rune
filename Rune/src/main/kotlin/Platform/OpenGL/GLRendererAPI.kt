@@ -7,6 +7,7 @@ import org.lwjgl.system.MemoryUtil
 import rune.project.ProjectManager
 import rune.renderer.Renderer
 import rune.renderer.RendererAPI
+import rune.renderer.TextureType
 import rune.renderer.gpu.*
 import rune.renderer.renderer3d.Mesh
 import rune.rhi.*
@@ -28,6 +29,8 @@ class GLRendererAPI : RendererAPI {
     // TODO: find a better place for this (maybe per model)
     private val transformBuf: UniformBuffer = UniformBuffer.create(Std140Layouts.Transform, U_TRANSFORM, "Transform")
     private val matBuf: UniformBuffer = UniformBuffer.create(Std140Layouts.PbrMaterial, U_MATERIAL, "Material")
+    private val geometryUvBuf: UniformBuffer =
+        UniformBuffer.create(Std140Layouts.GeometryUvSets, U_GEOMETRY_UV, "GeometryUvSets")
 
     private var activePass: RenderPass? = null
 
@@ -94,6 +97,23 @@ class GLRendererAPI : RendererAPI {
                 flip()
                 matBuf.setData(this)
                 MemoryUtil.memFree(this)
+            }
+
+            RenderCommandQueue.enqueue("GLAPI-PushUV") {
+                val albedoUv   = sm.material.textureUvChannel[TextureType.Albedo.ordinal]
+                val normalUv   = sm.material.textureUvChannel[TextureType.Normal.ordinal]
+                val specularUv = sm.material.textureUvChannel[TextureType.Specular.ordinal]
+
+                MemoryUtil.memAlloc(geometryUvBuf.size).apply {
+                    putInt(albedoUv)
+                    putInt(normalUv)
+                    putInt(specularUv)
+                    position(12)
+                    putInt(0)
+                    flip()
+                    geometryUvBuf.setData(this)
+                    MemoryUtil.memFree(this)
+                }
             }
 
             RenderCommandQueue.enqueue("GLAPI-RenderStaticMesh") {
@@ -209,5 +229,13 @@ class GLRendererAPI : RendererAPI {
 
     override fun toggleWireframe(mode: PolygonMode) {
         RenderCommandQueue.enqueue { glPolygonMode(GL_FRONT_AND_BACK, mode.gl) }
+    }
+
+    override fun enableBlend() {
+        RenderCommandQueue.enqueue { glEnable(GL_BLEND) }
+    }
+
+    override fun disableBlend() {
+        RenderCommandQueue.enqueue { glDisable(GL_BLEND) }
     }
 }

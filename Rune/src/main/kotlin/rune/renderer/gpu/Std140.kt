@@ -93,6 +93,13 @@ object Std140Layouts {
         mat4("u_ModelTransform")
     }
 
+    /** [Geometry.glsl] UV channel 0/1 per map (std140). */
+    val GeometryUvSets = Std140Layout.build {
+        int("u_AlbedoUvSet")
+        int("u_NormalUvSet")
+        int("u_SpecularUvSet")
+    }
+
     /** [common.glsl] `PBRMaterial` / `Material` struct (three vec4). */
     val PbrMaterial = Std140Layout.build {
         vec4("Albedo")

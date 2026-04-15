@@ -5,5 +5,6 @@ const val U_CAMERA = 0
 const val U_TRANSFORM = 1
 const val U_LIGHTS = 2
 const val U_MATERIAL = 5
+const val U_GEOMETRY_UV = 6
 // editor-specific
 const val U_RENDERER_SETTINGS = 7

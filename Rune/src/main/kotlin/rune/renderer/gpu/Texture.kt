@@ -4,7 +4,6 @@ import org.lwjgl.opengl.GL11.GL_LINEAR
 import rune.platforms.opengl.GLTexture
 import rune.platforms.opengl.GLTextureCube
 import rune.renderer.Renderer
-import rune.renderer.RendererAPI
 import rune.renderer.RendererPlatform
 import rune.renderer.TextureType
 import rune.rhi.AttachmentFormat
@@ -30,6 +29,9 @@ interface Texture {
 interface Texture2D : Texture {
     override fun toString(): String
     companion object {
+        val defaultWhiteTexture = create(1, 1).apply { setData(0xffffffff.toInt(), 4) }
+        val defaultNormalTexture = create(1, 1).apply { setData(0x8080ffff.toInt(), 4) }
+
         fun create(path: String, filter: Int = GL_LINEAR): Texture2D {
             return when (Renderer.getAPI()) {
                 RendererPlatform.OpenGL -> GLTexture(path, filter)

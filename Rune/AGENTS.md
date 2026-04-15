@@ -12,3 +12,4 @@ Rune is an application framework that specializes in rendering geometry with a P
 - Keep everything as simple as possible
 - NO emojis, minimal comments
 - Import alphabetically
+- NO ambiguous variable names. Variables should be recognizable at a first glance

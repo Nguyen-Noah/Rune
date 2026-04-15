@@ -29,14 +29,17 @@ class GLVertexBuffer : VertexBuffer, GLBuffer {
     }
 
     constructor(vertices: List<Vertex>) {
-        val floatsPerVertex = 8 // position, normal, texcoords
+        val floatsPerVertex = 16 // position, normal, bitangent, tangent, texcoords x2
         val data = FloatArray(vertices.size * floatsPerVertex)
 
         var i = 0
         vertices.forEach { v ->
             data[i++] = v.position.x;  data[i++] = v.position.y;  data[i++] = v.position.z
             data[i++] = v.normal.x;  data[i++] = v.normal.y;  data[i++] = v.normal.z
+            data[i++] = v.bitangent.x;  data[i++] = v.bitangent.y;  data[i++] = v.bitangent.z
+            data[i++] = v.tangent.x;  data[i++] = v.tangent.y;  data[i++] = v.tangent.z
             data[i++] = v.texCoords.x;   data[i++] = v.texCoords.y
+            data[i++] = v.texCoords1.x;   data[i++] = v.texCoords1.y
         }
 
         size = data.size * Float.SIZE_BYTES

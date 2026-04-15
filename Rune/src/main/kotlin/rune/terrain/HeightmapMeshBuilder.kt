@@ -58,24 +58,27 @@ object HeightmapMeshBuilder {
         return Model(mesh)
     }
 
+    // TODO: add bitangents and tangents
     fun buildVertices(config: TerrainConfig): List<Vertex> {
-        val w = config.gridX + 1
-        val d = config.gridZ + 1
+        val width = config.gridX + 1
+        val depth = config.gridZ + 1
 
-        val out = ArrayList<Vertex>(w * d)
-        for (iz in 0 until d) {
-            for (ix in 0 until w) {
+        val out = ArrayList<Vertex>(width * depth)
+        for (iz in 0 until depth) {
+            for (ix in 0 until width) {
                 val x = (ix.toFloat() / config.gridX - 0.5f) * config.sizeX
                 val z = (iz.toFloat() / config.gridZ - 0.5f) * config.sizeZ
-                val y = config.heights[iz * w + ix]
+                val y = config.heights[iz * width + ix]
 
                 val dhx = sampleDeltaX(config, ix, iz)
                 val dhz = sampleDeltaZ(config, ix, iz)
-                val n = glm.normalize(Vec3(-dhx, 1f, -dhz))
+                val normals = glm.normalize(Vec3(-dhx, 1f, -dhz))
+                val bitangent = Vec3(0)
+                val tangent = Vec3(0)
 
                 val u = ix.toFloat() / config.gridX
                 val v = iz.toFloat() / config.gridZ
-                out += Vertex(Vec3(x, y, z), n, Vec2(u, v))
+                out += Vertex(Vec3(x, y, z), normals, bitangent, tangent, Vec2(u, v))
             }
         }
         return out

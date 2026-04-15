@@ -189,4 +189,12 @@ object Renderer {
     fun toggleWireframe(mode: PolygonMode) {
         rendererAPI.toggleWireframe(mode)
     }
+
+    fun enableBlend() {
+        rendererAPI.enableBlend()
+    }
+
+    fun disableBlend() {
+        rendererAPI.disableBlend()
+    }
 }

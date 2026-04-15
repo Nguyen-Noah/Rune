@@ -87,9 +87,12 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
                 debugName = "Geometry-Buffer"
                 shader = Renderer.getShader("Geometry")
                 layout = VertexLayout.build {
-                    attr(0, BufferType.Float3)
-                    attr(1, BufferType.Float3)
-                    attr(2, BufferType.Float2)
+                    attr(0, BufferType.Float3)  // position
+                    attr(1, BufferType.Float3)  // normals
+                    attr(2, BufferType.Float3)  // bitangent
+                    attr(3, BufferType.Float3)  // tangent
+                    attr(4, BufferType.Float2)  // texcoord0
+                    attr(5, BufferType.Float2)  // texcoord1
                 }
             }
         }
@@ -100,7 +103,10 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
             layout = VertexLayout.build {
                 attr(0, BufferType.Float3)
                 attr(1, BufferType.Float3)
-                attr(2, BufferType.Float2)
+                attr(2, BufferType.Float3)
+                attr(3, BufferType.Float3)
+                attr(4, BufferType.Float2)
+                attr(5, BufferType.Float2)
             }
         }
 
@@ -165,6 +171,7 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
 
     private fun renderGeometry(debugRender: Boolean = false) {
         Renderer.beginRenderPass(geometryPass, clear = true)
+        Renderer.disableBlend()
 
         if (debugRender)
             Renderer.toggleWireframe(PolygonMode.LINE)
@@ -179,6 +186,8 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
             }
         }
 
+        Renderer.enableBlend()
+
         TerrainRenderer.render(scene, terrainPipeline)
 
         if (debugRender)
@@ -190,9 +199,9 @@ class SceneRenderer(var scene: Scene, spec: SceneRendererSpec) {
     private fun lightingPass() {
         Renderer.beginRenderPass(lightingPass, clear = true)
 
-        gBuffer.bindAttachment(0)
-        gBuffer.bindAttachment(1)
-        gBuffer.bindAttachment(2)
+        gBuffer.bindAttachment(0)       // position
+        gBuffer.bindAttachment(1)       // normal
+        gBuffer.bindAttachment(2)       // albedo/specular
         gBuffer.bindDepth(3)
         envMap.bind(4)
 

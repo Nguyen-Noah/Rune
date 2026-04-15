@@ -1,11 +1,14 @@
 package rune.asset
 
 import glm_.vec4.Vec4
+import rune.renderer.TextureType
 import rune.renderer.gpu.Shader
 import rune.renderer.gpu.Texture2D
 
 data class Material(
     val textures: Array<Texture2D?>,
+    /** Per [TextureType]: Assimp UV channel 0 or 1 (diffuse/normal/spec texture sampling). */
+    val textureUvChannel: Array<Int> = Array(TextureType.entries.size) { 0 },
     val ambient: Vec4,
     val diffuse: Vec4,
     val specular: Vec4,
@@ -27,6 +30,7 @@ data class Material(
         other as Material
 
         if (!textures.contentEquals(other.textures)) return false
+        if (!textureUvChannel.contentEquals(other.textureUvChannel)) return false
         if (ambient != other.ambient) return false
         if (diffuse != other.diffuse) return false
         if (specular != other.specular) return false
@@ -37,6 +41,7 @@ data class Material(
 
     override fun hashCode(): Int {
         var result = textures.contentHashCode()
+        result = 31 * result + textureUvChannel.contentHashCode()
         result = 31 * result + ambient.hashCode()
         result = 31 * result + diffuse.hashCode()
         result = 31 * result + specular.hashCode()

@@ -88,4 +88,8 @@ interface RendererAPI {
 
     /** Toggle wireframe rendering */
     fun toggleWireframe(mode: PolygonMode)
+
+    fun enableBlend()
+
+    fun disableBlend()
 }

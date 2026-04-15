@@ -89,17 +89,17 @@ class SceneLayer : Layer("Scene") {
         scene.createEntity("Zelda").apply {
             with(scene.world) {
                 configure {
-                    it += StaticMeshComponent(MeshImporter.importStaticMesh("totk/zelda_search.dae"))
-                    it += TransformComponent()
+                    it += StaticMeshComponent(MeshImporter.importAnimatedMesh("totk/zelda-rigged.gltf"))
+                    it += TransformComponent(translation = Vec3(1.5f, 0f, 0f))
                 }
             }
         }
 
-        scene.createEntity("Zelda").apply {
+        scene.createEntity("Tree").apply {
             with(scene.world) {
                 configure {
-                    it += StaticMeshComponent(MeshImporter.importAnimatedMesh("new-zelda-totk/Npc_Zelda_Search_Improve.fbx"))
-                    it += TransformComponent(translation = Vec3(1.5f, 0f, 0f))
+                    it += StaticMeshComponent(MeshImporter.importStaticMesh("low_poly_tree/Lowpoly_tree_sample.fbx"))
+                    it += TransformComponent(translation = Vec3(4f, 0f, 1f), scale = Vec3(0.001f))
                 }
             }
         }
